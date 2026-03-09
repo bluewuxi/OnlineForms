@@ -39,6 +39,7 @@ Auth modes:
 npm install
 npm run typecheck
 npm run build
+npm test
 ```
 
 ## Deploy Baseline (SAM)

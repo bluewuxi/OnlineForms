@@ -54,7 +54,7 @@ Implement tasks strictly in order. For each task:
   - Validate answers against stored form schema version
   - Persist submission + idempotency key behavior
 
-- [ ] P1-07 Phase 1 automated tests  
+- [x] P1-07 Phase 1 automated tests  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/7
   Scope:
   - Unit tests for validators and auth/tenant guards

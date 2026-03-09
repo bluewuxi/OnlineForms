@@ -106,7 +106,7 @@ function validateField(field: FormField): void {
   }
 }
 
-function validateFields(fields: FormField[]): void {
+export function validateFormFields(fields: FormField[]): void {
   if (!Array.isArray(fields) || fields.length === 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "At least one form field is required.");
   }
@@ -163,7 +163,7 @@ export async function upsertCourseFormSchema(
   userId: string,
   fields: FormField[]
 ): Promise<{ formId: string; version: number }> {
-  validateFields(fields);
+  validateFormFields(fields);
   await getCourse(tenantId, courseId);
 
   const latest = await getLatestItem(tenantId, courseId);
@@ -247,4 +247,3 @@ export async function getCourseFormSchemaVersion(
   if (!out.Item) throw new ApiError(404, "NOT_FOUND", "Form schema version not found.");
   return fromItem(out.Item as FormSchemaItem);
 }
-

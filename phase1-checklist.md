@@ -26,7 +26,7 @@ Implement tasks strictly in order. For each task:
   - Extract `tenantId` and `role` from claims
   - Enforce tenant guard for protected endpoints
 
-- [ ] P1-03 Organization Course CRUD APIs  
+- [x] P1-03 Organization Course CRUD APIs  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/3
   Scope:
   - Implement `/v1/org/courses` create/list/get/update

@@ -30,8 +30,8 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 
 Auth modes:
 
-- `AUTH_MODE=cognito` (default): verifies Cognito JWT
-- `AUTH_MODE=mock`: local-only mock headers (`x-user-id`, `x-tenant-id`, `x-role`)
+- `AUTH_MODE=mock` (default in SAM template for dev): uses mock headers
+- `AUTH_MODE=cognito`: verifies Cognito JWT using configured user pool/client
 
 ## Local Dev
 
@@ -47,3 +47,20 @@ npm run build
 sam build -t infra/template.yaml
 sam deploy --guided -t infra/template.yaml
 ```
+
+## P1-03 Course Endpoints
+
+Protected org routes:
+
+- `POST /v1/org/courses`
+- `GET /v1/org/courses`
+- `GET /v1/org/courses/{courseId}`
+- `PATCH /v1/org/courses/{courseId}`
+- `POST /v1/org/courses/{courseId}/publish`
+- `POST /v1/org/courses/{courseId}/archive`
+
+When running in `AUTH_MODE=mock`, include headers:
+
+- `x-user-id: user_1`
+- `x-tenant-id: ten_001`
+- `x-role: org_admin`

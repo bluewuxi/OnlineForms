@@ -34,11 +34,24 @@ Resources:
           AttributeType: S
         - AttributeName: SK
           AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
       KeySchema:
         - AttributeName: PK
           KeyType: HASH
         - AttributeName: SK
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   OnlineFormsAssetsBucket:
     Type: AWS::S3::Bucket
@@ -338,6 +351,50 @@ Resources:
             ApiId: !Ref OnlineFormsHttpApi
             Path: /org/branding
             Method: PATCH
+
+  OrgAuditListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgAuditList.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgAuditListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/audit
+            Method: GET
+
+  PaymentsStubFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/paymentsStub.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        PaymentsConfigRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /payments/config
+            Method: GET
+        PaymentsCheckoutRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /payments/checkout-session
+            Method: POST
+        PaymentsWebhookRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /payments/webhook
+            Method: POST
 
   PublicCoursesListFunction:
     Type: AWS::Serverless::Function

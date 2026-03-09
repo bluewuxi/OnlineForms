@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { writeAuditEvent } from "../lib/audit";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
@@ -24,6 +25,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const body = parseJsonBody<UpdateSubmissionStatusBody>(event);
     const data = await updateOrgSubmissionStatus(auth.tenantId, submissionId, auth.userId, {
       status: body.status
+    });
+    await writeAuditEvent({
+      tenantId: auth.tenantId,
+      actorUserId: auth.userId,
+      action: "submission.status_update",
+      resourceType: "submission",
+      resourceId: submissionId,
+      correlationId: correlation.correlationId,
+      requestId: correlation.requestId,
+      details: { status: data.status }
     });
 
     return jsonResponse(200, { data }, correlation);

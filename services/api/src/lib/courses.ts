@@ -71,6 +71,14 @@ export type PublicCourse = {
   pricingMode: PricingMode;
 };
 
+export type PublicCoursesListResult = {
+  data: PublicCourse[];
+  page: {
+    limit: number;
+    nextCursor: string | null;
+  };
+};
+
 export type PublicCourseDetail = PublicCourse & {
   fullDescription: string;
   enrollmentOpenAt: string;
@@ -81,6 +89,7 @@ export type PublicCourseDetail = PublicCourse & {
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+const COURSE_PUBLIC_PROJECTION_VERSION = 1;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -98,9 +107,50 @@ function tenantCodePk(tenantCode: string): string {
   return `TENANTCODE#${tenantCode}`;
 }
 
+async function resolveTenantCodeById(tenantId: string): Promise<string> {
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: "PROFILE" }
+    })
+  );
+  const item = out.Item as Record<string, unknown> | undefined;
+  const tenantCode = item?.tenantCode;
+  if (typeof tenantCode !== "string" || tenantCode.trim().length === 0) {
+    throw new ApiError(409, "CONFLICT", "Tenant profile missing tenantCode for public projection.");
+  }
+  return tenantCode.trim().toLowerCase();
+}
+
 function imageUrlFromAssetId(imageAssetId: string | null): string | null {
   if (!imageAssetId) return null;
   return `https://cdn.onlineforms.com/assets/${imageAssetId}`;
+}
+
+function parsePublicListLimit(limitRaw: number | undefined): number {
+  if (limitRaw === undefined) return 20;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1 || limitRaw > 100) {
+    throw new ApiError(400, "VALIDATION_ERROR", "limit must be an integer between 1 and 100.");
+  }
+  return limitRaw;
+}
+
+function encodePublicListCursor(lastEvaluatedKey: Record<string, unknown> | undefined): string | null {
+  if (!lastEvaluatedKey) return null;
+  return Buffer.from(JSON.stringify(lastEvaluatedKey), "utf-8").toString("base64");
+}
+
+function decodePublicListCursor(cursor: string): Record<string, unknown> {
+  try {
+    const text = Buffer.from(cursor, "base64").toString("utf-8");
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("invalid");
+    }
+    return parsed;
+  } catch {
+    throw new ApiError(400, "VALIDATION_ERROR", "cursor is invalid.");
+  }
 }
 
 function courseFromItem(item: Record<string, unknown>): Course {
@@ -144,6 +194,23 @@ function publicCourseFromItem(item: Record<string, unknown>): PublicCourse {
   };
 }
 
+function isValidPublicProjection(item: Record<string, unknown>, tenantCode: string): boolean {
+  const projectionVersion = item.projectionVersion;
+  if (projectionVersion !== COURSE_PUBLIC_PROJECTION_VERSION) return false;
+  if (item.entityType !== "COURSE_PUBLIC") return false;
+  if (item.status !== "published") return false;
+  if (!Boolean(item.publicVisible)) return false;
+  if (typeof item.courseId !== "string" || typeof item.title !== "string") return false;
+  if (typeof item.shortDescription !== "string") return false;
+  if (typeof item.fullDescription !== "string") return false;
+  if (typeof item.startDate !== "string" || typeof item.endDate !== "string") return false;
+  if (typeof item.enrollmentOpenAt !== "string" || typeof item.enrollmentCloseAt !== "string") return false;
+  if (typeof item.deliveryMode !== "string" || typeof item.pricingMode !== "string") return false;
+  if (typeof item.tenantCode !== "string") return false;
+  if (item.tenantCode.toLowerCase() !== tenantCode.toLowerCase()) return false;
+  return true;
+}
+
 function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourseDetail {
   const nowMs = Date.now();
   const openAtMs = Date.parse(String(item.enrollmentOpenAt ?? ""));
@@ -160,31 +227,40 @@ function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourse
   };
 }
 
+function buildPublicProjectionItem(course: Course, tenantCode: string): Record<string, unknown> {
+  return {
+    PK: tenantPk(course.tenantId),
+    SK: coursePublicSk(course.id),
+    projectionVersion: COURSE_PUBLIC_PROJECTION_VERSION,
+    entityType: "COURSE_PUBLIC",
+    tenantId: course.tenantId,
+    tenantCode,
+    courseId: course.id,
+    title: course.title,
+    shortDescription: course.shortDescription,
+    fullDescription: course.fullDescription,
+    imageUrl: imageUrlFromAssetId(course.imageAssetId),
+    startDate: course.startDate,
+    endDate: course.endDate,
+    enrollmentOpenAt: course.enrollmentOpenAt,
+    enrollmentCloseAt: course.enrollmentCloseAt,
+    deliveryMode: course.deliveryMode,
+    pricingMode: course.pricingMode,
+    status: course.status,
+    publicVisible: course.publicVisible,
+    updatedAt: course.updatedAt,
+    GSI2PK: `TENANTCODE#${tenantCode}#COURSES`,
+    GSI2SK: `START#${course.startDate}#COURSE#${course.id}`
+  };
+}
+
 async function upsertPublicProjection(course: Course): Promise<void> {
   if (course.status !== "published" || !course.publicVisible) return;
+  const tenantCode = await resolveTenantCodeById(course.tenantId);
   await ddb.send(
     new PutCommand({
       TableName: tableName,
-      Item: {
-        PK: tenantPk(course.tenantId),
-        SK: coursePublicSk(course.id),
-        entityType: "COURSE_PUBLIC",
-        tenantId: course.tenantId,
-        courseId: course.id,
-        title: course.title,
-        shortDescription: course.shortDescription,
-        fullDescription: course.fullDescription,
-        imageUrl: imageUrlFromAssetId(course.imageAssetId),
-        startDate: course.startDate,
-        endDate: course.endDate,
-        enrollmentOpenAt: course.enrollmentOpenAt,
-        enrollmentCloseAt: course.enrollmentCloseAt,
-        deliveryMode: course.deliveryMode,
-        pricingMode: course.pricingMode,
-        status: course.status,
-        publicVisible: course.publicVisible,
-        updatedAt: course.updatedAt
-      }
+      Item: buildPublicProjectionItem(course, tenantCode)
     })
   );
 }
@@ -312,6 +388,29 @@ export async function updateCourse(
     await assertAssetBindable(tenantId, input.imageAssetId, "course_image");
   }
 
+  const current = await getCourse(tenantId, courseId);
+  const nextPricingMode = input.pricingMode ?? current.pricingMode;
+  const nextPublicVisible = input.publicVisible ?? current.publicVisible;
+  const nextStatus = current.status;
+
+  if (nextPricingMode === "paid_placeholder" && nextPublicVisible) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "paid_placeholder courses cannot be public while payments are disabled."
+    );
+  }
+  if (nextPricingMode === "paid_placeholder" && nextStatus === "published") {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Published courses cannot use paid_placeholder pricing while payments are disabled."
+    );
+  }
+  if (nextPublicVisible && nextPricingMode !== "free") {
+    throw new ApiError(409, "CONFLICT", "Only free courses can be public in MVP.");
+  }
+
   const exprNames: Record<string, string> = { "#updatedAt": "updatedAt", "#updatedBy": "updatedBy" };
   const exprValues: Record<string, unknown> = {
     ":updatedAt": new Date().toISOString(),
@@ -363,6 +462,9 @@ export async function setCourseStatus(
     }
     if (current.pricingMode !== "free") {
       throw new ApiError(409, "CONFLICT", "MVP only supports free course publishing.");
+    }
+    if (current.paymentEnabledFlag) {
+      throw new ApiError(409, "CONFLICT", "paymentEnabledFlag must remain false in MVP.");
     }
   }
 
@@ -424,21 +526,33 @@ export async function resolveTenantIdByCode(tenantCode: string): Promise<string>
   return tenantId;
 }
 
-export async function listPublicCourses(tenantCode: string, q?: string): Promise<PublicCourse[]> {
-  const tenantId = await resolveTenantIdByCode(tenantCode);
+export async function listPublicCourses(
+  tenantCode: string,
+  q?: string,
+  limitRaw?: number,
+  cursor?: string
+): Promise<PublicCoursesListResult> {
+  const normalizedTenantCode = tenantCode.trim().toLowerCase();
+  await resolveTenantIdByCode(normalizedTenantCode);
+  const limit = parsePublicListLimit(limitRaw);
   const out = await ddb.send(
     new QueryCommand({
       TableName: tableName,
-      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      IndexName: "GSI2",
+      KeyConditionExpression: "GSI2PK = :gsi2pk",
       ExpressionAttributeValues: {
-        ":pk": tenantPk(tenantId),
-        ":sk": "COURSE_PUBLIC#"
-      }
+        ":gsi2pk": `TENANTCODE#${normalizedTenantCode}#COURSES`
+      },
+      ExclusiveStartKey: cursor ? decodePublicListCursor(cursor) : undefined,
+      ScanIndexForward: true,
+      Limit: limit
     })
   );
 
   const keyword = q?.trim().toLowerCase();
-  const rows = (out.Items ?? []).map((i) => i as Record<string, unknown>);
+  const rows = (out.Items ?? [])
+    .map((i) => i as Record<string, unknown>)
+    .filter((item) => isValidPublicProjection(item, normalizedTenantCode));
   const filtered = keyword
     ? rows.filter((item) => {
         const haystack = `${String(item.title ?? "")} ${String(item.shortDescription ?? "")} ${String(
@@ -448,16 +562,21 @@ export async function listPublicCourses(tenantCode: string, q?: string): Promise
       })
     : rows;
 
-  return filtered
-    .map(publicCourseFromItem)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id.localeCompare(b.id));
+  return {
+    data: filtered.map(publicCourseFromItem),
+    page: {
+      limit,
+      nextCursor: encodePublicListCursor(out.LastEvaluatedKey as Record<string, unknown> | undefined)
+    }
+  };
 }
 
 export async function getPublicCourseDetail(
   tenantCode: string,
   courseId: string
 ): Promise<PublicCourseDetail> {
-  const tenantId = await resolveTenantIdByCode(tenantCode);
+  const normalizedTenantCode = tenantCode.trim().toLowerCase();
+  const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
   const out = await ddb.send(
     new GetCommand({
       TableName: tableName,
@@ -466,5 +585,35 @@ export async function getPublicCourseDetail(
   );
 
   if (!out.Item) throw new ApiError(404, "NOT_FOUND", "Course not found.");
-  return publicCourseDetailFromItem(out.Item as Record<string, unknown>);
+  const item = out.Item as Record<string, unknown>;
+  if (!isValidPublicProjection(item, normalizedTenantCode)) {
+    throw new ApiError(404, "NOT_FOUND", "Course not found.");
+  }
+  return publicCourseDetailFromItem(item);
+}
+
+export async function reconcilePublicProjectionsForTenant(
+  tenantId: string
+): Promise<{ upserted: number; deleted: number }> {
+  const tenantCode = await resolveTenantCodeById(tenantId);
+  const courses = await listCourses(tenantId);
+  let upserted = 0;
+  let deleted = 0;
+
+  for (const course of courses) {
+    if (course.status === "published" && course.publicVisible) {
+      await ddb.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: buildPublicProjectionItem(course, tenantCode)
+        })
+      );
+      upserted += 1;
+    } else {
+      await deletePublicProjection(tenantId, course.id);
+      deleted += 1;
+    }
+  }
+
+  return { upserted, deleted };
 }

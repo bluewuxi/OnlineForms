@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { listAuditEvents } from "../lib/audit";
 import { createCorrelationContext } from "../lib/correlation";
-import { listPublicCourses } from "../lib/courses";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
 
@@ -16,15 +17,18 @@ function parseLimit(value: string | undefined): number | undefined {
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
   try {
-    const tenantCode = event.pathParameters?.tenantCode;
-    if (!tenantCode) {
-      throw new ApiError(400, "VALIDATION_ERROR", "Missing tenantCode path parameter.");
-    }
+    const auth = await authenticateRequest(event.headers);
+    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
 
-    const q = event.queryStringParameters?.q;
-    const limit = parseLimit(event.queryStringParameters?.limit);
-    const cursor = event.queryStringParameters?.cursor;
-    const result = await listPublicCourses(tenantCode, q, limit, cursor);
+    const q = event.queryStringParameters ?? {};
+    const result = await listAuditEvents(auth.tenantId, {
+      action: q.action,
+      resourceType: q.resourceType,
+      createdFrom: q.createdFrom,
+      createdTo: q.createdTo,
+      limit: parseLimit(q.limit),
+      cursor: q.cursor
+    });
     return jsonResponse(200, result, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

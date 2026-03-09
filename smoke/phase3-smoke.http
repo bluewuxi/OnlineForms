@@ -1,0 +1,23 @@
+@baseUrl = https://y36enrj145.execute-api.ap-southeast-2.amazonaws.com/v1
+@tenantId = ten_demo
+@tenantCode = demo-school
+
+### Public catalog with pagination (P3-03)
+GET {{baseUrl}}/public/{{tenantCode}}/courses?limit=20
+
+### Org audit list (P3-05)
+GET {{baseUrl}}/org/audit?limit=20
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+### Payments stub config route (P3-07)
+GET {{baseUrl}}/payments/config
+
+### Payments stub checkout route (P3-07)
+POST {{baseUrl}}/payments/checkout-session
+content-type: application/json
+
+{
+  "placeholder": true
+}

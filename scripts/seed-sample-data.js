@@ -82,8 +82,10 @@ async function main() {
   await put({
     PK: tenantPk(tenantId),
     SK: `COURSE_PUBLIC#${courseId}`,
+    projectionVersion: 1,
     entityType: "COURSE_PUBLIC",
     tenantId,
+    tenantCode,
     courseId,
     title: "Intro to AI (Seeded)",
     shortDescription: "Seeded sample course for smoke tests",
@@ -97,7 +99,9 @@ async function main() {
     pricingMode: "free",
     status: "published",
     publicVisible: true,
-    updatedAt: now
+    updatedAt: now,
+    GSI2PK: `TENANTCODE#${tenantCode}#COURSES`,
+    GSI2SK: `START#2026-04-01#COURSE#${courseId}`
   });
 
   await put({

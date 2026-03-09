@@ -77,6 +77,10 @@ Protected org routes:
 - `POST /v1/org/assets/upload-ticket`
 - `GET /v1/org/assets/{assetId}`
 - `PATCH /v1/org/branding`
+- `GET /v1/org/audit`
+- `GET /v1/payments/config` (stub)
+- `POST /v1/payments/checkout-session` (stub)
+- `POST /v1/payments/webhook` (stub)
 
 ### Ops Baseline
 
@@ -92,6 +96,18 @@ Runbook starter:
 1. Check API `5xx` and Lambda `Errors` widgets on dashboard.
 2. Inspect CloudWatch logs for affected function and latest request IDs.
 3. Check DynamoDB throttle alarm; if firing, inspect hot key patterns and retry behavior.
+
+Public API baseline targets:
+
+- Public catalog list (`GET /v1/public/{tenantCode}/courses`): p95 < 300ms
+- Public course detail (`GET /v1/public/{tenantCode}/courses/{courseId}`): p95 < 250ms
+- Public API 5xx rate target: < 0.5% per 5-minute window
+
+Payment placeholder guardrails (MVP):
+
+- `paymentEnabledFlag` stays `false` in all flows
+- only `pricingMode=free` courses can become public/published
+- `paid_placeholder` is reserved for future activation and cannot be public in MVP
 
 ## P1-08 Seed + Smoke
 
@@ -109,10 +125,26 @@ Override defaults if needed:
 - `SEED_COURSE_ID` (default: `crs_demo_001`)
 - `SEED_FORM_ID` (default: `frm_demo_001`)
 
+Projection reconciliation helper:
+
+```bash
+TENANT_ID=ten_demo npm run reconcile:projections
+```
+
 Smoke request collection:
 
 - `smoke/phase1-smoke.http`
 - `smoke/phase2-smoke.http`
+- `smoke/phase3-smoke.http`
+
+Phase 3 operational checks:
+
+1. Projection drift:
+`TENANT_ID=<tenantId> npm run reconcile:projections` and investigate non-zero repairs.
+2. Audit trail health:
+call `GET /v1/org/audit?limit=20` and verify recent actions include request/correlation IDs.
+3. Payments stub guard:
+call `/v1/payments/*` routes and verify consistent `409 CONFLICT` with `payments_disabled`.
 
 When running in `AUTH_MODE=mock`, include headers:
 

@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { writeAuditEvent } from "../lib/audit";
 import { createCorrelationContext } from "../lib/correlation";
 import { upsertCourseFormSchema, type FormField } from "../lib/formSchemas";
 import { ApiError } from "../lib/errors";
@@ -21,10 +22,19 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const body = parseJsonBody<UpsertSchemaBody>(event);
     const data = await upsertCourseFormSchema(auth.tenantId, courseId, auth.userId, body.fields);
+    await writeAuditEvent({
+      tenantId: auth.tenantId,
+      actorUserId: auth.userId,
+      action: "form.upsert",
+      resourceType: "form",
+      resourceId: `${courseId}:${data.formId}:${data.version}`,
+      correlationId: correlation.correlationId,
+      requestId: correlation.requestId,
+      details: { courseId, formId: data.formId, version: data.version, fieldCount: body.fields.length }
+    });
 
     return jsonResponse(200, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }
 };
-

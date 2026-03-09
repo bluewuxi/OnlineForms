@@ -231,6 +231,38 @@ Resources:
             Path: /org/courses/{courseId}/form-schema/versions/{version}
             Method: GET
 
+  PublicCoursesListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/publicCoursesList.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        PublicCoursesListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/{tenantCode}/courses
+            Method: GET
+
+  PublicCoursesGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/publicCoursesGet.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        PublicCoursesGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/{tenantCode}/courses/{courseId}
+            Method: GET
+
 Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint

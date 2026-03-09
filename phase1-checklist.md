@@ -40,7 +40,7 @@ Implement tasks strictly in order. For each task:
   - Implement immutable version retrieval endpoint
   - Add schema field validation rules
 
-- [ ] P1-05 Public catalog and course detail APIs  
+- [x] P1-05 Public catalog and course detail APIs  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/5
   Scope:
   - Implement `/v1/public/{tenantCode}/courses` and `/{courseId}`

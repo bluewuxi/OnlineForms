@@ -62,6 +62,11 @@ Protected org routes:
 - `GET /v1/org/courses/{courseId}/form-schema`
 - `GET /v1/org/courses/{courseId}/form-schema/versions/{version}`
 
+## P1-05 Public Catalog Endpoints
+
+- `GET /v1/public/{tenantCode}/courses`
+- `GET /v1/public/{tenantCode}/courses/{courseId}`
+
 When running in `AUTH_MODE=mock`, include headers:
 
 - `x-user-id: user_1`

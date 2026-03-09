@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
+  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -58,6 +59,24 @@ export type UpdateCourseInput = Partial<CreateCourseInput> & {
   publicVisible?: boolean;
 };
 
+export type PublicCourse = {
+  id: string;
+  title: string;
+  shortDescription: string;
+  imageUrl: string | null;
+  startDate: string;
+  endDate: string;
+  deliveryMode: DeliveryMode;
+  pricingMode: PricingMode;
+};
+
+export type PublicCourseDetail = PublicCourse & {
+  fullDescription: string;
+  enrollmentOpenAt: string;
+  enrollmentCloseAt: string;
+  enrollmentOpenNow: boolean;
+};
+
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
@@ -68,6 +87,19 @@ function tenantPk(tenantId: string): string {
 
 function courseSk(courseId: string): string {
   return `COURSE#${courseId}`;
+}
+
+function coursePublicSk(courseId: string): string {
+  return `COURSE_PUBLIC#${courseId}`;
+}
+
+function tenantCodePk(tenantCode: string): string {
+  return `TENANTCODE#${tenantCode}`;
+}
+
+function imageUrlFromAssetId(imageAssetId: string | null): string | null {
+  if (!imageAssetId) return null;
+  return `https://cdn.onlineforms.com/assets/${imageAssetId}`;
 }
 
 function courseFromItem(item: Record<string, unknown>): Course {
@@ -96,6 +128,73 @@ function courseFromItem(item: Record<string, unknown>): Course {
     createdBy: item.createdBy as string,
     updatedBy: item.updatedBy as string
   };
+}
+
+function publicCourseFromItem(item: Record<string, unknown>): PublicCourse {
+  return {
+    id: item.courseId as string,
+    title: item.title as string,
+    shortDescription: item.shortDescription as string,
+    imageUrl: (item.imageUrl as string | null) ?? null,
+    startDate: item.startDate as string,
+    endDate: item.endDate as string,
+    deliveryMode: item.deliveryMode as DeliveryMode,
+    pricingMode: item.pricingMode as PricingMode
+  };
+}
+
+function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourseDetail {
+  const nowMs = Date.now();
+  const openAtMs = Date.parse(String(item.enrollmentOpenAt ?? ""));
+  const closeAtMs = Date.parse(String(item.enrollmentCloseAt ?? ""));
+  const enrollmentOpenNow =
+    Number.isFinite(openAtMs) && Number.isFinite(closeAtMs) && openAtMs <= nowMs && nowMs <= closeAtMs;
+
+  return {
+    ...publicCourseFromItem(item),
+    fullDescription: item.fullDescription as string,
+    enrollmentOpenAt: item.enrollmentOpenAt as string,
+    enrollmentCloseAt: item.enrollmentCloseAt as string,
+    enrollmentOpenNow
+  };
+}
+
+async function upsertPublicProjection(course: Course): Promise<void> {
+  if (course.status !== "published" || !course.publicVisible) return;
+  await ddb.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: {
+        PK: tenantPk(course.tenantId),
+        SK: coursePublicSk(course.id),
+        entityType: "COURSE_PUBLIC",
+        tenantId: course.tenantId,
+        courseId: course.id,
+        title: course.title,
+        shortDescription: course.shortDescription,
+        fullDescription: course.fullDescription,
+        imageUrl: imageUrlFromAssetId(course.imageAssetId),
+        startDate: course.startDate,
+        endDate: course.endDate,
+        enrollmentOpenAt: course.enrollmentOpenAt,
+        enrollmentCloseAt: course.enrollmentCloseAt,
+        deliveryMode: course.deliveryMode,
+        pricingMode: course.pricingMode,
+        status: course.status,
+        publicVisible: course.publicVisible,
+        updatedAt: course.updatedAt
+      }
+    })
+  );
+}
+
+async function deletePublicProjection(tenantId: string, courseId: string): Promise<void> {
+  await ddb.send(
+    new DeleteCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: coursePublicSk(courseId) }
+    })
+  );
 }
 
 function validateCreate(input: CreateCourseInput): void {
@@ -234,7 +333,13 @@ export async function updateCourse(
   );
 
   if (!out.Attributes) throw new ApiError(404, "NOT_FOUND", "Course not found.");
-  return courseFromItem(out.Attributes as Record<string, unknown>);
+  const course = courseFromItem(out.Attributes as Record<string, unknown>);
+  if (course.status === "published" && course.publicVisible) {
+    await upsertPublicProjection(course);
+  } else {
+    await deletePublicProjection(tenantId, courseId);
+  }
+  return course;
 }
 
 export async function setCourseStatus(
@@ -281,6 +386,78 @@ export async function setCourseStatus(
   );
 
   if (!out.Attributes) throw new ApiError(404, "NOT_FOUND", "Course not found.");
-  return courseFromItem(out.Attributes as Record<string, unknown>);
+  const course = courseFromItem(out.Attributes as Record<string, unknown>);
+  if (action === "publish") {
+    await upsertPublicProjection(course);
+  } else {
+    await deletePublicProjection(tenantId, courseId);
+  }
+  return course;
 }
 
+export async function resolveTenantIdByCode(tenantCode: string): Promise<string> {
+  const normalizedCode = tenantCode.trim().toLowerCase();
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: tenantCodePk(normalizedCode), SK: "MAP" }
+    })
+  );
+
+  const item = out.Item as Record<string, unknown> | undefined;
+  if (!item || item.status === "suspended") {
+    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+  }
+
+  const tenantId = item.tenantId;
+  if (typeof tenantId !== "string" || tenantId.length === 0) {
+    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+  }
+
+  return tenantId;
+}
+
+export async function listPublicCourses(tenantCode: string, q?: string): Promise<PublicCourse[]> {
+  const tenantId = await resolveTenantIdByCode(tenantCode);
+  const out = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      ExpressionAttributeValues: {
+        ":pk": tenantPk(tenantId),
+        ":sk": "COURSE_PUBLIC#"
+      }
+    })
+  );
+
+  const keyword = q?.trim().toLowerCase();
+  const rows = (out.Items ?? []).map((i) => i as Record<string, unknown>);
+  const filtered = keyword
+    ? rows.filter((item) => {
+        const haystack = `${String(item.title ?? "")} ${String(item.shortDescription ?? "")} ${String(
+          item.fullDescription ?? ""
+        )}`.toLowerCase();
+        return haystack.includes(keyword);
+      })
+    : rows;
+
+  return filtered
+    .map(publicCourseFromItem)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id.localeCompare(b.id));
+}
+
+export async function getPublicCourseDetail(
+  tenantCode: string,
+  courseId: string
+): Promise<PublicCourseDetail> {
+  const tenantId = await resolveTenantIdByCode(tenantCode);
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: coursePublicSk(courseId) }
+    })
+  );
+
+  if (!out.Item) throw new ApiError(404, "NOT_FOUND", "Course not found.");
+  return publicCourseDetailFromItem(out.Item as Record<string, unknown>);
+}

@@ -1,0 +1,38 @@
+@baseUrl = https://y36enrj145.execute-api.ap-southeast-2.amazonaws.com/v1
+@tenantCode = demo-school
+@tenantId = ten_demo
+@courseId = crs_demo_001
+@idempotencyKey = 3c579f90-4962-4a49-9ced-e6a37f63500a
+
+### Health
+GET {{baseUrl}}/health
+
+### Org auth sanity (mock mode headers)
+GET {{baseUrl}}/org/me
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+### Public list
+GET {{baseUrl}}/public/{{tenantCode}}/courses
+
+### Public detail
+GET {{baseUrl}}/public/{{tenantCode}}/courses/{{courseId}}
+
+### Public enrollment submit (idempotent)
+POST {{baseUrl}}/public/{{tenantCode}}/courses/{{courseId}}/enrollments
+content-type: application/json
+idempotency-key: {{idempotencyKey}}
+
+{
+  "formVersion": 1,
+  "answers": {
+    "first_name": "Alice",
+    "email": "alice@example.com",
+    "consent_terms": true
+  },
+  "meta": {
+    "locale": "en-NZ",
+    "timezone": "Pacific/Auckland"
+  }
+}

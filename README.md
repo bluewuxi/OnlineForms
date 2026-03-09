@@ -69,6 +69,26 @@ Protected org routes:
 - `GET /v1/public/{tenantCode}/courses/{courseId}`
 - `POST /v1/public/{tenantCode}/courses/{courseId}/enrollments`
 
+## P1-08 Seed + Smoke
+
+Seed sample tenant/course/form into DynamoDB:
+
+```bash
+npm run seed:sample
+```
+
+Override defaults if needed:
+
+- `ONLINEFORMS_TABLE` (default: `OnlineFormsMain`)
+- `SEED_TENANT_ID` (default: `ten_demo`)
+- `SEED_TENANT_CODE` (default: `demo-school`)
+- `SEED_COURSE_ID` (default: `crs_demo_001`)
+- `SEED_FORM_ID` (default: `frm_demo_001`)
+
+Smoke request collection:
+
+- `smoke/phase1-smoke.http`
+
 When running in `AUTH_MODE=mock`, include headers:
 
 - `x-user-id: user_1`

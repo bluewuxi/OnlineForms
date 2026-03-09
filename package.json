@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run build && node --test \"dist/tests/**/*.test.js\""
+    "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
+    "seed:sample": "node scripts/seed-sample-data.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",

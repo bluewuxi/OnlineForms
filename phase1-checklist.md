@@ -61,7 +61,7 @@ Implement tasks strictly in order. For each task:
   - Integration tests for core happy paths
   - Cross-tenant access denial tests
 
-- [ ] P1-08 Seed data and API smoke collection  
+- [x] P1-08 Seed data and API smoke collection  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/8
   Scope:
   - Seed script for sample tenant/course/form

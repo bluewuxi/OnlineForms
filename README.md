@@ -66,6 +66,7 @@ Protected org routes:
 
 - `GET /v1/public/{tenantCode}/courses`
 - `GET /v1/public/{tenantCode}/courses/{courseId}`
+- `POST /v1/public/{tenantCode}/courses/{courseId}/enrollments`
 
 When running in `AUTH_MODE=mock`, include headers:
 

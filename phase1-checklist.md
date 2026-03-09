@@ -47,7 +47,7 @@ Implement tasks strictly in order. For each task:
   - Tenant code resolution and published-only filter
   - Public projection/read model usage
 
-- [ ] P1-06 Public enrollment submission API  
+- [x] P1-06 Public enrollment submission API  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/6
   Scope:
   - Implement `/v1/public/{tenantCode}/courses/{courseId}/enrollments`

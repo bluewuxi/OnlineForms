@@ -263,6 +263,22 @@ Resources:
             Path: /public/{tenantCode}/courses/{courseId}
             Method: GET
 
+  PublicEnrollmentsCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/publicEnrollmentsCreate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        PublicEnrollmentsCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/{tenantCode}/courses/{courseId}/enrollments
+            Method: POST
+
 Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint

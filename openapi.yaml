@@ -1,0 +1,1345 @@
+﻿info:
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+  title: OnlineForms API
+  description: OpenAPI contract for OnlineForms MVP v1.
+  version: 1.0.0
+security:
+- bearerAuth: []
+openapi: 3.1.0
+tags:
+- description: Organization course management endpoints
+  name: Org Courses
+- description: Organization form schema endpoints
+  name: Org Forms
+- description: Organization submission review endpoints
+  name: Org Submissions
+- description: Organization asset upload endpoints
+  name: Org Assets
+- description: Public tenant course catalog endpoints
+  name: Public Catalog
+- description: Public enrollment form endpoints
+  name: Public Enrollment
+- description: Internal platform tenant administration endpoints
+  name: Platform Tenants
+components:
+  schemas:
+    FormSchemaResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/FormSchema'
+      type: object
+      required:
+      - data
+    FormFieldType:
+      enum:
+      - short_text
+      - long_text
+      - email
+      - phone
+      - number
+      - single_select
+      - multi_select
+      - checkbox
+      - date
+      type: string
+    Course:
+      properties:
+        locationText:
+          type:
+          - string
+          - "null"
+        tenantId:
+          type: string
+        tenantCode:
+          type: string
+        paymentEnabledFlag:
+          type: boolean
+        fullDescription:
+          maxLength: 10000
+          type: string
+        pricingMode:
+          $ref: '#/components/schemas/PricingMode'
+        publicVisible:
+          type: boolean
+        formVersion:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        endDate:
+          format: date
+          type: string
+        enrollmentCloseAt:
+          format: date-time
+          type: string
+        enrollmentOpenAt:
+          format: date-time
+          type: string
+        title:
+          maxLength: 120
+          minLength: 1
+          type: string
+        brandingRef:
+          type:
+          - string
+          - "null"
+        formId:
+          type:
+          - string
+          - "null"
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        shortDescription:
+          maxLength: 280
+          type: string
+        updatedBy:
+          type:
+          - string
+          - "null"
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        updatedAt:
+          format: date-time
+          type: string
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+        imageAssetId:
+          type:
+          - string
+          - "null"
+        createdAt:
+          format: date-time
+          type: string
+        startDate:
+          format: date
+          type: string
+        createdBy:
+          type:
+          - string
+          - "null"
+      type: object
+      required:
+      - id
+      - tenantId
+      - title
+      - status
+      - publicVisible
+      - pricingMode
+      - createdAt
+      - updatedAt
+    PageMeta:
+      properties:
+        limit:
+          type: integer
+        nextCursor:
+          type:
+          - string
+          - "null"
+      type: object
+      required:
+      - limit
+      - nextCursor
+    EnrollmentCreateResponse:
+      properties:
+        data:
+          properties:
+            status:
+              $ref: '#/components/schemas/SubmissionStatus'
+            submittedAt:
+              format: date-time
+              type: string
+            submissionId:
+              type: string
+          type: object
+          required:
+          - submissionId
+          - status
+          - submittedAt
+      type: object
+      required:
+      - data
+    UploadTicket:
+      properties:
+        method:
+          enum:
+          - PUT
+          type: string
+        uploadUrl:
+          format: uri
+          type: string
+        expiresAt:
+          format: date-time
+          type: string
+        headers:
+          additionalProperties:
+            type: string
+          type: object
+        assetId:
+          type: string
+        publicUrl:
+          format: uri
+          type: string
+      type: object
+      required:
+      - assetId
+      - uploadUrl
+      - method
+      - headers
+      - expiresAt
+      - publicUrl
+    CourseStatus:
+      enum:
+      - draft
+      - published
+      - archived
+      type: string
+    FormSchema:
+      properties:
+        courseId:
+          type: string
+        id:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        updatedAt:
+          format: date-time
+          type: string
+        tenantId:
+          type: string
+        fields:
+          items:
+            $ref: '#/components/schemas/FormField'
+          type: array
+        status:
+          enum:
+          - active
+          type: string
+      type: object
+      required:
+      - id
+      - tenantId
+      - courseId
+      - version
+      - status
+      - fields
+    CreateEnrollmentRequest:
+      properties:
+        answers:
+          additionalProperties: true
+          type: object
+        meta:
+          properties:
+            timezone:
+              type:
+              - string
+              - "null"
+            locale:
+              type:
+              - string
+              - "null"
+          type: object
+        formVersion:
+          type: integer
+          minimum: 1
+      type: object
+      required:
+      - formVersion
+      - answers
+    FormValidationRules:
+      properties:
+        pattern:
+          type:
+          - string
+          - "null"
+        min:
+          type:
+          - number
+          - "null"
+        max:
+          type:
+          - number
+          - "null"
+        minLength:
+          type:
+          - integer
+          - "null"
+          minimum: 0
+        maxLength:
+          type:
+          - integer
+          - "null"
+          minimum: 0
+      type: object
+    PublicFormResponse:
+      properties:
+        data:
+          properties:
+            formId:
+              type: string
+            version:
+              type: integer
+              minimum: 1
+            fields:
+              items:
+                $ref: '#/components/schemas/FormField'
+              type: array
+          type: object
+          required:
+          - formId
+          - version
+          - fields
+      type: object
+      required:
+      - data
+    SubmissionStatus:
+      enum:
+      - submitted
+      - reviewed
+      - canceled
+      type: string
+    TenantResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/Tenant'
+      type: object
+      required:
+      - data
+    CreateTenantRequest:
+      properties:
+        status:
+          enum:
+          - active
+          - suspended
+          type: string
+        tenantCode:
+          pattern: ^[a-z0-9-]{3,50}$
+          type: string
+        displayName:
+          maxLength: 120
+          minLength: 1
+          type: string
+      type: object
+      required:
+      - tenantCode
+      - displayName
+    PublicCourseDetailResponse:
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/PublicCourse'
+          - properties:
+              enrollmentOpenNow:
+                type: boolean
+              enrollmentCloseAt:
+                format: date-time
+                type: string
+              fullDescription:
+                type: string
+              enrollmentOpenAt:
+                format: date-time
+                type: string
+            type: object
+      type: object
+      required:
+      - data
+    CourseDetailResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/Course'
+      type: object
+      required:
+      - data
+    CourseListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/Course'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
+    CreateUploadTicketRequest:
+      properties:
+        contentType:
+          enum:
+          - image/png
+          - image/jpeg
+          - image/webp
+          type: string
+        sizeBytes:
+          maximum: 5242880
+          type: integer
+          minimum: 1
+        purpose:
+          enum:
+          - course_image
+          - org_logo
+          type: string
+        fileName:
+          maxLength: 255
+          minLength: 1
+          type: string
+      type: object
+      required:
+      - purpose
+      - contentType
+      - fileName
+      - sizeBytes
+    PublicCourseListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/PublicCourse'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
+    Tenant:
+      properties:
+        id:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        tenantCode:
+          pattern: ^[a-z0-9-]{3,50}$
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        status:
+          enum:
+          - active
+          - suspended
+          type: string
+        displayName:
+          maxLength: 120
+          minLength: 1
+          type: string
+      type: object
+      required:
+      - id
+      - tenantCode
+      - displayName
+      - status
+    FormOption:
+      properties:
+        label:
+          maxLength: 120
+          minLength: 1
+          type: string
+        value:
+          maxLength: 120
+          minLength: 1
+          type: string
+      type: object
+      required:
+      - label
+      - value
+    Submission:
+      properties:
+        tenantId:
+          type: string
+        tenantCode:
+          type: string
+        courseId:
+          type: string
+        answers:
+          additionalProperties: true
+          type: object
+        reviewedBy:
+          type:
+          - string
+          - "null"
+        formVersion:
+          type: integer
+          minimum: 1
+        formId:
+          type: string
+        applicant:
+          additionalProperties: true
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        id:
+          type: string
+        submittedAt:
+          format: date-time
+          type: string
+        reviewedAt:
+          format: date-time
+          type:
+          - string
+          - "null"
+        status:
+          $ref: '#/components/schemas/SubmissionStatus'
+      type: object
+      required:
+      - id
+      - tenantId
+      - courseId
+      - formId
+      - formVersion
+      - status
+      - answers
+      - submittedAt
+    FormField:
+      properties:
+        options:
+          items:
+            $ref: '#/components/schemas/FormOption'
+          type: array
+        type:
+          $ref: '#/components/schemas/FormFieldType'
+        displayOrder:
+          type: integer
+          minimum: 1
+        label:
+          maxLength: 120
+          minLength: 1
+          type: string
+        helpText:
+          maxLength: 280
+          type:
+          - string
+          - "null"
+        fieldId:
+          pattern: ^[a-z][a-z0-9_]{1,63}$
+          type: string
+        validation:
+          $ref: '#/components/schemas/FormValidationRules'
+        required:
+          type: boolean
+      type: object
+      required:
+      - fieldId
+      - type
+      - label
+      - required
+      - displayOrder
+    CreateCourseRequest:
+      properties:
+        locationText:
+          type:
+          - string
+          - "null"
+        pricingMode:
+          $ref: '#/components/schemas/PricingMode'
+        endDate:
+          format: date
+          type: string
+        fullDescription:
+          maxLength: 10000
+          type: string
+        enrollmentOpenAt:
+          format: date-time
+          type: string
+        title:
+          maxLength: 120
+          minLength: 1
+          type: string
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        shortDescription:
+          maxLength: 280
+          type: string
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        enrollmentCloseAt:
+          format: date-time
+          type: string
+        imageAssetId:
+          type:
+          - string
+          - "null"
+        startDate:
+          format: date
+          type: string
+      type: object
+      required:
+      - title
+      - shortDescription
+      - fullDescription
+      - startDate
+      - endDate
+      - enrollmentOpenAt
+      - enrollmentCloseAt
+      - deliveryMode
+      - pricingMode
+    UpdateSubmissionStatusRequest:
+      properties:
+        status:
+          $ref: '#/components/schemas/SubmissionStatus'
+      type: object
+      required:
+      - status
+    ErrorObject:
+      properties:
+        message:
+          type: string
+        code:
+          enum:
+          - UNAUTHORIZED
+          - FORBIDDEN
+          - NOT_FOUND
+          - CONFLICT
+          - VALIDATION_ERROR
+          - RATE_LIMITED
+          - INTERNAL_ERROR
+          type: string
+        details:
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+          type: array
+      type: object
+      required:
+      - code
+      - message
+    SubmissionListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/Submission'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
+    ErrorEnvelope:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+        correlationId:
+          type: string
+        requestId:
+          type: string
+      type: object
+      required:
+      - error
+      - requestId
+      - correlationId
+    ErrorDetail:
+      properties:
+        field:
+          type:
+          - string
+          - "null"
+        issue:
+          type: string
+      type: object
+      required:
+      - issue
+    CourseCreateResponse:
+      properties:
+        data:
+          properties:
+            status:
+              $ref: '#/components/schemas/CourseStatus'
+            id:
+              type: string
+          type: object
+          required:
+          - id
+          - status
+      type: object
+      required:
+      - data
+    UpdateTenantRequest:
+      properties:
+        status:
+          enum:
+          - active
+          - suspended
+          type: string
+        displayName:
+          maxLength: 120
+          minLength: 1
+          type: string
+      type: object
+    FormUpsertResponse:
+      properties:
+        data:
+          properties:
+            formId:
+              type: string
+            version:
+              type: integer
+              minimum: 1
+          type: object
+          required:
+          - formId
+          - version
+      type: object
+      required:
+      - data
+    UploadTicketResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/UploadTicket'
+      type: object
+      required:
+      - data
+    SubmissionDetailResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/Submission'
+      type: object
+      required:
+      - data
+    DeliveryMode:
+      enum:
+      - online
+      - onsite
+      - hybrid
+      type: string
+    PricingMode:
+      enum:
+      - free
+      - paid_placeholder
+      type: string
+    UpsertFormSchemaRequest:
+      properties:
+        fields:
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FormField'
+          type: array
+      type: object
+      required:
+      - fields
+    PublicCourse:
+      properties:
+        shortDescription:
+          type: string
+        id:
+          type: string
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        imageUrl:
+          format: uri
+          type:
+          - string
+          - "null"
+        endDate:
+          format: date
+          type: string
+        startDate:
+          format: date
+          type: string
+        title:
+          type: string
+        pricingMode:
+          $ref: '#/components/schemas/PricingMode'
+      type: object
+      required:
+      - id
+      - title
+      - shortDescription
+      - startDate
+      - endDate
+      - deliveryMode
+      - pricingMode
+    CoursePublishResponse:
+      properties:
+        data:
+          properties:
+            publicVisible:
+              type: boolean
+            status:
+              $ref: '#/components/schemas/CourseStatus'
+            id:
+              type: string
+          type: object
+          required:
+          - id
+          - status
+          - publicVisible
+      type: object
+      required:
+      - data
+    UpdateCourseRequest:
+      properties:
+        locationText:
+          type:
+          - string
+          - "null"
+        pricingMode:
+          $ref: '#/components/schemas/PricingMode'
+        publicVisible:
+          type: boolean
+        endDate:
+          format: date
+          type: string
+        fullDescription:
+          maxLength: 10000
+          type: string
+        enrollmentOpenAt:
+          format: date-time
+          type: string
+        title:
+          maxLength: 120
+          minLength: 1
+          type: string
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        shortDescription:
+          maxLength: 280
+          type: string
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        enrollmentCloseAt:
+          format: date-time
+          type: string
+        imageAssetId:
+          type:
+          - string
+          - "null"
+        startDate:
+          format: date
+          type: string
+      type: object
+  parameters:
+    SubmittedFrom:
+      name: submittedFrom
+      in: query
+      schema:
+        format: date-time
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      schema:
+        format: uuid
+        type: string
+      required: true
+    TenantId:
+      name: tenantId
+      in: path
+      schema:
+        type: string
+      required: true
+    TenantCode:
+      name: tenantCode
+      in: path
+      schema:
+        pattern: ^[a-z0-9-]{3,50}$
+        type: string
+      required: true
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    FormVersion:
+      name: version
+      in: path
+      schema:
+        type: integer
+        minimum: 1
+      required: true
+    StatusFilter:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/CourseStatus'
+    QFilter:
+      name: q
+      in: query
+      schema:
+        maxLength: 200
+        type: string
+    CourseId:
+      name: courseId
+      in: path
+      schema:
+        type: string
+      required: true
+    SubmissionId:
+      name: submissionId
+      in: path
+      schema:
+        type: string
+      required: true
+    Limit:
+      name: limit
+      in: query
+      schema:
+        default: 20
+        maximum: 100
+        type: integer
+        minimum: 1
+    SubmittedTo:
+      name: submittedTo
+      in: query
+      schema:
+        format: date-time
+        type: string
+    CourseIdFilter:
+      name: courseId
+      in: query
+      schema:
+        type: string
+    SubmissionStatusFilter:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/SubmissionStatus'
+    PricingModeFilter:
+      name: pricingMode
+      in: query
+      schema:
+        $ref: '#/components/schemas/PricingMode'
+  securitySchemes:
+    bearerAuth:
+      scheme: bearer
+      type: http
+      bearerFormat: JWT
+  responses:
+    ErrorResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+      description: API error response
+servers:
+- url: https://api.onlineforms.com
+  description: Production example
+paths:
+  /v1/public/{tenantCode}/courses/{courseId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/CourseId'
+      summary: Get public course detail
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCourseDetailResponse'
+          description: Public course detail
+      security: []
+      tags:
+      - Public Catalog
+  /v1/org/courses/{courseId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Get course
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetailResponse'
+          description: Course
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+    patch:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Update course
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseRequest'
+        required: true
+      tags:
+      - Org Courses
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetailResponse'
+          description: Updated
+  /v1/platform/tenants:
+    post:
+      summary: Create tenant
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+          description: Created
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
+  /v1/org/courses/{courseId}/archive:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Archive course
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoursePublishResponse'
+          description: Archived
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+  /v1/org/courses:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/StatusFilter'
+      - $ref: '#/components/parameters/QFilter'
+      - $ref: '#/components/parameters/PricingModeFilter'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      summary: List tenant courses
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseListResponse'
+          description: Course list
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+    post:
+      summary: Create course
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseCreateResponse'
+          description: Created
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+  /v1/org/courses/{courseId}/publish:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Publish course
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoursePublishResponse'
+          description: Published
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+  /v1/public/{tenantCode}/courses/{courseId}/enrollments:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/CourseId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      summary: Submit enrollment form
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnrollmentRequest'
+        required: true
+      tags:
+      - Public Enrollment
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentCreateResponse'
+          description: Enrollment submitted
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /v1/platform/tenants/{tenantId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/TenantId'
+      summary: Get tenant
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+          description: Tenant
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
+    patch:
+      parameters:
+      - $ref: '#/components/parameters/TenantId'
+      summary: Update tenant
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantRequest'
+        required: true
+      tags:
+      - Platform Tenants
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+          description: Updated
+  /v1/org/submissions:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/CourseIdFilter'
+      - $ref: '#/components/parameters/SubmissionStatusFilter'
+      - $ref: '#/components/parameters/SubmittedFrom'
+      - $ref: '#/components/parameters/SubmittedTo'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      summary: List submissions
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionListResponse'
+          description: Submission list
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Submissions
+  /v1/public/{tenantCode}/courses/{courseId}/form:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/CourseId'
+      summary: Get active enrollment form
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicFormResponse'
+          description: Active form
+      security: []
+      tags:
+      - Public Enrollment
+  /v1/org/assets/upload-ticket:
+    post:
+      summary: Create S3 upload ticket
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadTicketResponse'
+          description: Ticket created
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadTicketRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Assets
+  /v1/org/courses/{courseId}/form-schema:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Get latest form schema
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormSchemaResponse'
+          description: Latest schema
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Forms
+    put:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Upsert form schema
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertFormSchemaRequest'
+        required: true
+      tags:
+      - Org Forms
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormUpsertResponse'
+          description: Form schema upserted
+  /v1/org/submissions/{submissionId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/SubmissionId'
+      summary: Get submission
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetailResponse'
+          description: Submission
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Submissions
+    patch:
+      parameters:
+      - $ref: '#/components/parameters/SubmissionId'
+      summary: Update submission status
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubmissionStatusRequest'
+        required: true
+      tags:
+      - Org Submissions
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetailResponse'
+          description: Updated
+  /v1/org/courses/{courseId}/form-schema/versions/{version}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      - $ref: '#/components/parameters/FormVersion'
+      summary: Get immutable schema version
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormSchemaResponse'
+          description: Schema version
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Forms
+  /v1/public/{tenantCode}/courses:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/QFilter'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      summary: List published courses for tenant
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCourseListResponse'
+          description: Public course list
+      security: []
+      tags:
+      - Public Catalog
+
+

@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: OnlineForms API baseline (Phase 1 scaffold)
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 10
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        SERVICE_NAME: onlineforms-api
+
+Resources:
+  OnlineFormsHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: v1
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../dist/services/api/src
+      Handler: handlers/health.handler
+      Events:
+        HealthRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /health
+            Method: GET
+
+Outputs:
+  ApiBaseUrl:
+    Description: HTTP API endpoint
+    Value: !Sub "https://${OnlineFormsHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"

@@ -58,6 +58,9 @@ Protected org routes:
 - `PATCH /v1/org/courses/{courseId}`
 - `POST /v1/org/courses/{courseId}/publish`
 - `POST /v1/org/courses/{courseId}/archive`
+- `PUT /v1/org/courses/{courseId}/form-schema`
+- `GET /v1/org/courses/{courseId}/form-schema`
+- `GET /v1/org/courses/{courseId}/form-schema/versions/{version}`
 
 When running in `AUTH_MODE=mock`, include headers:
 

@@ -33,7 +33,7 @@ Implement tasks strictly in order. For each task:
   - Implement publish/archive actions
   - Apply DynamoDB access patterns and validations
 
-- [ ] P1-04 Form schema CRUD and versioning  
+- [x] P1-04 Form schema CRUD and versioning  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/4
   Scope:
   - Implement `/v1/org/courses/{courseId}/form-schema` upsert/get

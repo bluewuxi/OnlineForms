@@ -1,0 +1,58 @@
+@baseUrl = https://y36enrj145.execute-api.ap-southeast-2.amazonaws.com/v1
+@tenantId = ten_demo
+@submissionId = sub_replace_me
+@assetId = ast_replace_me
+
+### Org submissions list
+GET {{baseUrl}}/org/submissions?limit=20
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+### Org submission detail
+GET {{baseUrl}}/org/submissions/{{submissionId}}
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+### Org submission update status
+PATCH {{baseUrl}}/org/submissions/{{submissionId}}
+content-type: application/json
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+{
+  "status": "reviewed"
+}
+
+### Org asset upload ticket
+POST {{baseUrl}}/org/assets/upload-ticket
+content-type: application/json
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+{
+  "purpose": "course_image",
+  "contentType": "image/png",
+  "fileName": "course-banner.png",
+  "sizeBytes": 238100
+}
+
+### Org asset detail
+GET {{baseUrl}}/org/assets/{{assetId}}
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+### Org branding update
+PATCH {{baseUrl}}/org/branding
+content-type: application/json
+x-user-id: user_1
+x-tenant-id: {{tenantId}}
+x-role: org_admin
+
+{
+  "logoAssetId": "{{assetId}}"
+}

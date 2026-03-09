@@ -69,6 +69,30 @@ Protected org routes:
 - `GET /v1/public/{tenantCode}/courses/{courseId}`
 - `POST /v1/public/{tenantCode}/courses/{courseId}/enrollments`
 
+## Phase 2 (in progress)
+
+- `GET /v1/org/submissions`
+- `GET /v1/org/submissions/{submissionId}`
+- `PATCH /v1/org/submissions/{submissionId}`
+- `POST /v1/org/assets/upload-ticket`
+- `GET /v1/org/assets/{assetId}`
+- `PATCH /v1/org/branding`
+
+### Ops Baseline
+
+CloudWatch baseline (deployed in SAM template):
+
+- Dashboard: `${StackName}-overview`
+- Alarm: API `5xx` sum >= `5` in 5 minutes
+- Alarm: Public enrollment Lambda `Errors` sum >= `3` in 5 minutes
+- Alarm: DynamoDB `ThrottledRequests` sum >= `1` in 5 minutes
+
+Runbook starter:
+
+1. Check API `5xx` and Lambda `Errors` widgets on dashboard.
+2. Inspect CloudWatch logs for affected function and latest request IDs.
+3. Check DynamoDB throttle alarm; if firing, inspect hot key patterns and retry behavior.
+
 ## P1-08 Seed + Smoke
 
 Seed sample tenant/course/form into DynamoDB:
@@ -88,6 +112,7 @@ Override defaults if needed:
 Smoke request collection:
 
 - `smoke/phase1-smoke.http`
+- `smoke/phase2-smoke.http`
 
 When running in `AUTH_MODE=mock`, include headers:
 

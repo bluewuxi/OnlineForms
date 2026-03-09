@@ -8,6 +8,7 @@ import {
   QueryCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
+import { assertAssetBindable } from "./assets";
 import { ApiError } from "./errors";
 
 export type CourseStatus = "draft" | "published" | "archived";
@@ -221,6 +222,9 @@ export async function createCourse(
   input: CreateCourseInput
 ): Promise<Course> {
   validateCreate(input);
+  if (input.imageAssetId) {
+    await assertAssetBindable(tenantId, input.imageAssetId, "course_image");
+  }
   const now = new Date().toISOString();
   const id = `crs_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
@@ -303,6 +307,9 @@ export async function updateCourse(
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
   if (entries.length === 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "No fields provided for update.");
+  }
+  if (input.imageAssetId) {
+    await assertAssetBindable(tenantId, input.imageAssetId, "course_image");
   }
 
   const exprNames: Record<string, string> = { "#updatedAt": "updatedAt", "#updatedBy": "updatedBy" };

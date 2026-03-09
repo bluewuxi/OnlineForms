@@ -1,6 +1,12 @@
 import { createHash, randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  UpdateCommand
+} from "@aws-sdk/lib-dynamodb";
 import { getPublicCourseDetail, resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
 import { type FormField, getCourseFormSchemaVersion } from "./formSchemas";
@@ -8,6 +14,53 @@ import { type FormField, getCourseFormSchemaVersion } from "./formSchemas";
 type EnrollmentMeta = {
   locale?: string | null;
   timezone?: string | null;
+};
+
+export type SubmissionStatus = "submitted" | "reviewed" | "canceled";
+
+export type Submission = {
+  id: string;
+  tenantId: string;
+  tenantCode: string;
+  courseId: string;
+  formId: string;
+  formVersion: number;
+  status: SubmissionStatus;
+  applicant: Record<string, unknown>;
+  answers: Record<string, unknown>;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  applicantSummary?: {
+    email: string | null;
+    name: string | null;
+  };
+  course?: {
+    id: string;
+  };
+};
+
+export type ListSubmissionsInput = {
+  courseId?: string;
+  status?: SubmissionStatus;
+  submittedFrom?: string;
+  submittedTo?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type ListSubmissionsResult = {
+  data: Submission[];
+  page: {
+    limit: number;
+    nextCursor: string | null;
+  };
+};
+
+export type UpdateSubmissionStatusInput = {
+  status: SubmissionStatus;
 };
 
 export type CreateEnrollmentInput = {
@@ -32,6 +85,91 @@ const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
+}
+
+function parseIsoDateTime(value: string, field: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new ApiError(400, "VALIDATION_ERROR", `${field} must be a valid ISO date-time.`);
+  }
+  return date.toISOString();
+}
+
+function parseLimit(limitRaw: number | undefined): number {
+  if (limitRaw === undefined) return 20;
+  if (!Number.isInteger(limitRaw) || limitRaw < 1 || limitRaw > 100) {
+    throw new ApiError(400, "VALIDATION_ERROR", "limit must be an integer between 1 and 100.");
+  }
+  return limitRaw;
+}
+
+function decodeCursor(cursor: string): Record<string, unknown> {
+  try {
+    const text = Buffer.from(cursor, "base64").toString("utf-8");
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("invalid");
+    }
+    return parsed;
+  } catch {
+    throw new ApiError(400, "VALIDATION_ERROR", "cursor is invalid.");
+  }
+}
+
+function encodeCursor(lastEvaluatedKey: Record<string, unknown> | undefined): string | null {
+  if (!lastEvaluatedKey) return null;
+  return Buffer.from(JSON.stringify(lastEvaluatedKey), "utf-8").toString("base64");
+}
+
+function decodeOffsetCursor(cursor: string | undefined): number {
+  if (!cursor) return 0;
+  const decoded = decodeCursor(cursor);
+  const offset = decoded.offset;
+  if (typeof offset !== "number" || !Number.isInteger(offset) || offset < 0) {
+    throw new ApiError(400, "VALIDATION_ERROR", "cursor is invalid.");
+  }
+  return offset;
+}
+
+function encodeOffsetCursor(offset: number | null): string | null {
+  if (offset === null) return null;
+  return Buffer.from(JSON.stringify({ offset }), "utf-8").toString("base64");
+}
+
+function submissionFromItem(item: Record<string, unknown>): Submission {
+  const applicant = (item.applicant as Record<string, unknown>) ?? {};
+  const emailValue = applicant.email;
+  const firstNameValue = applicant.firstName ?? applicant.first_name;
+  const lastNameValue = applicant.lastName ?? applicant.last_name;
+  const fullName =
+    [firstNameValue, lastNameValue]
+      .filter((v) => typeof v === "string" && v.trim().length > 0)
+      .map((v) => String(v).trim())
+      .join(" ") || null;
+
+  return {
+    id: item.submissionId as string,
+    tenantId: item.tenantId as string,
+    tenantCode: item.tenantCode as string,
+    courseId: item.courseId as string,
+    formId: item.formId as string,
+    formVersion: item.formVersion as number,
+    status: item.status as SubmissionStatus,
+    applicant,
+    answers: (item.answers as Record<string, unknown>) ?? {},
+    submittedAt: item.submittedAt as string,
+    reviewedAt: (item.reviewedAt as string | null) ?? null,
+    reviewedBy: (item.reviewedBy as string | null) ?? null,
+    createdAt: item.createdAt as string,
+    updatedAt: (item.updatedAt as string | undefined) ?? undefined,
+    applicantSummary: {
+      email: typeof emailValue === "string" ? emailValue : null,
+      name: fullName
+    },
+    course: {
+      id: item.courseId as string
+    }
+  };
 }
 
 function submissionSk(submissionId: string): string {
@@ -192,6 +330,160 @@ function validateCreateEnrollmentInput(input: CreateEnrollmentInput): void {
   if (!isPlainObject(input.answers)) {
     throw new ApiError(400, "VALIDATION_ERROR", "answers must be a JSON object.");
   }
+}
+
+export async function listOrgSubmissions(
+  tenantId: string,
+  input: ListSubmissionsInput
+): Promise<ListSubmissionsResult> {
+  const limit = parseLimit(input.limit);
+  const offset = decodeOffsetCursor(input.cursor);
+  const submittedFrom = input.submittedFrom ? parseIsoDateTime(input.submittedFrom, "submittedFrom") : undefined;
+  const submittedTo = input.submittedTo ? parseIsoDateTime(input.submittedTo, "submittedTo") : undefined;
+
+  if (submittedFrom && submittedTo && submittedFrom > submittedTo) {
+    throw new ApiError(400, "VALIDATION_ERROR", "submittedFrom must be before or equal to submittedTo.");
+  }
+
+  const exprValues: Record<string, unknown> = {
+    ":pk": tenantPk(tenantId),
+    ":sk": "SUBMISSION#"
+  };
+  const filters: string[] = [];
+  const exprNames: Record<string, string> = {};
+
+  if (input.courseId) {
+    exprValues[":courseId"] = input.courseId;
+    filters.push("courseId = :courseId");
+  }
+  if (input.status) {
+    exprNames["#status"] = "status";
+    exprValues[":status"] = input.status;
+    filters.push("#status = :status");
+  }
+  if (submittedFrom) {
+    exprValues[":submittedFrom"] = submittedFrom;
+    filters.push("submittedAt >= :submittedFrom");
+  }
+  if (submittedTo) {
+    exprValues[":submittedTo"] = submittedTo;
+    filters.push("submittedAt <= :submittedTo");
+  }
+
+  const allItems: Record<string, unknown>[] = [];
+  let lastKey: Record<string, unknown> | undefined = undefined;
+  do {
+    const out = await ddb.send(
+      new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        FilterExpression: filters.length > 0 ? filters.join(" AND ") : undefined,
+        ExpressionAttributeNames: Object.keys(exprNames).length > 0 ? exprNames : undefined,
+        ExpressionAttributeValues: exprValues,
+        ExclusiveStartKey: lastKey
+      })
+    );
+    allItems.push(...((out.Items ?? []) as Record<string, unknown>[]));
+    lastKey = out.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastKey);
+
+  const sorted = allItems
+    .map((item) => submissionFromItem(item))
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt) || b.id.localeCompare(a.id));
+
+  const pageData = sorted.slice(offset, offset + limit);
+  const nextOffset = offset + pageData.length < sorted.length ? offset + pageData.length : null;
+  return {
+    data: pageData,
+    page: {
+      limit,
+      nextCursor: encodeOffsetCursor(nextOffset)
+    }
+  };
+}
+
+export async function getOrgSubmission(tenantId: string, submissionId: string): Promise<Submission> {
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: {
+        PK: tenantPk(tenantId),
+        SK: submissionSk(submissionId)
+      }
+    })
+  );
+
+  if (!out.Item) {
+    throw new ApiError(404, "NOT_FOUND", "Submission not found.");
+  }
+  return submissionFromItem(out.Item as Record<string, unknown>);
+}
+
+export async function updateOrgSubmissionStatus(
+  tenantId: string,
+  submissionId: string,
+  actorUserId: string,
+  input: UpdateSubmissionStatusInput
+): Promise<Submission> {
+  if (input.status !== "reviewed" && input.status !== "canceled") {
+    throw new ApiError(
+      400,
+      "VALIDATION_ERROR",
+      "status must be one of reviewed or canceled for submission updates."
+    );
+  }
+
+  const now = new Date().toISOString();
+  const reviewedAt = input.status === "reviewed" ? now : null;
+  const reviewedBy = input.status === "reviewed" ? actorUserId : null;
+
+  let out;
+  try {
+    out = await ddb.send(
+      new UpdateCommand({
+        TableName: tableName,
+        Key: {
+          PK: tenantPk(tenantId),
+          SK: submissionSk(submissionId)
+        },
+        ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK) AND #status = :submitted",
+        UpdateExpression:
+          "SET #status = :status, #reviewedAt = :reviewedAt, #reviewedBy = :reviewedBy, #updatedAt = :updatedAt",
+        ExpressionAttributeNames: {
+          "#status": "status",
+          "#reviewedAt": "reviewedAt",
+          "#reviewedBy": "reviewedBy",
+          "#updatedAt": "updatedAt"
+        },
+        ExpressionAttributeValues: {
+          ":submitted": "submitted",
+          ":status": input.status,
+          ":reviewedAt": reviewedAt,
+          ":reviewedBy": reviewedBy,
+          ":updatedAt": now
+        },
+        ReturnValues: "ALL_NEW"
+      })
+    );
+  } catch (error) {
+    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
+      const current = await getOrgSubmission(tenantId, submissionId);
+      if (current.status === input.status) {
+        throw new ApiError(409, "CONFLICT", "Submission is already in the requested status.");
+      }
+      throw new ApiError(
+        409,
+        "CONFLICT",
+        `Invalid submission status transition from ${current.status} to ${input.status}.`
+      );
+    }
+    throw error;
+  }
+
+  if (!out.Attributes) {
+    throw new ApiError(404, "NOT_FOUND", "Submission not found.");
+  }
+  return submissionFromItem(out.Attributes as Record<string, unknown>);
 }
 
 export async function createPublicEnrollment(

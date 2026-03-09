@@ -16,6 +16,7 @@ Globals:
         COGNITO_CLIENT_ID: ""
         COGNITO_TOKEN_USE: access
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
+        ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
 
 Resources:
   OnlineFormsHttpApi:
@@ -38,6 +39,15 @@ Resources:
           KeyType: HASH
         - AttributeName: SK
           KeyType: RANGE
+
+  OnlineFormsAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
 
   HealthFunction:
     Type: AWS::Serverless::Function
@@ -231,6 +241,104 @@ Resources:
             Path: /org/courses/{courseId}/form-schema/versions/{version}
             Method: GET
 
+  OrgSubmissionsListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgSubmissionsList.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgSubmissionsListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/submissions
+            Method: GET
+
+  OrgSubmissionsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgSubmissionsGet.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgSubmissionsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/submissions/{submissionId}
+            Method: GET
+
+  OrgSubmissionsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgSubmissionsUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgSubmissionsUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/submissions/{submissionId}
+            Method: PATCH
+
+  OrgAssetsUploadTicketCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgAssetsUploadTicketCreate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - S3WritePolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
+      Events:
+        OrgAssetsUploadTicketCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/assets/upload-ticket
+            Method: POST
+
+  OrgAssetsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgAssetsGet.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgAssetsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/assets/{assetId}
+            Method: GET
+
+  OrgTenantBrandingUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgTenantBrandingUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        OrgTenantBrandingUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/branding
+            Method: PATCH
+
   PublicCoursesListFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -278,6 +386,117 @@ Resources:
             ApiId: !Ref OnlineFormsHttpApi
             Path: /public/{tenantCode}/courses/{courseId}/enrollments
             Method: POST
+
+  OnlineFormsObservabilityDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-overview"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "API Requests and Errors",
+                "view": "timeSeries",
+                "region": "${AWS::Region}",
+                "metrics": [
+                  [ "AWS/ApiGateway", "Count", "ApiId", "${OnlineFormsHttpApi}", "Stage", "v1", { "stat": "Sum" } ],
+                  [ ".", "4xx", ".", ".", ".", ".", { "stat": "Sum" } ],
+                  [ ".", "5xx", ".", ".", ".", ".", { "stat": "Sum" } ]
+                ],
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Lambda Errors and Duration",
+                "view": "timeSeries",
+                "region": "${AWS::Region}",
+                "metrics": [
+                  [ "AWS/Lambda", "Errors", "FunctionName", "${PublicEnrollmentsCreateFunction}", { "stat": "Sum" } ],
+                  [ ".", "Duration", ".", ".", { "stat": "p95", "yAxis": "right" } ]
+                ],
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "DynamoDB Throttled Requests",
+                "view": "timeSeries",
+                "region": "${AWS::Region}",
+                "metrics": [
+                  [ "AWS/DynamoDB", "ThrottledRequests", "TableName", "${OnlineFormsMainTable}", { "stat": "Sum" } ]
+                ],
+                "period": 300
+              }
+            }
+          ]
+        }
+
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: API 5xx spike for OnlineForms
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref OnlineFormsHttpApi
+        - Name: Stage
+          Value: v1
+
+  PublicEnrollmentsLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Public enrollment lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PublicEnrollmentsCreateFunction
+
+  DynamoDbThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: DynamoDB throttled requests detected
+      Namespace: AWS/DynamoDB
+      MetricName: ThrottledRequests
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: TableName
+          Value: !Ref OnlineFormsMainTable
 
 Outputs:
   ApiBaseUrl:

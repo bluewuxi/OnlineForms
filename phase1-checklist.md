@@ -19,7 +19,7 @@ Implement tasks strictly in order. For each task:
   - Configure environment and deployment baseline
   - Add basic health endpoint and request correlation plumbing
 
-- [ ] P1-02 Authentication and tenant context middleware  
+- [x] P1-02 Authentication and tenant context middleware  
   Issue: https://github.com/bluewuxi/OnlineForms/issues/2
   Scope:
   - Cognito JWT verification middleware

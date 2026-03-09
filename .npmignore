@@ -1,0 +1,10 @@
+node_modules/
+.aws-sam/
+.git/
+infra/
+services/
+shared/
+*.md
+.env
+.env.*
+

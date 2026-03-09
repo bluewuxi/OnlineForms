@@ -3,9 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "description": "OnlineForms MVP backend scaffold",
+  "files": [
+    "dist/**/*",
+    "package.json",
+    "package-lock.json"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "aws-jwt-verify": "^5.1.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.149",

@@ -1,5 +1,6 @@
 import type { APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import type { CorrelationContext } from "./correlation";
+import { ApiError } from "./errors";
 
 export function jsonResponse(
   statusCode: number,
@@ -14,4 +15,39 @@ export function jsonResponse(
     },
     body: JSON.stringify(body)
   };
+}
+
+export function errorResponse(
+  error: unknown,
+  correlation: CorrelationContext
+): APIGatewayProxyStructuredResultV2 {
+  if (error instanceof ApiError) {
+    return jsonResponse(
+      error.statusCode,
+      {
+        error: {
+          code: error.code,
+          message: error.message,
+          details: error.details ?? []
+        },
+        requestId: correlation.requestId,
+        correlationId: correlation.correlationId
+      },
+      correlation
+    );
+  }
+
+  return jsonResponse(
+    500,
+    {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Unexpected server error.",
+        details: []
+      },
+      requestId: correlation.requestId,
+      correlationId: correlation.correlationId
+    },
+    correlation
+  );
 }

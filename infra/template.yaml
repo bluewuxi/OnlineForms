@@ -11,6 +11,10 @@ Globals:
     Environment:
       Variables:
         SERVICE_NAME: onlineforms-api
+        AUTH_MODE: cognito
+        COGNITO_USER_POOL_ID: ""
+        COGNITO_CLIENT_ID: ""
+        COGNITO_TOKEN_USE: access
 
 Resources:
   OnlineFormsHttpApi:
@@ -21,14 +25,40 @@ Resources:
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../dist/services/api/src
-      Handler: handlers/health.handler
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/health.handler
       Events:
         HealthRoute:
           Type: HttpApi
           Properties:
             ApiId: !Ref OnlineFormsHttpApi
             Path: /health
+            Method: GET
+
+  OrgMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgMe.handler
+      Events:
+        OrgMeRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/me
+            Method: GET
+
+  OrgTenantCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/services/api/src/handlers/orgTenantCheck.handler
+      Events:
+        OrgTenantCheckRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/check
             Method: GET
 
 Outputs:

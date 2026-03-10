@@ -23,6 +23,25 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: v1
+      CorsConfiguration:
+        AllowOrigins:
+          - https://d1y9ka302ibufy.cloudfront.net
+          - http://localhost:5173
+        AllowHeaders:
+          - content-type
+          - idempotency-key
+          - x-correlation-id
+          - x-user-id
+          - x-tenant-id
+          - x-role
+          - authorization
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - OPTIONS
+        MaxAge: 600
 
   OnlineFormsMainTable:
     Type: AWS::DynamoDB::Table

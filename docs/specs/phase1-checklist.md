@@ -1,6 +1,6 @@
 ﻿# OnlineForms Phase 1 Checklist
 
-Source: `onlineforms_mvp_spec.md` Phase 1
+Source: `docs/specs/onlineforms_mvp_spec.md` Phase 1
 
 ## Workflow Rule
 

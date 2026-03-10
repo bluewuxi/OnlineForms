@@ -1,6 +1,6 @@
 # OnlineForms Phase 3 Checklist
 
-Source: `onlineforms_mvp_spec.md` Phase 3
+Source: `docs/specs/onlineforms_mvp_spec.md` Phase 3
 
 ## Workflow Rule
 

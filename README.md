@@ -2,6 +2,16 @@
 
 Backend scaffold for Phase 1 of OnlineForms MVP.
 
+## Documentation
+
+- `docs/specs/onlineforms_mvp_spec.md`
+- `docs/specs/phase1-checklist.md`
+- `docs/specs/phase2-checklist.md`
+- `docs/specs/phase3-checklist.md`
+- `docs/guides/MVP_USER_GUIDE.md`
+- `docs/reference/api-contracts.md`
+- `docs/reference/dynamodb-schema.md`
+
 ## Structure
 
 - `infra/` deployment baseline (AWS SAM template)

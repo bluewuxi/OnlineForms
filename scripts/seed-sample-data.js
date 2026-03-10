@@ -5,8 +5,15 @@ const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
 const tenantId = process.env.SEED_TENANT_ID || "ten_demo";
 const tenantCode = (process.env.SEED_TENANT_CODE || "demo-school").toLowerCase();
+const displayName = process.env.SEED_DISPLAY_NAME || "Demo School";
 const courseId = process.env.SEED_COURSE_ID || "crs_demo_001";
 const formId = process.env.SEED_FORM_ID || "frm_demo_001";
+const courseTitle = process.env.SEED_COURSE_TITLE || "Intro to AI (Seeded)";
+const shortDescription =
+  process.env.SEED_SHORT_DESCRIPTION || "Seeded sample course for smoke tests";
+const fullDescription =
+  process.env.SEED_FULL_DESCRIPTION ||
+  "Sample full description used by the seed script.";
 const formVersion = 1;
 const now = new Date().toISOString();
 
@@ -32,7 +39,7 @@ async function main() {
     entityType: "TENANT",
     tenantId,
     tenantCode,
-    displayName: "Demo School",
+    displayName,
     status: "active",
     branding: { logoAssetId: null },
     createdAt: now,
@@ -56,9 +63,9 @@ async function main() {
     entityType: "COURSE",
     tenantId,
     courseId,
-    title: "Intro to AI (Seeded)",
-    shortDescription: "Seeded sample course for smoke tests",
-    fullDescription: "Sample full description used by the seed script.",
+    title: courseTitle,
+    shortDescription,
+    fullDescription,
     startDate: "2026-04-01",
     endDate: "2026-04-28",
     enrollmentOpenAt: "2026-03-01T00:00:00Z",
@@ -87,9 +94,9 @@ async function main() {
     tenantId,
     tenantCode,
     courseId,
-    title: "Intro to AI (Seeded)",
-    shortDescription: "Seeded sample course for smoke tests",
-    fullDescription: "Sample full description used by the seed script.",
+    title: courseTitle,
+    shortDescription,
+    fullDescription,
     imageUrl: null,
     startDate: "2026-04-01",
     endDate: "2026-04-28",
@@ -152,6 +159,7 @@ async function main() {
   console.log(`table=${tableName}`);
   console.log(`tenantId=${tenantId}`);
   console.log(`tenantCode=${tenantCode}`);
+  console.log(`displayName=${displayName}`);
   console.log(`courseId=${courseId}`);
   console.log(`formId=${formId}`);
   console.log(`formVersion=${formVersion}`);

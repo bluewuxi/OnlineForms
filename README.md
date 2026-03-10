@@ -122,8 +122,12 @@ Override defaults if needed:
 - `ONLINEFORMS_TABLE` (default: `OnlineFormsMain`)
 - `SEED_TENANT_ID` (default: `ten_demo`)
 - `SEED_TENANT_CODE` (default: `demo-school`)
+- `SEED_DISPLAY_NAME` (default: `Demo School`)
 - `SEED_COURSE_ID` (default: `crs_demo_001`)
 - `SEED_FORM_ID` (default: `frm_demo_001`)
+- `SEED_COURSE_TITLE` (default: `Intro to AI (Seeded)`)
+- `SEED_SHORT_DESCRIPTION` (default: seeded smoke description)
+- `SEED_FULL_DESCRIPTION` (default: seeded smoke full description)
 
 Projection reconciliation helper:
 

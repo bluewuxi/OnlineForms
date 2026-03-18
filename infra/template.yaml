@@ -84,7 +84,7 @@ Resources:
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/health.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -100,7 +100,7 @@ Resources:
   OrgMeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgMe.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -116,7 +116,7 @@ Resources:
   OrgTenantCheckFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgTenantCheck.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -132,7 +132,7 @@ Resources:
   OrgCoursesCreateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesCreate.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -148,7 +148,7 @@ Resources:
   OrgCoursesListFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesList.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -164,7 +164,7 @@ Resources:
   OrgCoursesGetFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesGet.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -180,7 +180,7 @@ Resources:
   OrgCoursesUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesUpdate.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -196,7 +196,7 @@ Resources:
   OrgCoursesPublishFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesPublish.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -212,7 +212,7 @@ Resources:
   OrgCoursesArchiveFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgCoursesArchive.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -228,7 +228,7 @@ Resources:
   OrgFormSchemaUpsertFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgFormSchemaUpsert.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -244,7 +244,7 @@ Resources:
   OrgFormSchemaGetLatestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgFormSchemaGetLatest.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -260,7 +260,7 @@ Resources:
   OrgFormSchemaGetVersionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgFormSchemaGetVersion.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -276,7 +276,7 @@ Resources:
   OrgSubmissionsListFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgSubmissionsList.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -292,7 +292,7 @@ Resources:
   OrgSubmissionsGetFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgSubmissionsGet.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -308,7 +308,7 @@ Resources:
   OrgSubmissionsUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgSubmissionsUpdate.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -324,7 +324,7 @@ Resources:
   OrgAssetsUploadTicketCreateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgAssetsUploadTicketCreate.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -342,7 +342,7 @@ Resources:
   OrgAssetsGetFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgAssetsGet.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -358,7 +358,7 @@ Resources:
   OrgTenantBrandingUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgTenantBrandingUpdate.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -374,7 +374,7 @@ Resources:
   OrgAuditListFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/orgAuditList.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -390,7 +390,7 @@ Resources:
   PaymentsStubFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/paymentsStub.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -418,7 +418,7 @@ Resources:
   PublicCoursesListFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/publicCoursesList.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -434,7 +434,7 @@ Resources:
   PublicCoursesGetFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/publicCoursesGet.handler
       Policies:
         - DynamoDBCrudPolicy:
@@ -450,7 +450,7 @@ Resources:
   PublicEnrollmentsCreateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../
+      CodeUri: ../deploy/lambda.zip
       Handler: dist/services/api/src/handlers/publicEnrollmentsCreate.handler
       Policies:
         - DynamoDBCrudPolicy:

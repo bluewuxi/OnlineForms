@@ -5,3 +5,6 @@ dist/
 *.zip
 health_zip/
 *.tgz
+
+deploy/lambda.zip
+deploy/package/

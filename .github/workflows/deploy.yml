@@ -40,6 +40,15 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
+      - name: Package Lambda zip
+        run: |
+          rm -rf deploy
+          mkdir -p deploy/package
+          cp -r dist deploy/package/dist
+          cp package.json package-lock.json deploy/package/
+          npm ci --omit=dev --prefix deploy/package
+          (cd deploy/package && zip -rq ../lambda.zip .)
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -49,9 +58,6 @@ jobs:
 
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
-
-      - name: SAM build
-        run: sam build -t infra/template.yaml
 
       - name: SAM deploy
         run: >-

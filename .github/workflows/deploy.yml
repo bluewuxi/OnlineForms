@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ap-southeast-2
-      STACK_NAME: OnlineForms
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      STACK_NAME: ${{ vars.STACK_NAME }}
 
     steps:
       - name: Checkout
@@ -43,7 +43,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::762563144177:role/GitHubDeploymentRole
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: github-onlineforms-deploy
           aws-region: ${{ env.AWS_REGION }}
 

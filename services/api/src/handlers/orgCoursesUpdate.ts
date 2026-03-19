@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { authenticateRequest } from "../lib/auth";
+import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
 import { type UpdateCourseInput, updateCourse } from "../lib/courses";
 import { ApiError } from "../lib/errors";
@@ -10,7 +11,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
   try {
     const auth = await authenticateRequest(event.headers);
-    requireAnyRole(auth, ["org_admin", "org_editor"]);
+    authorizeOrgAction(auth, "ORG_COURSE_WRITE");
 
     const courseId = event.pathParameters?.courseId;
     if (!courseId) throw new ApiError(400, "VALIDATION_ERROR", "Missing courseId path parameter.");
@@ -22,4 +23,5 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return errorResponse(error, correlation);
   }
 };
+
 

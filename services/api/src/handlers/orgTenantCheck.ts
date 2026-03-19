@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { assertTenantAccess, authenticateRequest, requireAnyRole } from "../lib/auth";
+import { authenticateRequest } from "../lib/auth";
+import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { ApiError } from "../lib/errors";
@@ -13,9 +14,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       throw new ApiError(400, "VALIDATION_ERROR", "Missing tenantId path parameter.");
     }
     const auth = await authenticateRequest(event.headers, { tenantIdHint: resourceTenantId });
-    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
-
-    assertTenantAccess(auth, resourceTenantId);
+    authorizeOrgAction(auth, "ORG_TENANT_CHECK", resourceTenantId);
 
     return jsonResponse(
       200,

@@ -33,7 +33,7 @@ Implement tasks strictly in order. For each task:
   - Resolve active tenant context per request (`x-tenant-id` or route context)
   - Enforce tenant membership checks in protected APIs
 
-- [ ] P4-04 Role and authorization policy consolidation
+- [x] P4-04 Role and authorization policy consolidation
   Issue: https://github.com/bluewuxi/OnlineForms/issues/29
   Scope:
   - Centralize role policy for `org_admin`, `org_editor`, `platform_admin`
@@ -73,4 +73,5 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 

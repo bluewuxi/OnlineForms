@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { authenticateRequest } from "../lib/auth";
+import { authorizeOrgAction } from "../lib/authorization";
 import { getOrgAsset } from "../lib/assets";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
@@ -9,7 +10,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
   try {
     const auth = await authenticateRequest(event.headers);
-    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
+    authorizeOrgAction(auth, "ORG_ASSET_READ");
 
     const assetId = event.pathParameters?.assetId;
     if (!assetId) {
@@ -22,3 +23,4 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return errorResponse(error, correlation);
   }
 };
+

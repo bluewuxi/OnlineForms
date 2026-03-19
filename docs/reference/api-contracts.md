@@ -61,7 +61,7 @@
 
 - `org_admin`: full tenant CRUD for courses/forms/submissions/settings.
 - `org_editor`: create/update courses and forms, view submissions.
-- `platform_admin`: tenant provisioning and platform support endpoints.
+- `platform_admin`: limited bypass only for approved support endpoints (`/org/me`, `/org/tenants/{tenantId}/check`).
 
 ### 3.4 Membership Enforcement
 

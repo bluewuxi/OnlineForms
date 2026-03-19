@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { authenticateRequest, requireAnyRole } from "../lib/auth";
+import { authenticateRequest } from "../lib/auth";
+import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
 
@@ -8,7 +9,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   try {
     const auth = await authenticateRequest(event.headers);
-    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
+    authorizeOrgAction(auth, "ORG_ME_READ");
 
     return jsonResponse(
       200,
@@ -25,4 +26,5 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return errorResponse(error, correlation);
   }
 };
+
 

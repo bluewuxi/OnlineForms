@@ -54,6 +54,13 @@ Implement tasks strictly in order. For each task:
   - Return active tenant directory items (`tenantCode`, `displayName`, `description`, `isActive`)
   - Wire SAM route, update OpenAPI/docs, and add tests
 
+- [ ] P5-07 Internal-admin auth context rules and role directory contract
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/41
+  Scope:
+  - Define internal-admin role semantics for management flows
+  - Allow tenant context to be optional for `internal_admin` role on internal endpoints
+  - Keep tenant required for non-internal-admin org routes and update auth docs/tests
+
 ## Status Legend
 
 - `[ ]` Not started

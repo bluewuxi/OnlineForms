@@ -132,7 +132,7 @@ Typical responsibilities:
   - `org_admin`
   - `org_editor`
   - `platform_admin` (optional/internal)
-  - `internal_manager` (internal tenant profile maintenance)
+  - `internal_admin` (internal management workflows; tenant context optional on internal endpoints)
 
 ### 6.3 Course Management
 Organization users shall be able to:

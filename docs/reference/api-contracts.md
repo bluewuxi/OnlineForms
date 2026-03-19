@@ -63,6 +63,12 @@
 - `org_admin`: full tenant CRUD for courses/forms/submissions/settings.
 - `org_editor`: create/update courses and forms, view submissions.
 - `platform_admin`: limited bypass only for approved support endpoints (`/org/me`, `/org/tenants/{tenantId}/check`).
+- `internal_admin`: internal management role for platform-operated management flows; tenant header may be optional only on internal-management endpoints.
+
+Tenant context rule:
+
+- `x-tenant-id` remains required for non-internal-admin org endpoints.
+- `x-tenant-id` may be optional for `internal_admin` on dedicated internal-management endpoints.
 
 ### 3.4 Membership Enforcement
 

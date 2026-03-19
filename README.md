@@ -68,7 +68,6 @@ sam deploy --guided -t infra/template.yaml
 Template now supports managed Cognito provisioning:
 
 - `ManagedCognitoEnabled=true` (default): creates User Pool, App Client, and groups
-- `ManagedCognitoEnabled=true` (default): creates User Pool, App Client, and groups
   - groups: `org_admin`, `org_editor`, `platform_admin`
 - `ManagedCognitoEnabled=false`: use external values:
   - `ExternalCognitoUserPoolId`
@@ -78,6 +77,25 @@ Seed default user (`ricky`):
 
 ```powershell
 .\scripts\seed-cognito-user.ps1 -UserPoolId <USER_POOL_ID>
+```
+
+### API Custom Domain + Route53 (Optional)
+
+To create `form-api.kidrawer.com` as API custom domain in CloudFormation:
+
+- set `ApiCustomDomainEnabled=true`
+- provide `ApiCustomDomainCertificateArn` (ACM cert in same region as API)
+- provide `ApiCustomDomainHostedZoneId` (Route53 hosted zone ID for `kidrawer.com`)
+
+Example:
+
+```bash
+sam deploy -t infra/template.yaml \
+  --parameter-overrides \
+    ApiCustomDomainEnabled=true \
+    ApiCustomDomainName=form-api.kidrawer.com \
+    ApiCustomDomainCertificateArn=<acm-cert-arn> \
+    ApiCustomDomainHostedZoneId=<route53-hosted-zone-id>
 ```
 
 ## P1-03 Course Endpoints

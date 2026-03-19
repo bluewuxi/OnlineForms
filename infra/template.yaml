@@ -29,6 +29,21 @@ Parameters:
     AllowedValues:
       - access
       - id
+  ApiCustomDomainEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  ApiCustomDomainName:
+    Type: String
+    Default: form-api.kidrawer.com
+  ApiCustomDomainCertificateArn:
+    Type: String
+    Default: ""
+  ApiCustomDomainHostedZoneId:
+    Type: String
+    Default: ""
 
 Mappings:
   AuthModeByEnvironment:
@@ -43,6 +58,12 @@ Mappings:
 
 Conditions:
   UseManagedCognito: !Equals [!Ref ManagedCognitoEnabled, "true"]
+  HasApiCustomDomainCertificateArn: !Not [!Equals [!Ref ApiCustomDomainCertificateArn, ""]]
+  HasApiCustomDomainHostedZoneId: !Not [!Equals [!Ref ApiCustomDomainHostedZoneId, ""]]
+  UseApiCustomDomain: !And
+    - !Equals [!Ref ApiCustomDomainEnabled, "true"]
+    - !Condition HasApiCustomDomainCertificateArn
+    - !Condition HasApiCustomDomainHostedZoneId
 
 Globals:
   Function:
@@ -86,6 +107,37 @@ Resources:
           - PUT
           - OPTIONS
         MaxAge: 600
+
+  OnlineFormsApiCustomDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: UseApiCustomDomain
+    Properties:
+      DomainName: !Ref ApiCustomDomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref ApiCustomDomainCertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  OnlineFormsApiCustomDomainMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: UseApiCustomDomain
+    Properties:
+      ApiId: !Ref OnlineFormsHttpApi
+      DomainName: !Ref OnlineFormsApiCustomDomain
+      Stage: v1
+      ApiMappingKey: v1
+
+  OnlineFormsApiCustomDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: UseApiCustomDomain
+    Properties:
+      HostedZoneId: !Ref ApiCustomDomainHostedZoneId
+      Name: !Ref ApiCustomDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt OnlineFormsApiCustomDomain.RegionalDomainName
+        HostedZoneId: !GetAtt OnlineFormsApiCustomDomain.RegionalHostedZoneId
+        EvaluateTargetHealth: false
 
   OnlineFormsMainTable:
     Type: AWS::DynamoDB::Table
@@ -844,6 +896,10 @@ Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint
     Value: !Sub "https://${OnlineFormsHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
+  ApiCustomDomainUrl:
+    Condition: UseApiCustomDomain
+    Description: Custom API domain URL
+    Value: !Sub "https://${ApiCustomDomainName}/v1"
   CognitoUserPoolId:
     Condition: UseManagedCognito
     Description: Cognito User Pool Id

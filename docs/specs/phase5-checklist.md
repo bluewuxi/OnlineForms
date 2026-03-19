@@ -19,7 +19,7 @@ Implement tasks strictly in order. For each task:
   - Update validation and persistence mapping
   - Preserve compatibility for existing tenant records
 
-- [ ] P5-02 Reserved tenant-code and route-safety guardrails
+- [x] P5-02 Reserved tenant-code and route-safety guardrails
   Issue: https://github.com/bluewuxi/OnlineForms/issues/36
   Scope:
   - Block reserved tenant codes that conflict with fixed routes

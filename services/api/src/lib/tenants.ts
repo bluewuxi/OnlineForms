@@ -2,6 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
 import { ApiError } from "./errors";
+import { normalizeTenantCode } from "./tenantCodes";
 
 export type TenantBranding = {
   tenantId: string;
@@ -115,7 +116,11 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
   const branding = item.branding as Record<string, unknown> | undefined;
   return {
     tenantId,
-    tenantCode: tenantCode.toLowerCase(),
+    tenantCode: normalizeTenantCode(tenantCode, {
+      statusCode: 409,
+      code: "CONFLICT",
+      messagePrefix: "Tenant profile has invalid tenantCode."
+    }),
     displayName,
     description: asString(item.description),
     isActive: resolveIsActive(item),

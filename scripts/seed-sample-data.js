@@ -1,10 +1,11 @@
 /* eslint-disable no-console */
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { normalizeTenantCodeOrThrow } = require("./tenant-code-guards");
 
 const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
 const tenantId = process.env.SEED_TENANT_ID || "001";
-const tenantCode = (process.env.SEED_TENANT_CODE || "std-school").toLowerCase();
+const tenantCode = normalizeTenantCodeOrThrow(process.env.SEED_TENANT_CODE || "std-school", "SEED_TENANT_CODE");
 const displayName = process.env.SEED_DISPLAY_NAME || "Demo School";
 const tenantDescription =
   process.env.SEED_TENANT_DESCRIPTION ||

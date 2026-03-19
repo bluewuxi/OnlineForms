@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, PutCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { normalizeTenantCodeOrThrow } = require("./tenant-code-guards");
 
 const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
 const tenantId = process.env.TENANT_ID;
@@ -31,7 +32,7 @@ async function getTenantCode(id) {
   if (typeof item.tenantCode !== "string" || !item.tenantCode.trim()) {
     throw new Error(`Tenant profile for ${id} is missing tenantCode.`);
   }
-  return item.tenantCode.trim().toLowerCase();
+  return normalizeTenantCodeOrThrow(item.tenantCode, `tenantCode for tenant ${id}`);
 }
 
 async function listCourses(id) {

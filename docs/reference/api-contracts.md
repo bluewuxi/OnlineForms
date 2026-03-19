@@ -27,6 +27,7 @@
   - route tenant context (for tenant-scoped routes like `/org/tenants/{tenantId}/check`)
   - JWT default tenant claim (`custom:tenantId` or `tenantId`)
 - Public APIs resolve tenant by `tenantCode` in path.
+- `tenantCode` route values must pass backend guardrails and cannot use reserved slugs such as `org`, `internal`, `api`, `admin`, `health`, or `courses`.
 - All records persisted with `tenantId`.
 - Cross-tenant reads/writes must return `403 FORBIDDEN`.
 

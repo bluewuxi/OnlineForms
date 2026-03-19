@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
 import { ApiError } from "./errors";
+import { normalizeTenantCode } from "./tenantCodes";
 
 export type CourseStatus = "draft" | "published" | "archived";
 export type PricingMode = "free" | "paid_placeholder";
@@ -119,7 +120,11 @@ async function resolveTenantCodeById(tenantId: string): Promise<string> {
   if (typeof tenantCode !== "string" || tenantCode.trim().length === 0) {
     throw new ApiError(409, "CONFLICT", "Tenant profile missing tenantCode for public projection.");
   }
-  return tenantCode.trim().toLowerCase();
+  return normalizeTenantCode(tenantCode, {
+    statusCode: 409,
+    code: "CONFLICT",
+    messagePrefix: "Tenant profile has invalid tenantCode for public projection."
+  });
 }
 
 function imageUrlFromAssetId(imageAssetId: string | null): string | null {
@@ -505,7 +510,7 @@ export async function setCourseStatus(
 }
 
 export async function resolveTenantIdByCode(tenantCode: string): Promise<string> {
-  const normalizedCode = tenantCode.trim().toLowerCase();
+  const normalizedCode = normalizeTenantCode(tenantCode);
   const out = await ddb.send(
     new GetCommand({
       TableName: tableName,
@@ -532,7 +537,7 @@ export async function listPublicCourses(
   limitRaw?: number,
   cursor?: string
 ): Promise<PublicCoursesListResult> {
-  const normalizedTenantCode = tenantCode.trim().toLowerCase();
+  const normalizedTenantCode = normalizeTenantCode(tenantCode);
   await resolveTenantIdByCode(normalizedTenantCode);
   const limit = parsePublicListLimit(limitRaw);
   const out = await ddb.send(
@@ -575,7 +580,7 @@ export async function getPublicCourseDetail(
   tenantCode: string,
   courseId: string
 ): Promise<PublicCourseDetail> {
-  const normalizedTenantCode = tenantCode.trim().toLowerCase();
+  const normalizedTenantCode = normalizeTenantCode(tenantCode);
   const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
   const out = await ddb.send(
     new GetCommand({

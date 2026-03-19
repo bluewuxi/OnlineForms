@@ -13,7 +13,8 @@ export type OrgPolicyAction =
   | "ORG_ASSET_READ"
   | "ORG_ASSET_WRITE"
   | "ORG_AUDIT_READ"
-  | "ORG_TENANT_SETTINGS_WRITE";
+  | "ORG_TENANT_SETTINGS_WRITE"
+  | "ORG_TENANT_INVITE_CREATE";
 
 type Policy = {
   roles: AuthRole[];
@@ -32,7 +33,8 @@ const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_ASSET_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_ASSET_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_AUDIT_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false }
+  ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
+  ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false }
 };
 
 export function authorizeOrgAction(

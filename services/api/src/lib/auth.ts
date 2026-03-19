@@ -30,6 +30,7 @@ type CognitoConfig = {
 };
 type AuthenticateOptions = {
   tenantIdHint?: string;
+  requireMembership?: boolean;
 };
 type MembershipRecord = {
   tenantId: string;
@@ -258,7 +259,9 @@ export async function authenticateRequest(
 
   const role = toRole(roleClaim);
   const tenantId = pickActiveTenantId(headers, options.tenantIdHint, tenantIdClaim);
-  await assertTenantMembership(role, userId, tenantId);
+  if (options.requireMembership !== false) {
+    await assertTenantMembership(role, userId, tenantId);
+  }
 
   return {
     userId,

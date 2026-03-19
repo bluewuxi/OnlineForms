@@ -478,6 +478,40 @@ Validation:
 
 ---
 
+## 6.5 Tenant Invites (Auth Baseline)
+
+### `POST /v1/org/tenants/{tenantId}/invites`
+
+Create a tenant invite record in `OnlineFormsAuth`.
+
+Request body:
+
+```json
+{
+  "email": "new-user@example.com",
+  "role": "org_editor",
+  "expiresInDays": 7
+}
+```
+
+Rules:
+
+- `role` allowed values: `org_admin`, `org_editor`
+- `expiresInDays` optional, range `1..30` (default `7`)
+- caller must be `org_admin` in tenant scope
+
+### `POST /v1/org/tenants/{tenantId}/invites/{inviteId}/accept`
+
+Accept invite and activate membership for authenticated Cognito identity (`sub`).
+
+Server behavior:
+
+- resolves user identity from JWT `sub`
+- validates invite exists, is pending, and not expired
+- writes membership activation records into `OnlineFormsAuth`
+
+---
+
 ## 7. Public API (Anonymous)
 
 Tenant is resolved via `tenantCode` path segment.

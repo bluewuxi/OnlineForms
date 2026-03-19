@@ -484,3 +484,16 @@ Auth entity types:
 - `AUTH_USER_PROFILE`
 - `AUTH_MEMBERSHIP`
 - `AUTH_INVITE`
+
+Invite and membership activation baseline:
+
+- Invite item:
+  - `PK=TENANT#{tenantId}`
+  - `SK=INVITE#{inviteId}`
+  - `status` (`pending|accepted`)
+  - `expiresAt`
+  - `acceptedAt` / `acceptedBy`
+- Membership activation records on acceptance:
+  - `PK=USER#{userId}`, `SK=MEMBERSHIP#{tenantId}` (user edge)
+  - `PK=TENANT#{tenantId}`, `SK=MEMBER#{userId}` (tenant edge)
+  - audit fields: `createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `activatedAt`, `activatedBy`

@@ -40,7 +40,7 @@ Implement tasks strictly in order. For each task:
   - Enforce cross-tenant restrictions with explicit deny behavior
   - Ensure platform admin bypass is limited to approved endpoints
 
-- [ ] P4-05 Tenant invite/onboarding auth flow baseline
+- [x] P4-05 Tenant invite/onboarding auth flow baseline
   Issue: https://github.com/bluewuxi/OnlineForms/issues/30
   Scope:
   - Add invite entity and acceptance flow for tenant membership
@@ -73,5 +73,6 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 
 

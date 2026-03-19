@@ -184,6 +184,38 @@ Resources:
             Path: /org/tenants/{tenantId}/check
             Method: GET
 
+  OrgTenantInviteCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantInviteCreate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantInviteCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/invites
+            Method: POST
+
+  OrgTenantInviteAcceptFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantInviteAccept.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantInviteAcceptRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/invites/{inviteId}/accept
+            Method: POST
+
   OrgCoursesCreateFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -26,7 +26,7 @@ Implement tasks strictly in order. For each task:
   - Define single-table auth keys and entity conventions
   - Keep business data isolated in `OnlineFormsMain`
 
-- [ ] P4-03 Multi-tenant membership model + tenant context resolution
+- [x] P4-03 Multi-tenant membership model + tenant context resolution
   Issue: https://github.com/bluewuxi/OnlineForms/issues/28
   Scope:
   - Add `USER -> TENANT membership` records in auth table
@@ -73,3 +73,4 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+

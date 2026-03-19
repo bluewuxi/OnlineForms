@@ -1,5 +1,13 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiError } from "./errors";
+import {
+  AUTH_TABLE_NAME_DEFAULT,
+  type MembershipStatus,
+  authUserMembershipSk,
+  authUserPk
+} from "../../../../shared/src/authTable";
 
 export type AuthRole = "org_admin" | "org_editor" | "platform_admin";
 
@@ -20,10 +28,20 @@ type CognitoConfig = {
   tokenUse: CognitoTokenUse;
   cacheKey: string;
 };
+type AuthenticateOptions = {
+  tenantIdHint?: string;
+};
+type MembershipRecord = {
+  tenantId: string;
+  status: MembershipStatus;
+  role: AuthRole;
+};
 
 const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin"]);
 const allowedAuthModes = new Set<AuthMode>(["mock", "cognito"]);
 const restrictedMockEnvironments = new Set<RuntimeEnv>(["stage", "prod"]);
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const authTableName = process.env.ONLINEFORMS_AUTH_TABLE ?? AUTH_TABLE_NAME_DEFAULT;
 
 function pickHeader(headers: HeaderMap, key: string): string | undefined {
   if (!headers) return undefined;
@@ -59,6 +77,12 @@ function toStringClaim(value: unknown, field: string): string {
   return value;
 }
 
+function toOptionalStringClaim(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function fromMockHeaders(headers: HeaderMap): AuthContext {
   const userId = pickHeader(headers, "x-user-id") ?? "mock-user";
   const tenantId = pickHeader(headers, "x-tenant-id");
@@ -70,6 +94,63 @@ function fromMockHeaders(headers: HeaderMap): AuthContext {
     role: toRole(role),
     claims: {}
   };
+}
+
+function pickActiveTenantId(
+  headers: HeaderMap,
+  tenantIdHint: string | undefined,
+  tenantIdClaim: string | undefined
+): string {
+  const tenantFromHeader = pickHeader(headers, "x-tenant-id")?.trim();
+  if (tenantFromHeader) return tenantFromHeader;
+  if (tenantIdHint?.trim()) return tenantIdHint.trim();
+  if (tenantIdClaim?.trim()) return tenantIdClaim.trim();
+  throw new ApiError(
+    403,
+    "FORBIDDEN",
+    "Unable to resolve tenant context from request. Provide x-tenant-id or include a tenant claim."
+  );
+}
+
+async function getMembership(userId: string, tenantId: string): Promise<MembershipRecord | null> {
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: authTableName,
+      Key: {
+        PK: authUserPk(userId),
+        SK: authUserMembershipSk(tenantId)
+      }
+    })
+  );
+  const item = out.Item as Record<string, unknown> | undefined;
+  if (!item) return null;
+  const status = item.status;
+  const role = item.role;
+  if (
+    typeof status !== "string" ||
+    typeof role !== "string" ||
+    !allowedRoles.has(role as AuthRole) ||
+    (status !== "active" && status !== "invited" && status !== "suspended")
+  ) {
+    return null;
+  }
+  return {
+    tenantId,
+    status: status as MembershipStatus,
+    role: role as AuthRole
+  };
+}
+
+async function assertTenantMembership(role: AuthRole, userId: string, tenantId: string): Promise<void> {
+  if (role === "platform_admin") return;
+  const membership = await getMembership(userId, tenantId);
+  if (!membership || membership.status !== "active") {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "User does not have active membership for the requested tenant."
+    );
+  }
 }
 
 let cachedVerifier: { verify: (token: string) => Promise<Record<string, unknown>> } | null = null;
@@ -145,7 +226,10 @@ function getVerifier() {
   return cachedVerifier;
 }
 
-export async function authenticateRequest(headers: HeaderMap): Promise<AuthContext> {
+export async function authenticateRequest(
+  headers: HeaderMap,
+  options: AuthenticateOptions = {}
+): Promise<AuthContext> {
   const authMode = getAuthMode();
   const runtimeEnv = getRuntimeEnv();
 
@@ -165,20 +249,21 @@ export async function authenticateRequest(headers: HeaderMap): Promise<AuthConte
   const payload = await verifier.verify(token);
 
   const userId = toStringClaim(payload.sub, "sub");
-  const tenantId = toStringClaim(
-    payload["custom:tenantId"] ?? payload.tenantId,
-    "custom:tenantId|tenantId"
-  );
+  const tenantIdClaim = toOptionalStringClaim(payload["custom:tenantId"] ?? payload.tenantId);
 
   const roleClaim =
     payload["custom:role"] ??
     payload.role ??
     (Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined);
 
+  const role = toRole(roleClaim);
+  const tenantId = pickActiveTenantId(headers, options.tenantIdHint, tenantIdClaim);
+  await assertTenantMembership(role, userId, tenantId);
+
   return {
     userId,
     tenantId,
-    role: toRole(roleClaim),
+    role,
     claims: payload as Record<string, unknown>
   };
 }

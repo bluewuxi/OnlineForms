@@ -29,6 +29,9 @@ Globals:
     Timeout: 10
     MemorySize: 256
     Tracing: Active
+    Policies:
+      - DynamoDBReadPolicy:
+          TableName: !Ref OnlineFormsAuthTable
     Environment:
       Variables:
         SERVICE_NAME: onlineforms-api

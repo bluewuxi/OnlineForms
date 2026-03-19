@@ -22,7 +22,10 @@
 
 ### 2.2 Tenant Resolution
 
-- Organization APIs derive `tenantId` from JWT claims.
+- Organization APIs resolve active `tenantId` in this order:
+  - `x-tenant-id` header (if provided)
+  - route tenant context (for tenant-scoped routes like `/org/tenants/{tenantId}/check`)
+  - JWT default tenant claim (`custom:tenantId` or `tenantId`)
 - Public APIs resolve tenant by `tenantCode` in path.
 - All records persisted with `tenantId`.
 - Cross-tenant reads/writes must return `403 FORBIDDEN`.
@@ -47,17 +50,26 @@
 ### 3.2 Required JWT Claims (minimum)
 
 - `sub`: user ID
-- `tenantId`: organization tenant
 - `role`: one of:
   - `org_admin`
   - `org_editor`
   - `platform_admin` (internal)
+- Optional default tenant claim:
+  - `custom:tenantId` or `tenantId`
 
 ### 3.3 Role Access Matrix (MVP)
 
 - `org_admin`: full tenant CRUD for courses/forms/submissions/settings.
 - `org_editor`: create/update courses and forms, view submissions.
 - `platform_admin`: tenant provisioning and platform support endpoints.
+
+### 3.4 Membership Enforcement
+
+- Non-platform users must have an active membership record in `OnlineFormsAuth` for the resolved tenant.
+- Membership source record:
+  - `PK=USER#{userId}`
+  - `SK=MEMBERSHIP#{tenantId}`
+- Missing or non-active membership returns `403 FORBIDDEN`.
 
 ---
 

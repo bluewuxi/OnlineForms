@@ -8,13 +8,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
 
   try {
-    const auth = await authenticateRequest(event.headers);
-    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
-
-    const resourceTenantId = event.pathParameters?.tenantId;
+    const resourceTenantId = event.pathParameters?.tenantId?.trim();
     if (!resourceTenantId) {
       throw new ApiError(400, "VALIDATION_ERROR", "Missing tenantId path parameter.");
     }
+    const auth = await authenticateRequest(event.headers, { tenantIdHint: resourceTenantId });
+    requireAnyRole(auth, ["org_admin", "org_editor", "platform_admin"]);
 
     assertTenantAccess(auth, resourceTenantId);
 
@@ -34,4 +33,3 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return errorResponse(error, correlation);
   }
 };
-

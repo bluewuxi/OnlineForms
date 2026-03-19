@@ -3,11 +3,11 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 
 const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
-const tenantId = process.env.SEED_TENANT_ID || "ten_demo";
-const tenantCode = (process.env.SEED_TENANT_CODE || "demo-school").toLowerCase();
+const tenantId = process.env.SEED_TENANT_ID || "001";
+const tenantCode = (process.env.SEED_TENANT_CODE || "std-school").toLowerCase();
 const displayName = process.env.SEED_DISPLAY_NAME || "Demo School";
-const courseId = process.env.SEED_COURSE_ID || "crs_demo_001";
-const formId = process.env.SEED_FORM_ID || "frm_demo_001";
+const courseId = process.env.SEED_COURSE_ID || "std_001";
+const formId = process.env.SEED_FORM_ID || "frm_001";
 const courseTitle = process.env.SEED_COURSE_TITLE || "Intro to AI (Seeded)";
 const shortDescription =
   process.env.SEED_SHORT_DESCRIPTION || "Seeded sample course for smoke tests";

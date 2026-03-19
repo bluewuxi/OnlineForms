@@ -122,6 +122,8 @@ Typical responsibilities:
 - Every application record shall include `tenantId`.
 - Organization user identity shall include tenant context, ideally through Cognito custom attributes or mapped claims.
 - Every protected backend operation shall validate tenant access from JWT claims.
+- Tenant profile shall support `description`, `isActive`, and optional `homePageContent`.
+- Tenant codes shall be unique and validated against a reserved-slug list to avoid route collisions.
 
 ### 6.2 Organization Authentication
 - Organization users shall sign in through Amazon Cognito User Pools.
@@ -130,6 +132,7 @@ Typical responsibilities:
   - `org_admin`
   - `org_editor`
   - `platform_admin` (optional/internal)
+  - `internal_manager` (internal tenant profile maintenance)
 
 ### 6.3 Course Management
 Organization users shall be able to:
@@ -340,9 +343,9 @@ Possible future integrations:
 - **Why**: form definitions may change after submissions exist.
 - **Mitigation**: store `formVersion` with each submission and avoid destructive edits.
 
-### Risk 4: Dynamic form schema drift
-- **Why**: form definitions may change after submissions exist.
-- **Mitigation**: store `formVersion` with each submission and avoid destructive edits.
+### Risk 4: Tenant route collision with reserved paths
+- **Why**: tenant-based URLs can collide with fixed application routes and internal portal paths.
+- **Mitigation**: reserve and block protected slugs at create/update time and add contract tests for reserved paths.
 
 ### Risk 5: Premature overengineering in serverless design
 - **Why**: single-table and event-driven patterns can become too complex for MVP speed.
@@ -400,6 +403,11 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
 - Cognito-first multi-tenant authentication rollout
 - Dedicated auth DynamoDB model and membership checks
 - Tenant invite/onboarding baseline and auth observability
+
+### Phase 5
+- Tenant profile enrichment (`description`, `isActive`, `homePageContent`)
+- Internal-manager authorization and tenant update-only management APIs
+- Reserved tenant-code guardrails and tenant home-page API support
 
 ---
 

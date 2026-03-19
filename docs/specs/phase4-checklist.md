@@ -81,6 +81,10 @@ Implement tasks strictly in order. For each task:
 - `[~]` In progress
 - `[x]` Completed
 
+## Next Phase
+
+Phase 5 tasks are tracked in `docs/specs/phase5-checklist.md`.
+
 
 
 

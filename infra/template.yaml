@@ -90,6 +90,7 @@ Resources:
       StageName: v1
       CorsConfiguration:
         AllowOrigins:
+          - https://form.kidrawer.com
           - https://d1y9ka302ibufy.cloudfront.net
           - http://localhost:5173
         AllowHeaders:

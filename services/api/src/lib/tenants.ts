@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
 import { ApiError } from "./errors";
 import { normalizeTenantCode } from "./tenantCodes";
@@ -22,6 +22,13 @@ export type TenantProfile = {
   };
   createdAt: string | null;
   updatedAt: string;
+};
+
+export type PublicTenantDirectoryItem = {
+  tenantCode: string;
+  displayName: string;
+  description: string | null;
+  isActive: boolean;
 };
 
 export type UpdateTenantProfileInput = {
@@ -144,6 +151,46 @@ export async function getTenantProfile(tenantId: string): Promise<TenantProfile>
     throw new ApiError(404, "NOT_FOUND", "Tenant profile not found.");
   }
   return toTenantProfile(tenantId, out.Item as Record<string, unknown>);
+}
+
+export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenantDirectoryItem[]> {
+  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 50;
+  const out = await ddb.send(
+    new ScanCommand({
+      TableName: tableName,
+      FilterExpression: "#sk = :profileSk AND #entityType = :entityType",
+      ExpressionAttributeNames: {
+        "#sk": "SK",
+        "#entityType": "entityType"
+      },
+      ExpressionAttributeValues: {
+        ":profileSk": "PROFILE",
+        ":entityType": "TENANT"
+      },
+      Limit: normalizedLimit
+    })
+  );
+
+  const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
+  return rows
+    .map((item) => {
+      const tenantCode = asString(item.tenantCode);
+      const displayName = asString(item.displayName);
+      if (!tenantCode || !displayName) return null;
+      const isActive = resolveIsActive(item);
+      return {
+        tenantCode: normalizeTenantCode(tenantCode, {
+          statusCode: 409,
+          code: "CONFLICT",
+          messagePrefix: "Tenant profile has invalid tenantCode."
+        }),
+        displayName,
+        description: asString(item.description),
+        isActive
+      } as PublicTenantDirectoryItem;
+    })
+    .filter((item): item is PublicTenantDirectoryItem => item !== null && item.isActive)
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 export async function updateTenantBranding(

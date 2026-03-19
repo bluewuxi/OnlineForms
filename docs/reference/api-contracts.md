@@ -519,6 +519,30 @@ Tenant is resolved via `tenantCode` path segment.
 
 ## 7.1 Public Catalog
 
+### `GET /v1/public/tenants`
+
+Returns active tenant directory records for root home-page cards.
+
+Query:
+
+- `limit` (optional, default `50`, max `100`)
+
+Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "tenantCode": "std-school",
+      "displayName": "Standard School",
+      "description": "Public tenant landing content.",
+      "isActive": true
+    }
+  ],
+  "page": { "limit": 50, "nextCursor": null }
+}
+```
+
 ### `GET /v1/public/{tenantCode}/courses`
 
 Returns only published and public-visible courses.

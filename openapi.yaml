@@ -411,6 +411,35 @@ components:
       required:
       - data
       - page
+    PublicTenantDirectoryItem:
+      properties:
+        tenantCode:
+          type: string
+        displayName:
+          type: string
+        description:
+          type:
+          - string
+          - "null"
+        isActive:
+          type: boolean
+      type: object
+      required:
+      - tenantCode
+      - displayName
+      - isActive
+    PublicTenantDirectoryResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/PublicTenantDirectoryItem'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
     Tenant:
       properties:
         id:
@@ -1341,5 +1370,21 @@ paths:
       security: []
       tags:
       - Public Catalog
-
+  /v1/public/tenants:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      summary: List active public tenants
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTenantDirectoryResponse'
+          description: Public tenant directory
+      security: []
+      tags:
+      - Public Catalog
 

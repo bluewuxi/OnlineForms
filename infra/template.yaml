@@ -11,6 +11,24 @@ Parameters:
       - test
       - stage
       - prod
+  ManagedCognitoEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  ExternalCognitoUserPoolId:
+    Type: String
+    Default: ""
+  ExternalCognitoClientId:
+    Type: String
+    Default: ""
+  CognitoTokenUse:
+    Type: String
+    Default: id
+    AllowedValues:
+      - access
+      - id
 
 Mappings:
   AuthModeByEnvironment:
@@ -23,6 +41,9 @@ Mappings:
     prod:
       Mode: cognito
 
+Conditions:
+  UseManagedCognito: !Equals [!Ref ManagedCognitoEnabled, "true"]
+
 Globals:
   Function:
     Runtime: nodejs22.x
@@ -34,9 +55,9 @@ Globals:
         SERVICE_NAME: onlineforms-api
         APP_ENV: !Ref DeploymentEnvironment
         AUTH_MODE: !FindInMap [AuthModeByEnvironment, !Ref DeploymentEnvironment, Mode]
-        COGNITO_USER_POOL_ID: ""
-        COGNITO_CLIENT_ID: ""
-        COGNITO_TOKEN_USE: access
+        COGNITO_USER_POOL_ID: !If [UseManagedCognito, !Ref OnlineFormsUserPool, !Ref ExternalCognitoUserPoolId]
+        COGNITO_CLIENT_ID: !If [UseManagedCognito, !Ref OnlineFormsUserPoolClient, !Ref ExternalCognitoClientId]
+        COGNITO_TOKEN_USE: !Ref CognitoTokenUse
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
         ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
@@ -123,6 +144,73 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+
+  OnlineFormsUserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: UseManagedCognito
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: "OFF"
+      Schema:
+        - Name: defaultTenantId
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints:
+            MinLength: "1"
+            MaxLength: "128"
+        - Name: platformRole
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints:
+            MinLength: "1"
+            MaxLength: "32"
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 10
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  OnlineFormsUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: UseManagedCognito
+    Properties:
+      UserPoolId: !Ref OnlineFormsUserPool
+      ClientName: !Sub "${AWS::StackName}-app-client"
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  OnlineFormsOrgAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: UseManagedCognito
+    Properties:
+      GroupName: org_admin
+      UserPoolId: !Ref OnlineFormsUserPool
+
+  OnlineFormsOrgEditorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: UseManagedCognito
+    Properties:
+      GroupName: org_editor
+      UserPoolId: !Ref OnlineFormsUserPool
+
+  OnlineFormsPlatformAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: UseManagedCognito
+    Properties:
+      GroupName: platform_admin
+      UserPoolId: !Ref OnlineFormsUserPool
 
   OnlineFormsAssetsBucket:
     Type: AWS::S3::Bucket
@@ -756,4 +844,12 @@ Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint
     Value: !Sub "https://${OnlineFormsHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
+  CognitoUserPoolId:
+    Condition: UseManagedCognito
+    Description: Cognito User Pool Id
+    Value: !Ref OnlineFormsUserPool
+  CognitoUserPoolClientId:
+    Condition: UseManagedCognito
+    Description: Cognito User Pool App Client Id
+    Value: !Ref OnlineFormsUserPoolClient
 

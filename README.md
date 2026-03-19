@@ -63,6 +63,22 @@ sam build -t infra/template.yaml
 sam deploy --guided -t infra/template.yaml
 ```
 
+### Cognito Bootstrap (Phase 4)
+
+Template now supports managed Cognito provisioning:
+
+- `ManagedCognitoEnabled=true` (default): creates User Pool, App Client, and groups
+  - groups: `org_admin`, `org_editor`, `platform_admin`
+- `ManagedCognitoEnabled=false`: use external values:
+  - `ExternalCognitoUserPoolId`
+  - `ExternalCognitoClientId`
+
+Seed default user (`ricky`):
+
+```powershell
+.\scripts\seed-cognito-user.ps1 -UserPoolId <USER_POOL_ID>
+```
+
 ## P1-03 Course Endpoints
 
 Protected org routes:

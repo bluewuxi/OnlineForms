@@ -68,11 +68,19 @@ Implement tasks strictly in order. For each task:
   - Add Cognito-mode smoke requests and troubleshooting notes
   - Update API docs and user guide for Cognito auth usage
 
+- [x] P4-09 Cognito user pool bootstrap + seeded Ricky user
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/34
+  Scope:
+  - Add SAM-managed Cognito User Pool/User Pool Client baseline for stage/prod
+  - Add default role groups (`org_admin`, `org_editor`, `platform_admin`)
+  - Add operator script to seed user `ricky` (`ricky.yu@outlook.com`) and assign group
+
 ## Status Legend
 
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 
 
 

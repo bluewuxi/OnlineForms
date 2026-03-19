@@ -50,12 +50,12 @@
 ### 3.2 Required JWT Claims (minimum)
 
 - `sub`: user ID
-- `role`: one of:
-  - `org_admin`
-  - `org_editor`
-  - `platform_admin` (internal)
-- Optional default tenant claim:
-  - `custom:tenantId` or `tenantId`
+- Preferred stable custom claims:
+  - `custom:defaultTenantId`
+  - `custom:platformRole`
+- Backward-compatible role/tenant fallbacks accepted in MVP:
+  - tenant: `custom:tenantId`, `tenantId`
+  - role: `custom:role`, `role`, first `cognito:groups` entry
 
 ### 3.3 Role Access Matrix (MVP)
 

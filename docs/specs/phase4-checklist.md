@@ -47,7 +47,7 @@ Implement tasks strictly in order. For each task:
   - Map invite acceptance to Cognito user identity (`sub`)
   - Persist membership activation metadata and audit fields
 
-- [ ] P4-06 Token claim strategy for multi-tenant SaaS
+- [x] P4-06 Token claim strategy for multi-tenant SaaS
   Issue: https://github.com/bluewuxi/OnlineForms/issues/31
   Scope:
   - Define minimal stable custom claims (default tenant/platform role)
@@ -73,6 +73,7 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 
 
 

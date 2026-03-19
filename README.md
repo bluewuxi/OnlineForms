@@ -12,6 +12,7 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/guides/MVP_USER_GUIDE.md`
 - `docs/reference/api-contracts.md`
 - `docs/reference/dynamodb-schema.md`
+- `docs/reference/auth-claims-strategy.md`
 
 ## Structure
 

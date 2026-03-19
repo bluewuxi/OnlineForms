@@ -84,6 +84,14 @@ function toOptionalStringClaim(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function pickFirstString(values: unknown[]): string | undefined {
+  for (const value of values) {
+    const parsed = toOptionalStringClaim(value);
+    if (parsed) return parsed;
+  }
+  return undefined;
+}
+
 function fromMockHeaders(headers: HeaderMap): AuthContext {
   const userId = pickHeader(headers, "x-user-id") ?? "mock-user";
   const tenantId = pickHeader(headers, "x-tenant-id");
@@ -250,12 +258,18 @@ export async function authenticateRequest(
   const payload = await verifier.verify(token);
 
   const userId = toStringClaim(payload.sub, "sub");
-  const tenantIdClaim = toOptionalStringClaim(payload["custom:tenantId"] ?? payload.tenantId);
+  const tenantIdClaim = pickFirstString([
+    payload["custom:defaultTenantId"],
+    payload["custom:tenantId"],
+    payload.tenantId
+  ]);
 
-  const roleClaim =
-    payload["custom:role"] ??
-    payload.role ??
-    (Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined);
+  const roleClaim = pickFirstString([
+    payload["custom:platformRole"],
+    payload["custom:role"],
+    payload.role,
+    Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined
+  ]);
 
   const role = toRole(roleClaim);
   const tenantId = pickActiveTenantId(headers, options.tenantIdHint, tenantIdClaim);

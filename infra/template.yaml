@@ -29,9 +29,6 @@ Globals:
     Timeout: 10
     MemorySize: 256
     Tracing: Active
-    Policies:
-      - DynamoDBReadPolicy:
-          TableName: !Ref OnlineFormsAuthTable
     Environment:
       Variables:
         SERVICE_NAME: onlineforms-api
@@ -144,6 +141,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         HealthRoute:
           Type: HttpApi
@@ -160,6 +159,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgMeRoute:
           Type: HttpApi
@@ -176,6 +177,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgTenantCheckRoute:
           Type: HttpApi
@@ -224,6 +227,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesCreateRoute:
           Type: HttpApi
@@ -240,6 +245,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesListRoute:
           Type: HttpApi
@@ -256,6 +263,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesGetRoute:
           Type: HttpApi
@@ -272,6 +281,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesUpdateRoute:
           Type: HttpApi
@@ -288,6 +299,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesPublishRoute:
           Type: HttpApi
@@ -304,6 +317,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgCoursesArchiveRoute:
           Type: HttpApi
@@ -320,6 +335,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgFormSchemaUpsertRoute:
           Type: HttpApi
@@ -336,6 +353,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgFormSchemaGetLatestRoute:
           Type: HttpApi
@@ -352,6 +371,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgFormSchemaGetVersionRoute:
           Type: HttpApi
@@ -368,6 +389,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgSubmissionsListRoute:
           Type: HttpApi
@@ -384,6 +407,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgSubmissionsGetRoute:
           Type: HttpApi
@@ -400,6 +425,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgSubmissionsUpdateRoute:
           Type: HttpApi
@@ -416,6 +443,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
         - S3WritePolicy:
             BucketName: !Ref OnlineFormsAssetsBucket
       Events:
@@ -434,6 +463,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgAssetsGetRoute:
           Type: HttpApi
@@ -450,6 +481,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgTenantBrandingUpdateRoute:
           Type: HttpApi
@@ -466,6 +499,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         OrgAuditListRoute:
           Type: HttpApi
@@ -482,6 +517,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         PaymentsConfigRoute:
           Type: HttpApi
@@ -510,6 +547,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         PublicCoursesListRoute:
           Type: HttpApi
@@ -526,6 +565,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         PublicCoursesGetRoute:
           Type: HttpApi
@@ -542,6 +583,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
       Events:
         PublicEnrollmentsCreateRoute:
           Type: HttpApi
@@ -713,3 +756,4 @@ Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint
     Value: !Sub "https://${OnlineFormsHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
+

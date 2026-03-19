@@ -5,14 +5,17 @@
 This document defines the DynamoDB data model for OnlineForms MVP.
 
 - Database: DynamoDB (on-demand)
-- Pattern: single-table design
-- Table name (example): `OnlineFormsMain`
+- Pattern: two-table design
+- Business table name: `OnlineFormsMain`
+- Auth table name: `OnlineFormsAuth`
 - Multi-tenant model: pooled table with strict tenant-scoped keys
 - Primary requirement: every tenant-facing read/write is scoped by `tenantId`
 
 ---
 
 ## 2. Table and Keys
+
+## 2.0 Business Table (`OnlineFormsMain`)
 
 ## 2.1 Primary Keys
 
@@ -446,3 +449,38 @@ On create idempotency record:
 - `GET /v1/org/submissions?courseId=...`:
   - `GSI3PK=TENANT#{tenantId}#COURSE#{courseId}#SUBMISSIONS`
 
+---
+
+## 11. Auth Table Foundation (`OnlineFormsAuth`)
+
+Purpose:
+
+- isolate authentication and membership entities from business course/submission data
+- keep future Cognito + membership flows independent of business table growth
+
+Primary keys:
+
+- `PK` (string)
+- `SK` (string)
+
+GSI:
+
+- `GSI1PK` / `GSI1SK` for tenant-member listing
+
+Auth key conventions:
+
+- User root: `PK=USER#{userId}`
+- User profile: `SK=PROFILE`
+- User membership edge: `SK=MEMBERSHIP#{tenantId}`
+- Tenant root for auth entities: `PK=TENANT#{tenantId}`
+- Tenant member edge: `SK=MEMBER#{userId}`
+- Tenant invite: `SK=INVITE#{inviteId}`
+- Membership list GSI:
+  - `GSI1PK=TENANT#{tenantId}#MEMBERS`
+  - `GSI1SK=ROLE#{role}#USER#{userId}`
+
+Auth entity types:
+
+- `AUTH_USER_PROFILE`
+- `AUTH_MEMBERSHIP`
+- `AUTH_INVITE`

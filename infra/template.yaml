@@ -38,6 +38,7 @@ Globals:
         COGNITO_CLIENT_ID: ""
         COGNITO_TOKEN_USE: access
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
+        ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
 
 Resources:
@@ -90,6 +91,35 @@ Resources:
             - AttributeName: GSI2PK
               KeyType: HASH
             - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  OnlineFormsAuthTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OnlineFormsAuth
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
               KeyType: RANGE
           Projection:
             ProjectionType: ALL

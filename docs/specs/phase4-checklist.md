@@ -19,7 +19,7 @@ Implement tasks strictly in order. For each task:
   - Keep `mock` mode only for local/test environments
   - Validate JWT verifier config (`COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `COGNITO_TOKEN_USE`)
 
-- [ ] P4-02 Dedicated auth table foundation (`OnlineFormsAuth`)
+- [x] P4-02 Dedicated auth table foundation (`OnlineFormsAuth`)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/27
   Scope:
   - Create separate DynamoDB table for auth entities

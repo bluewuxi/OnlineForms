@@ -47,6 +47,13 @@ Implement tasks strictly in order. For each task:
   - Add seed/update scripts and runbook notes
   - Add tests/smoke checks for role and route-safety changes
 
+- [ ] P5-06 Public tenant directory endpoint for root home cards
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/40
+  Scope:
+  - Add and document `GET /v1/public/tenants` for frontend root-home tenant cards
+  - Return active tenant directory items (`tenantCode`, `displayName`, `description`, `isActive`)
+  - Wire SAM route, update OpenAPI/docs, and add tests
+
 ## Status Legend
 
 - `[ ]` Not started

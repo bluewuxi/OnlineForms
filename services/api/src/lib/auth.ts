@@ -11,8 +11,19 @@ export type AuthContext = {
 };
 
 type HeaderMap = Record<string, string | undefined> | undefined;
+type AuthMode = "mock" | "cognito";
+type RuntimeEnv = "local" | "test" | "stage" | "prod";
+type CognitoTokenUse = "access" | "id";
+type CognitoConfig = {
+  userPoolId: string;
+  clientId: string;
+  tokenUse: CognitoTokenUse;
+  cacheKey: string;
+};
 
 const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin"]);
+const allowedAuthModes = new Set<AuthMode>(["mock", "cognito"]);
+const restrictedMockEnvironments = new Set<RuntimeEnv>(["stage", "prod"]);
 
 function pickHeader(headers: HeaderMap, key: string): string | undefined {
   if (!headers) return undefined;
@@ -62,33 +73,90 @@ function fromMockHeaders(headers: HeaderMap): AuthContext {
 }
 
 let cachedVerifier: { verify: (token: string) => Promise<Record<string, unknown>> } | null = null;
+let cachedVerifierConfigKey: string | null = null;
 
-function getVerifier() {
-  if (cachedVerifier) return cachedVerifier;
+function getRuntimeEnv(): RuntimeEnv {
+  const raw = (process.env.APP_ENV ?? process.env.NODE_ENV ?? "local").trim().toLowerCase();
+  if (raw === "production") return "prod";
+  if (raw === "development") return "local";
+  if (raw === "local" || raw === "test" || raw === "stage" || raw === "prod") {
+    return raw;
+  }
+  return "local";
+}
 
-  const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const clientId = process.env.COGNITO_CLIENT_ID;
-  const tokenUse = process.env.COGNITO_TOKEN_USE === "id" ? "id" : "access";
-
-  if (!userPoolId) {
+function getAuthMode(): AuthMode {
+  const raw = process.env.AUTH_MODE?.trim().toLowerCase();
+  if (!raw || !allowedAuthModes.has(raw as AuthMode)) {
     throw new ApiError(
       500,
       "INTERNAL_ERROR",
-      "Server auth is not configured: COGNITO_USER_POOL_ID is required."
+      "Server auth is not configured: AUTH_MODE must be 'mock' or 'cognito'."
     );
+  }
+  return raw as AuthMode;
+}
+
+function getRequiredEnv(name: "COGNITO_USER_POOL_ID" | "COGNITO_CLIENT_ID"): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new ApiError(500, "INTERNAL_ERROR", `Server auth is not configured: ${name} is required.`);
+  }
+  return value;
+}
+
+function getTokenUse(): CognitoTokenUse {
+  const tokenUse = process.env.COGNITO_TOKEN_USE?.trim().toLowerCase();
+  if (tokenUse === "access" || tokenUse === "id") {
+    return tokenUse;
+  }
+  throw new ApiError(
+    500,
+    "INTERNAL_ERROR",
+    "Server auth is not configured: COGNITO_TOKEN_USE must be 'access' or 'id'."
+  );
+}
+
+function readCognitoConfig(): CognitoConfig {
+  const userPoolId = getRequiredEnv("COGNITO_USER_POOL_ID");
+  const clientId = getRequiredEnv("COGNITO_CLIENT_ID");
+  const tokenUse = getTokenUse();
+  return {
+    userPoolId,
+    clientId,
+    tokenUse,
+    cacheKey: `${userPoolId}|${clientId}|${tokenUse}`
+  };
+}
+
+function getVerifier() {
+  const config = readCognitoConfig();
+  if (cachedVerifier && cachedVerifierConfigKey === config.cacheKey) {
+    return cachedVerifier;
   }
 
   cachedVerifier = CognitoJwtVerifier.create({
-    userPoolId,
-    tokenUse,
-    clientId: clientId || null
+    userPoolId: config.userPoolId,
+    tokenUse: config.tokenUse,
+    clientId: config.clientId
   }) as unknown as { verify: (token: string) => Promise<Record<string, unknown>> };
+  cachedVerifierConfigKey = config.cacheKey;
 
   return cachedVerifier;
 }
 
 export async function authenticateRequest(headers: HeaderMap): Promise<AuthContext> {
-  if (process.env.AUTH_MODE === "mock") {
+  const authMode = getAuthMode();
+  const runtimeEnv = getRuntimeEnv();
+
+  if (authMode === "mock") {
+    if (restrictedMockEnvironments.has(runtimeEnv)) {
+      throw new ApiError(
+        500,
+        "INTERNAL_ERROR",
+        "Server auth is not configured: AUTH_MODE=mock is not allowed in stage/prod."
+      );
+    }
     return fromMockHeaders(headers);
   }
 

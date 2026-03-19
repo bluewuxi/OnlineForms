@@ -12,7 +12,7 @@ Implement tasks strictly in order. For each task:
 
 ## Tasks
 
-- [ ] P4-01 Cognito auth mode hardening and runtime toggle
+- [x] P4-01 Cognito auth mode hardening and runtime toggle
   Issue: https://github.com/bluewuxi/OnlineForms/issues/26
   Scope:
   - Switch production/stage deployment to `AUTH_MODE=cognito`

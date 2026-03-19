@@ -2,6 +2,27 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: OnlineForms API baseline (Phase 1 scaffold)
 
+Parameters:
+  DeploymentEnvironment:
+    Type: String
+    Default: local
+    AllowedValues:
+      - local
+      - test
+      - stage
+      - prod
+
+Mappings:
+  AuthModeByEnvironment:
+    local:
+      Mode: mock
+    test:
+      Mode: mock
+    stage:
+      Mode: cognito
+    prod:
+      Mode: cognito
+
 Globals:
   Function:
     Runtime: nodejs22.x
@@ -11,7 +32,8 @@ Globals:
     Environment:
       Variables:
         SERVICE_NAME: onlineforms-api
-        AUTH_MODE: mock
+        APP_ENV: !Ref DeploymentEnvironment
+        AUTH_MODE: !FindInMap [AuthModeByEnvironment, !Ref DeploymentEnvironment, Mode]
         COGNITO_USER_POOL_ID: ""
         COGNITO_CLIENT_ID: ""
         COGNITO_TOKEN_USE: access

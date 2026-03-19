@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  __authTestHooks,
   assertTenantAccess,
   authenticateRequest,
   requireAnyRole,
@@ -181,6 +182,71 @@ test("authenticateRequest validates COGNITO_TOKEN_USE", async () => {
       }
     );
   } finally {
+    restore();
+  }
+});
+
+test("authenticateRequest rejects cognito request when active membership is missing", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:defaultTenantId": "ten_1",
+      "custom:role": "org_admin"
+    })
+  });
+  __authTestHooks.setMembershipLoaderOverride(async () => null);
+  try {
+    await assert.rejects(
+      () => authenticateRequest({ authorization: "Bearer test-token" }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest resolves x-tenant-id and allows active membership", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:defaultTenantId": "ten_default",
+      "custom:role": "org_editor"
+    })
+  });
+  __authTestHooks.setMembershipLoaderOverride(async (_userId, tenantId) => {
+    if (tenantId !== "ten_override") return null;
+    return { tenantId, status: "active", role: "org_editor" };
+  });
+  try {
+    const auth = await authenticateRequest({
+      authorization: "Bearer test-token",
+      "x-tenant-id": "ten_override"
+    });
+    assert.equal(auth.userId, "usr_1");
+    assert.equal(auth.tenantId, "ten_override");
+    assert.equal(auth.role, "org_editor");
+  } finally {
+    __authTestHooks.reset();
     restore();
   }
 });

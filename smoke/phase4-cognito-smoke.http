@@ -1,0 +1,58 @@
+@baseUrl = https://example.execute-api.ap-southeast-2.amazonaws.com/v1
+@tenantId = ten_demo
+@courseId = crs_demo_001
+@submissionId = sub_demo_001
+@inviteId = inv_demo_001
+@jwt = REPLACE_WITH_COGNITO_JWT
+
+### Health
+GET {{baseUrl}}/health
+
+### Org profile (Cognito)
+GET {{baseUrl}}/org/me
+Authorization: Bearer {{jwt}}
+
+### Tenant check in scoped context
+GET {{baseUrl}}/org/tenants/{{tenantId}}/check
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Create tenant invite
+POST {{baseUrl}}/org/tenants/{{tenantId}}/invites
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+content-type: application/json
+
+{
+  "email": "invitee@example.com",
+  "role": "org_editor",
+  "expiresInDays": 7
+}
+
+### Accept tenant invite
+POST {{baseUrl}}/org/tenants/{{tenantId}}/invites/{{inviteId}}/accept
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### List courses with explicit tenant header
+GET {{baseUrl}}/org/courses
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Cross-tenant denial check (expect 403)
+GET {{baseUrl}}/org/tenants/ten_other/check
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Submissions list
+GET {{baseUrl}}/org/submissions
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Submission detail
+GET {{baseUrl}}/org/submissions/{{submissionId}}
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Public catalog (no auth)
+GET {{baseUrl}}/public/demo-school/courses

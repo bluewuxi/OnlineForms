@@ -61,7 +61,7 @@ Implement tasks strictly in order. For each task:
   - Add structured audit events for authentication and membership decisions
   - Document incident/debug runbook for auth-related production issues
 
-- [ ] P4-08 Phase 4 validation pack (tests + smoke + docs)
+- [x] P4-08 Phase 4 validation pack (tests + smoke + docs)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/33
   Scope:
   - Add tests for membership checks and cross-tenant denial
@@ -73,6 +73,7 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 
 
 

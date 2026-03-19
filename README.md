@@ -11,6 +11,7 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/specs/phase4-checklist.md`
 - `docs/guides/MVP_USER_GUIDE.md`
 - `docs/guides/AUTH_INCIDENT_RUNBOOK.md`
+- `docs/guides/COGNITO_AUTH_TROUBLESHOOTING.md`
 - `docs/reference/api-contracts.md`
 - `docs/reference/dynamodb-schema.md`
 - `docs/reference/auth-claims-strategy.md`
@@ -153,6 +154,7 @@ Smoke request collection:
 - `smoke/phase1-smoke.http`
 - `smoke/phase2-smoke.http`
 - `smoke/phase3-smoke.http`
+- `smoke/phase4-cognito-smoke.http`
 
 Phase 3 operational checks:
 

@@ -42,6 +42,7 @@ type MembershipRecord = {
   status: MembershipStatus;
   role: AuthRole;
 };
+type TokenVerifier = { verify: (token: string) => Promise<Record<string, unknown>> };
 
 const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin"]);
 const allowedAuthModes = new Set<AuthMode>(["mock", "cognito"]);
@@ -157,7 +158,8 @@ async function getMembership(userId: string, tenantId: string): Promise<Membersh
 
 async function assertTenantMembership(role: AuthRole, userId: string, tenantId: string): Promise<void> {
   if (role === "platform_admin") return;
-  const membership = await getMembership(userId, tenantId);
+  const membershipLoader = testMembershipLoaderOverride ?? getMembership;
+  const membership = await membershipLoader(userId, tenantId);
   if (!membership || membership.status !== "active") {
     emitMembershipDeniedMetric();
     logAuthAudit("auth_membership_denied", { userId, tenantId, role });
@@ -170,8 +172,12 @@ async function assertTenantMembership(role: AuthRole, userId: string, tenantId: 
   logAuthAudit("auth_membership_granted", { userId, tenantId, role, membershipRole: membership.role });
 }
 
-let cachedVerifier: { verify: (token: string) => Promise<Record<string, unknown>> } | null = null;
+let cachedVerifier: TokenVerifier | null = null;
 let cachedVerifierConfigKey: string | null = null;
+let testVerifierOverride: TokenVerifier | null = null;
+let testMembershipLoaderOverride:
+  | ((userId: string, tenantId: string) => Promise<MembershipRecord | null>)
+  | null = null;
 
 function getRuntimeEnv(): RuntimeEnv {
   const raw = (process.env.APP_ENV ?? process.env.NODE_ENV ?? "local").trim().toLowerCase();
@@ -228,6 +234,7 @@ function readCognitoConfig(): CognitoConfig {
 }
 
 function getVerifier() {
+  if (testVerifierOverride) return testVerifierOverride;
   const config = readCognitoConfig();
   if (cachedVerifier && cachedVerifierConfigKey === config.cacheKey) {
     return cachedVerifier;
@@ -242,6 +249,21 @@ function getVerifier() {
 
   return cachedVerifier;
 }
+
+export const __authTestHooks = {
+  setVerifierOverride(verifier: TokenVerifier | null): void {
+    testVerifierOverride = verifier;
+  },
+  setMembershipLoaderOverride(
+    loader: ((userId: string, tenantId: string) => Promise<MembershipRecord | null>) | null
+  ): void {
+    testMembershipLoaderOverride = loader;
+  },
+  reset(): void {
+    testVerifierOverride = null;
+    testMembershipLoaderOverride = null;
+  }
+};
 
 export async function authenticateRequest(
   headers: HeaderMap,

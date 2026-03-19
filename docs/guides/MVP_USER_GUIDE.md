@@ -31,17 +31,31 @@ Health check:
 
 - `https://5n7ng70uw5.execute-api.ap-southeast-2.amazonaws.com/v1/health`
 
-## 3) Test Credentials (MVP Mock Auth)
+## 3) Authentication Modes
 
-MVP org endpoints are currently tested in mock auth mode with headers:
+### Preferred (stage/prod): Cognito JWT
+
+Use bearer token for org endpoints:
+
+- `Authorization: Bearer <jwt>`
+
+Optional active tenant selection:
+
+- `x-tenant-id: <tenantId>`
+
+Tenant context resolution order:
+
+1. `x-tenant-id`
+2. route tenant context
+3. JWT default tenant claim
+
+### Local/test only: mock mode
+
+Mock headers:
 
 - `x-user-id: user_1`
 - `x-tenant-id: 001`
-- `x-role: org_admin`
-
-Alternative role for editor access:
-
-- `x-role: org_editor`
+- `x-role: org_admin` (or `org_editor`)
 
 ## 4) Seeded Test Data
 
@@ -59,12 +73,20 @@ Default seeded values:
 
 ## 5) Quick API Examples
 
-Get org profile:
+Get org profile (mock mode):
 
 ```bash
 curl -H "x-user-id: user_1" ^
      -H "x-tenant-id: 001" ^
      -H "x-role: org_admin" ^
+     https://5n7ng70uw5.execute-api.ap-southeast-2.amazonaws.com/v1/org/me
+```
+
+Get org profile (Cognito mode):
+
+```bash
+curl -H "Authorization: Bearer <jwt>" \
+     -H "x-tenant-id: 001" \
      https://5n7ng70uw5.execute-api.ap-southeast-2.amazonaws.com/v1/org/me
 ```
 

@@ -3,6 +3,11 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiError } from "./errors";
 import {
+  emitInvalidTokenMetric,
+  emitMembershipDeniedMetric,
+  logAuthAudit
+} from "./authObservability";
+import {
   AUTH_TABLE_NAME_DEFAULT,
   type MembershipStatus,
   authUserMembershipSk,
@@ -154,12 +159,15 @@ async function assertTenantMembership(role: AuthRole, userId: string, tenantId: 
   if (role === "platform_admin") return;
   const membership = await getMembership(userId, tenantId);
   if (!membership || membership.status !== "active") {
+    emitMembershipDeniedMetric();
+    logAuthAudit("auth_membership_denied", { userId, tenantId, role });
     throw new ApiError(
       403,
       "FORBIDDEN",
       "User does not have active membership for the requested tenant."
     );
   }
+  logAuthAudit("auth_membership_granted", { userId, tenantId, role, membershipRole: membership.role });
 }
 
 let cachedVerifier: { verify: (token: string) => Promise<Record<string, unknown>> } | null = null;
@@ -250,12 +258,33 @@ export async function authenticateRequest(
         "Server auth is not configured: AUTH_MODE=mock is not allowed in stage/prod."
       );
     }
-    return fromMockHeaders(headers);
+    const auth = fromMockHeaders(headers);
+    logAuthAudit("auth_authenticated", {
+      mode: authMode,
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      role: auth.role
+    });
+    return auth;
   }
 
-  const token = getBearerToken(headers);
-  const verifier = getVerifier();
-  const payload = await verifier.verify(token);
+  let payload: Record<string, unknown>;
+  try {
+    const token = getBearerToken(headers);
+    const verifier = getVerifier();
+    payload = await verifier.verify(token);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.statusCode === 401) {
+        emitInvalidTokenMetric();
+        logAuthAudit("auth_invalid_token", { reason: error.message });
+      }
+      throw error;
+    }
+    emitInvalidTokenMetric();
+    logAuthAudit("auth_invalid_token", { reason: "jwt_verification_failed" });
+    throw new ApiError(401, "UNAUTHORIZED", "Invalid authentication token.");
+  }
 
   const userId = toStringClaim(payload.sub, "sub");
   const tenantIdClaim = pickFirstString([
@@ -276,6 +305,14 @@ export async function authenticateRequest(
   if (options.requireMembership !== false) {
     await assertTenantMembership(role, userId, tenantId);
   }
+
+  logAuthAudit("auth_authenticated", {
+    mode: authMode,
+    userId,
+    tenantId,
+    role,
+    membershipChecked: options.requireMembership !== false
+  });
 
   return {
     userId,

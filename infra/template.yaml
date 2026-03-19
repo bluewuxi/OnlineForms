@@ -661,6 +661,54 @@ Resources:
         - Name: TableName
           Value: !Ref OnlineFormsMainTable
 
+  AuthInvalidTokenAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Invalid auth token spike detected
+      Namespace: OnlineForms/Auth
+      MetricName: InvalidTokenCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: Service
+          Value: onlineforms-api
+
+  AuthTenantMismatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Tenant mismatch authorization denials detected
+      Namespace: OnlineForms/Auth
+      MetricName: TenantMismatchCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: Service
+          Value: onlineforms-api
+
+  AuthRoleDeniedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Role denied authorization denials detected
+      Namespace: OnlineForms/Auth
+      MetricName: RoleDeniedCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: Service
+          Value: onlineforms-api
+
 Outputs:
   ApiBaseUrl:
     Description: HTTP API endpoint

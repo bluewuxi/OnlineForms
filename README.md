@@ -10,6 +10,7 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/specs/phase3-checklist.md`
 - `docs/specs/phase4-checklist.md`
 - `docs/guides/MVP_USER_GUIDE.md`
+- `docs/guides/AUTH_INCIDENT_RUNBOOK.md`
 - `docs/reference/api-contracts.md`
 - `docs/reference/dynamodb-schema.md`
 - `docs/reference/auth-claims-strategy.md`

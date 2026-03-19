@@ -1,5 +1,6 @@
 import { ApiError } from "./errors";
 import type { AuthContext, AuthRole } from "./auth";
+import { emitRoleDeniedMetric, emitTenantMismatchMetric, logAuthAudit } from "./authObservability";
 
 export type OrgPolicyAction =
   | "ORG_ME_READ"
@@ -44,10 +45,19 @@ export function authorizeOrgAction(
 ): void {
   const policy = orgPolicies[action];
   if (!policy.roles.includes(auth.role)) {
+    emitRoleDeniedMetric();
+    logAuthAudit("auth_role_denied", { action, role: auth.role, tenantId: auth.tenantId });
     throw new ApiError(403, "FORBIDDEN", "Role not allowed for this operation.");
   }
 
   if (auth.role === "platform_admin" && !policy.allowPlatformBypass) {
+    emitRoleDeniedMetric();
+    logAuthAudit("auth_role_denied", {
+      action,
+      role: auth.role,
+      tenantId: auth.tenantId,
+      reason: "platform_bypass_not_allowed"
+    });
     throw new ApiError(
       403,
       "FORBIDDEN",
@@ -56,6 +66,13 @@ export function authorizeOrgAction(
   }
 
   if (auth.role !== "platform_admin" && auth.tenantId !== resourceTenantId) {
+    emitTenantMismatchMetric();
+    logAuthAudit("auth_tenant_mismatch", {
+      action,
+      role: auth.role,
+      authTenantId: auth.tenantId,
+      resourceTenantId
+    });
     throw new ApiError(403, "FORBIDDEN", "Cross-tenant access is denied.");
   }
 }

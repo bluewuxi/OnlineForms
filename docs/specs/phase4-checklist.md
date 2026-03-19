@@ -54,7 +54,7 @@ Implement tasks strictly in order. For each task:
   - Avoid per-tenant claim explosion in JWT
   - Document claim-to-authorization decision path
 
-- [ ] P4-07 Auth observability and security controls
+- [x] P4-07 Auth observability and security controls
   Issue: https://github.com/bluewuxi/OnlineForms/issues/32
   Scope:
   - Add auth failure metrics/alerts (invalid token, tenant mismatch, role denied)
@@ -73,6 +73,7 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
 
 
 

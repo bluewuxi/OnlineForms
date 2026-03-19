@@ -692,6 +692,7 @@ Return `429 RATE_LIMITED` when exceeded.
   - `route`
   - `statusCode`
   - latency
+- Auth decisions emit structured audit events (`type=auth_audit`) and auth metrics in namespace `OnlineForms/Auth`.
 
 ---
 

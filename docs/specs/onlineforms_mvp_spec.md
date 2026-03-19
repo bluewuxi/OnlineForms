@@ -396,9 +396,13 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
 - light audit logging
 - payment placeholder hardening
 
+### Phase 4
+- Cognito-first multi-tenant authentication rollout
+- Dedicated auth DynamoDB model and membership checks
+- Tenant invite/onboarding baseline and auth observability
+
 ---
 
 ## 23. Final Recommendation
 
 Build OnlineForms MVP as a pooled multi-tenant serverless SaaS on AWS using React, CloudFront, API Gateway, Lambda, Cognito, DynamoDB, and S3. Keep the first release deliberately narrow: tenant-branded public course catalogs, free course publishing, dynamic enrollment forms, and submission capture. Use tenantCode-prefixed routes so all public and tenant-facing queries stay tenant-scoped in MVP. Preserve future extensibility for payments, email notifications, and custom domains through explicit schema flags and routing abstractions, but do not let those future concerns complicate the MVP delivery path.
-

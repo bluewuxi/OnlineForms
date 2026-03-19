@@ -6,6 +6,14 @@ const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
 const tenantId = process.env.SEED_TENANT_ID || "001";
 const tenantCode = (process.env.SEED_TENANT_CODE || "std-school").toLowerCase();
 const displayName = process.env.SEED_DISPLAY_NAME || "Demo School";
+const tenantDescription =
+  process.env.SEED_TENANT_DESCRIPTION ||
+  "Demo school tenant profile used for local smoke and integration checks.";
+const tenantHomePageContent =
+  process.env.SEED_TENANT_HOME_PAGE_CONTENT ||
+  "Welcome to Demo School. Explore our published courses and enroll online.";
+const tenantIsActiveRaw = process.env.SEED_TENANT_IS_ACTIVE || "true";
+const tenantIsActive = tenantIsActiveRaw.toLowerCase() !== "false";
 const courseId = process.env.SEED_COURSE_ID || "std_001";
 const formId = process.env.SEED_FORM_ID || "frm_001";
 const courseTitle = process.env.SEED_COURSE_TITLE || "Intro to AI (Seeded)";
@@ -40,7 +48,10 @@ async function main() {
     tenantId,
     tenantCode,
     displayName,
-    status: "active",
+    description: tenantDescription,
+    isActive: tenantIsActive,
+    homePageContent: tenantHomePageContent,
+    status: tenantIsActive ? "active" : "inactive",
     branding: { logoAssetId: null },
     createdAt: now,
     updatedAt: now
@@ -160,6 +171,7 @@ async function main() {
   console.log(`tenantId=${tenantId}`);
   console.log(`tenantCode=${tenantCode}`);
   console.log(`displayName=${displayName}`);
+  console.log(`tenantIsActive=${tenantIsActive}`);
   console.log(`courseId=${courseId}`);
   console.log(`formId=${formId}`);
   console.log(`formVersion=${formVersion}`);

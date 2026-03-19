@@ -12,7 +12,7 @@ Implement tasks strictly in order. For each task:
 
 ## Tasks
 
-- [ ] P5-01 Tenant entity enrichment fields and validation
+- [x] P5-01 Tenant entity enrichment fields and validation
   Issue: https://github.com/bluewuxi/OnlineForms/issues/35
   Scope:
   - Extend tenant entity with `description`, `isActive`, and optional `homePageContent`

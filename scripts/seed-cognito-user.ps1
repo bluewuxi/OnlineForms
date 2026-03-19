@@ -12,16 +12,18 @@ param(
 )
 
 $delivery = if ($SuppressInvite) { "SUPPRESS" } else { "RESEND" }
+$effectiveUsername = if ($Username -match "@") { $Username } else { $Email }
 
-Write-Host "Creating/updating Cognito user '$Username' in pool '$UserPoolId'..."
+Write-Host "Creating/updating Cognito user '$effectiveUsername' in pool '$UserPoolId'..."
 
 $createCmd = @(
   "cognito-idp", "admin-create-user",
   "--user-pool-id", $UserPoolId,
-  "--username", $Username,
+  "--username", $effectiveUsername,
   "--user-attributes",
   "Name=email,Value=$Email",
   "Name=email_verified,Value=true",
+  "Name=preferred_username,Value=$Username",
   "Name=custom:defaultTenantId,Value=$DefaultTenantId",
   "Name=custom:platformRole,Value=$PlatformRole",
   "--message-action", $delivery
@@ -36,20 +38,21 @@ try {
 
 aws cognito-idp admin-update-user-attributes `
   --user-pool-id $UserPoolId `
-  --username $Username `
+  --username $effectiveUsername `
   --user-attributes `
     Name=email,Value=$Email `
     Name=email_verified,Value=true `
+    Name=preferred_username,Value=$Username `
     Name=custom:defaultTenantId,Value=$DefaultTenantId `
     Name=custom:platformRole,Value=$PlatformRole | Out-Null
 
 aws cognito-idp admin-add-user-to-group `
   --user-pool-id $UserPoolId `
-  --username $Username `
+  --username $effectiveUsername `
   --group-name $GroupName | Out-Null
 
 Write-Host "Done."
-Write-Host "User: $Username <$Email>"
+Write-Host "User: $effectiveUsername (preferred_username=$Username, email=$Email)"
 Write-Host "Group: $GroupName"
 Write-Host "defaultTenantId: $DefaultTenantId"
 Write-Host "platformRole: $PlatformRole"

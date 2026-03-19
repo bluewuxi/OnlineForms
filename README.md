@@ -68,8 +68,9 @@ sam deploy --guided -t infra/template.yaml
 Template now supports managed Cognito provisioning:
 
 - `ManagedCognitoEnabled=true` (default): creates User Pool, App Client, and groups
+- `ManagedCognitoEnabled=true`: creates User Pool, App Client, and groups
   - groups: `org_admin`, `org_editor`, `platform_admin`
-- `ManagedCognitoEnabled=false`: use external values:
+- `ManagedCognitoEnabled=false` (default): use external values:
   - `ExternalCognitoUserPoolId`
   - `ExternalCognitoClientId`
 

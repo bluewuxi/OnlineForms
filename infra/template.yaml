@@ -29,6 +29,19 @@ Parameters:
     AllowedValues:
       - access
       - id
+  CognitoHostedUiDomainPrefix:
+    Type: String
+    Default: online-form-auth
+    Description: Prefix for Cognito Hosted UI domain. Final domain appends account id.
+    AllowedPattern: "^[a-z0-9-]+$"
+  CognitoHostedUiCallbackUrl:
+    Type: String
+    Default: https://form.kidrawer.com/org/login
+    Description: OAuth callback URL for Cognito Hosted UI.
+  CognitoHostedUiLogoutUrl:
+    Type: String
+    Default: https://form.kidrawer.com/org/login
+    Description: OAuth logout URL for Cognito Hosted UI.
   ApiCustomDomainEnabled:
     Type: String
     Default: "false"
@@ -243,6 +256,24 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
       SupportedIdentityProviders:
         - COGNITO
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - !Ref CognitoHostedUiCallbackUrl
+      LogoutURLs:
+        - !Ref CognitoHostedUiLogoutUrl
+
+  OnlineFormsUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: UseManagedCognito
+    Properties:
+      UserPoolId: !Ref OnlineFormsUserPool
+      Domain: !Sub "${CognitoHostedUiDomainPrefix}-${AWS::AccountId}"
 
   OnlineFormsOrgAdminGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -990,4 +1021,12 @@ Outputs:
     Condition: UseManagedCognito
     Description: Cognito User Pool App Client Id
     Value: !Ref OnlineFormsUserPoolClient
+  CognitoHostedUiDomain:
+    Condition: UseManagedCognito
+    Description: Cognito Hosted UI domain
+    Value: !Ref OnlineFormsUserPoolDomain
+  CognitoHostedUiDomainUrl:
+    Condition: UseManagedCognito
+    Description: Cognito Hosted UI base URL
+    Value: !Sub "https://${OnlineFormsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
 

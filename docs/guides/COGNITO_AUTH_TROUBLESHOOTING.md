@@ -9,6 +9,17 @@
 - `COGNITO_TOKEN_USE` (`access` or `id`)
 - `ONLINEFORMS_AUTH_TABLE`
 
+## Hosted UI Provisioning
+
+Managed Cognito stack now provisions Hosted UI domain and OAuth code flow on the app client.
+
+- Domain prefix parameter: `CognitoHostedUiDomainPrefix` (default `online-form-auth`)
+- Callback URL parameter: `CognitoHostedUiCallbackUrl`
+- Logout URL parameter: `CognitoHostedUiLogoutUrl`
+- Stack outputs:
+  - `CognitoHostedUiDomain`
+  - `CognitoHostedUiDomainUrl`
+
 ## Common Symptoms
 
 ## 401 `UNAUTHORIZED`

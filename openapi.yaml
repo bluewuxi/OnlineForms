@@ -453,6 +453,8 @@ components:
       - page
     PublicTenantDirectoryItem:
       properties:
+        tenantId:
+          type: string
         tenantCode:
           type: string
         displayName:
@@ -465,6 +467,7 @@ components:
           type: boolean
       type: object
       required:
+      - tenantId
       - tenantCode
       - displayName
       - isActive

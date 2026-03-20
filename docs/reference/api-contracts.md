@@ -539,6 +539,7 @@ Response `200`:
 {
   "data": [
     {
+      "tenantId": "001",
       "tenantCode": "std-school",
       "displayName": "Standard School",
       "description": "Public tenant landing content.",

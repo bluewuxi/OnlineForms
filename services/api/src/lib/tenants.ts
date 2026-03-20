@@ -26,6 +26,7 @@ export type TenantProfile = {
 };
 
 export type PublicTenantDirectoryItem = {
+  tenantId: string;
   tenantCode: string;
   displayName: string;
   description: string | null;
@@ -209,11 +210,13 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
   const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
   return rows
     .map((item) => {
+      const tenantId = asString(item.tenantId);
       const tenantCode = asString(item.tenantCode);
       const displayName = asString(item.displayName);
-      if (!tenantCode || !displayName) return null;
+      if (!tenantId || !tenantCode || !displayName) return null;
       const isActive = resolveIsActive(item);
       return {
+        tenantId,
         tenantCode: normalizeTenantCode(tenantCode, {
           statusCode: 409,
           code: "CONFLICT",

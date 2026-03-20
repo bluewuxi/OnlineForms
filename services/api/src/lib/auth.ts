@@ -14,7 +14,7 @@ import {
   authUserPk
 } from "../../../../shared/src/authTable";
 
-export type AuthRole = "org_admin" | "org_editor" | "platform_admin";
+export type AuthRole = "org_admin" | "org_editor" | "platform_admin" | "internal_admin";
 
 export type AuthContext = {
   userId: string;
@@ -36,6 +36,7 @@ type CognitoConfig = {
 type AuthenticateOptions = {
   tenantIdHint?: string;
   requireMembership?: boolean;
+  allowMissingTenantContext?: boolean;
 };
 type MembershipRecord = {
   tenantId: string;
@@ -44,7 +45,7 @@ type MembershipRecord = {
 };
 type TokenVerifier = { verify: (token: string) => Promise<Record<string, unknown>> };
 
-const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin"]);
+const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin", "internal_admin"]);
 const allowedAuthModes = new Set<AuthMode>(["mock", "cognito"]);
 const restrictedMockEnvironments = new Set<RuntimeEnv>(["stage", "prod"]);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -98,15 +99,21 @@ function pickFirstString(values: unknown[]): string | undefined {
   return undefined;
 }
 
-function fromMockHeaders(headers: HeaderMap): AuthContext {
+function fromMockHeaders(headers: HeaderMap, allowMissingTenantContext: boolean): AuthContext {
   const userId = pickHeader(headers, "x-user-id") ?? "mock-user";
+  const role = toRole(pickHeader(headers, "x-role"));
   const tenantId = pickHeader(headers, "x-tenant-id");
-  const role = pickHeader(headers, "x-role");
+  const resolvedTenantId =
+    typeof tenantId === "string" && tenantId.trim().length > 0
+      ? tenantId
+      : allowMissingTenantContext && role === "internal_admin"
+        ? "__internal__"
+        : toStringClaim(tenantId, "x-tenant-id");
 
   return {
     userId,
-    tenantId: toStringClaim(tenantId, "x-tenant-id"),
-    role: toRole(role),
+    tenantId: resolvedTenantId,
+    role,
     claims: {}
   };
 }
@@ -114,12 +121,15 @@ function fromMockHeaders(headers: HeaderMap): AuthContext {
 function pickActiveTenantId(
   headers: HeaderMap,
   tenantIdHint: string | undefined,
-  tenantIdClaim: string | undefined
+  tenantIdClaim: string | undefined,
+  role: AuthRole,
+  allowMissingTenantContext: boolean
 ): string {
   const tenantFromHeader = pickHeader(headers, "x-tenant-id")?.trim();
   if (tenantFromHeader) return tenantFromHeader;
   if (tenantIdHint?.trim()) return tenantIdHint.trim();
   if (tenantIdClaim?.trim()) return tenantIdClaim.trim();
+  if (allowMissingTenantContext && role === "internal_admin") return "__internal__";
   throw new ApiError(
     403,
     "FORBIDDEN",
@@ -157,7 +167,7 @@ async function getMembership(userId: string, tenantId: string): Promise<Membersh
 }
 
 async function assertTenantMembership(role: AuthRole, userId: string, tenantId: string): Promise<void> {
-  if (role === "platform_admin") return;
+  if (role === "platform_admin" || role === "internal_admin") return;
   const membershipLoader = testMembershipLoaderOverride ?? getMembership;
   const membership = await membershipLoader(userId, tenantId);
   if (!membership || membership.status !== "active") {
@@ -280,7 +290,7 @@ export async function authenticateRequest(
         "Server auth is not configured: AUTH_MODE=mock is not allowed in stage/prod."
       );
     }
-    const auth = fromMockHeaders(headers);
+    const auth = fromMockHeaders(headers, options.allowMissingTenantContext === true);
     logAuthAudit("auth_authenticated", {
       mode: authMode,
       userId: auth.userId,
@@ -323,7 +333,13 @@ export async function authenticateRequest(
   ]);
 
   const role = toRole(roleClaim);
-  const tenantId = pickActiveTenantId(headers, options.tenantIdHint, tenantIdClaim);
+  const tenantId = pickActiveTenantId(
+    headers,
+    options.tenantIdHint,
+    tenantIdClaim,
+    role,
+    options.allowMissingTenantContext === true
+  );
   if (options.requireMembership !== false) {
     await assertTenantMembership(role, userId, tenantId);
   }

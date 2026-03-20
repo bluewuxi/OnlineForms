@@ -650,6 +650,42 @@ Resources:
             Path: /org/audit
             Method: GET
 
+  InternalTenantsListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantsList.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantsListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants
+            Method: GET
+
+  InternalTenantsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantsUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantsUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants/{tenantId}
+            Method: PATCH
+
   PaymentsStubFunction:
     Type: AWS::Serverless::Function
     Properties:

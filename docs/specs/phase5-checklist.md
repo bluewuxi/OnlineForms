@@ -26,7 +26,7 @@ Implement tasks strictly in order. For each task:
   - Enforce checks on create/update flows
   - Return explicit validation errors and add tests
 
-- [ ] P5-03 Internal management role and tenant update-only APIs
+- [x] P5-03 Internal management role and tenant update-only APIs
   Issue: https://github.com/bluewuxi/OnlineForms/issues/37
   Scope:
   - Add `internal_manager` role support in auth policy

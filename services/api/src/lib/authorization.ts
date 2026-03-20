@@ -15,7 +15,9 @@ export type OrgPolicyAction =
   | "ORG_ASSET_WRITE"
   | "ORG_AUDIT_READ"
   | "ORG_TENANT_SETTINGS_WRITE"
-  | "ORG_TENANT_INVITE_CREATE";
+  | "ORG_TENANT_INVITE_CREATE"
+  | "INTERNAL_TENANT_READ"
+  | "INTERNAL_TENANT_WRITE";
 
 type Policy = {
   roles: AuthRole[];
@@ -35,7 +37,9 @@ const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_ASSET_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_AUDIT_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false }
+  ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false },
+  INTERNAL_TENANT_READ: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
+  INTERNAL_TENANT_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true }
 };
 
 export function authorizeOrgAction(
@@ -63,6 +67,10 @@ export function authorizeOrgAction(
       "FORBIDDEN",
       "platform_admin is not allowed to bypass tenant scope for this endpoint."
     );
+  }
+
+  if (action.startsWith("INTERNAL_")) {
+    return;
   }
 
   if (auth.role !== "platform_admin" && auth.tenantId !== resourceTenantId) {

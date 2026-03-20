@@ -672,6 +672,25 @@ Fetch tenant metadata.
 
 Update tenant metadata/status.
 
+## 8.2 Internal Management API
+
+### `GET /v1/internal/tenants`
+
+List tenant profiles for internal management pages.
+
+Query:
+
+- `limit` (optional, default `100`, max `200`)
+
+### `PATCH /v1/internal/tenants/{tenantId}`
+
+Update-only tenant profile fields used by management tooling:
+
+- `displayName`
+- `description`
+- `isActive`
+- `homePageContent`
+
 ---
 
 ## 9. Validation Rules

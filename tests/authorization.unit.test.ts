@@ -49,3 +49,12 @@ test("authorizeOrgAction limits platform_admin bypass to approved actions", () =
     }
   );
 });
+
+test("authorizeOrgAction allows internal tenant actions for internal_admin without tenant match", () => {
+  assert.doesNotThrow(() =>
+    authorizeOrgAction(auth("internal_admin", "__internal__"), "INTERNAL_TENANT_READ", "ten_b")
+  );
+  assert.doesNotThrow(() =>
+    authorizeOrgAction(auth("internal_admin", "__internal__"), "INTERNAL_TENANT_WRITE", "ten_a")
+  );
+});

@@ -32,6 +32,7 @@ export type PublicTenantDirectoryItem = {
 };
 
 export type UpdateTenantProfileInput = {
+  displayName?: string;
   description?: string | null;
   isActive?: boolean;
   homePageContent?: string | null;
@@ -39,6 +40,7 @@ export type UpdateTenantProfileInput = {
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+const MAX_DISPLAY_NAME_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
 
@@ -61,6 +63,24 @@ function resolveIsActive(item: Record<string, unknown>): boolean {
 export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): UpdateTenantProfileInput {
   const out: UpdateTenantProfileInput = {};
   const details: Array<{ field?: string; issue: string }> = [];
+
+  if (Object.prototype.hasOwnProperty.call(input, "displayName")) {
+    if (typeof input.displayName === "string") {
+      const displayName = input.displayName.trim();
+      if (displayName.length === 0) {
+        details.push({ field: "displayName", issue: "Cannot be empty." });
+      } else if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+        details.push({
+          field: "displayName",
+          issue: `Must be at most ${MAX_DISPLAY_NAME_LENGTH} characters.`
+        });
+      } else {
+        out.displayName = displayName;
+      }
+    } else {
+      details.push({ field: "displayName", issue: "Must be a string." });
+    }
+  }
 
   if (Object.prototype.hasOwnProperty.call(input, "description")) {
     if (input.description == null) {
@@ -193,6 +213,35 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+export async function listInternalTenantProfiles(limit = 100): Promise<TenantProfile[]> {
+  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 200) : 100;
+  const out = await ddb.send(
+    new ScanCommand({
+      TableName: tableName,
+      FilterExpression: "#sk = :profileSk AND #entityType = :entityType",
+      ExpressionAttributeNames: {
+        "#sk": "SK",
+        "#entityType": "entityType"
+      },
+      ExpressionAttributeValues: {
+        ":profileSk": "PROFILE",
+        ":entityType": "TENANT"
+      },
+      Limit: normalizedLimit
+    })
+  );
+
+  const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
+  return rows
+    .map((item) => {
+      const tenantId = asString(item.tenantId);
+      if (!tenantId) return null;
+      return toTenantProfile(tenantId, item);
+    })
+    .filter((item): item is TenantProfile => item !== null)
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
 export async function updateTenantBranding(
   tenantId: string,
   logoAssetId: string | null
@@ -254,6 +303,12 @@ export async function updateTenantProfile(
       values[":description"] = patch.description;
       sets.push("#description = :description");
     }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
+    names["#displayName"] = "displayName";
+    values[":displayName"] = patch.displayName;
+    sets.push("#displayName = :displayName");
   }
 
   if (Object.prototype.hasOwnProperty.call(patch, "isActive")) {

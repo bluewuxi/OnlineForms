@@ -80,6 +80,24 @@ test("authenticateRequest rejects missing tenant in mock mode", async () => {
   }
 });
 
+test("authenticateRequest allows missing tenant for internal_admin when explicitly enabled", async () => {
+  const restore = withAuthEnv({ AUTH_MODE: "mock", APP_ENV: "local" });
+  try {
+    const auth = await authenticateRequest(
+      {
+        "x-user-id": "usr_1",
+        "x-role": "internal_admin"
+      },
+      { allowMissingTenantContext: true, requireMembership: false }
+    );
+    assert.equal(auth.userId, "usr_1");
+    assert.equal(auth.role, "internal_admin");
+    assert.equal(auth.tenantId, "__internal__");
+  } finally {
+    restore();
+  }
+});
+
 test("authenticateRequest rejects missing bearer token in cognito mode", async () => {
   const restore = withAuthEnv({ AUTH_MODE: "cognito", APP_ENV: "stage" });
   try {

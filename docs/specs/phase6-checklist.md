@@ -33,7 +33,7 @@ Implement tasks strictly in order. For each task:
   - Expand auth metrics/audit events for refresh troubleshooting
   - Add tests for token lifecycle error behavior
 
-- [ ] P6-04 Cognito auth smoke pack and CI deployment gates
+- [x] P6-04 Cognito auth smoke pack and CI deployment gates
   Issue: https://github.com/bluewuxi/OnlineForms/issues/46
   Scope:
   - Extend smoke checks for Cognito-authenticated org/internal flows

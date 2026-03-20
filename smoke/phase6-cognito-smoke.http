@@ -1,0 +1,28 @@
+@baseUrl = https://form-api.kidrawer.com/v1
+@tenantId = ten_demo
+@jwt = REPLACE_WITH_COGNITO_ACCESS_TOKEN
+
+### Health
+GET {{baseUrl}}/health
+
+### Org profile (tenant resolved from JWT claim)
+GET {{baseUrl}}/org/me
+Authorization: Bearer {{jwt}}
+
+### Org courses list (no tenant header required in cognito mode)
+GET {{baseUrl}}/org/courses
+Authorization: Bearer {{jwt}}
+
+### Org courses list with matching tenant header (optional)
+GET {{baseUrl}}/org/courses
+Authorization: Bearer {{jwt}}
+x-tenant-id: {{tenantId}}
+
+### Tenant mismatch check (expect 403)
+GET {{baseUrl}}/org/courses
+Authorization: Bearer {{jwt}}
+x-tenant-id: ten_other
+
+### Tenant route mismatch check (expect 403)
+GET {{baseUrl}}/org/tenants/ten_other/check
+Authorization: Bearer {{jwt}}

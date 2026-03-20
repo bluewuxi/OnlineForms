@@ -195,6 +195,7 @@ Smoke request collection:
 - `smoke/phase3-smoke.http`
 - `smoke/phase4-cognito-smoke.http`
 - `smoke/phase5-smoke.http`
+- `smoke/phase6-cognito-smoke.http`
 
 Phase 5 tenant-profile migration helper:
 

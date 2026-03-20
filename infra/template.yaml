@@ -752,6 +752,22 @@ Resources:
             Path: /public/{tenantCode}/courses/{courseId}
             Method: GET
 
+  PublicTenantHomeGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/publicTenantHomeGet.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+      Events:
+        PublicTenantHomeGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/{tenantCode}/tenant-home
+            Method: GET
+
   PublicEnrollmentsCreateFunction:
     Type: AWS::Serverless::Function
     Properties:

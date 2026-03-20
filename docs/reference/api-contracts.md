@@ -549,6 +549,30 @@ Response `200`:
 }
 ```
 
+### `GET /v1/public/{tenantCode}/tenant-home`
+
+Returns tenant landing payload used by `/{tenantCode}` page.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "tenantCode": "std-school",
+    "displayName": "Standard School",
+    "description": "Tenant description",
+    "homePageContent": "Welcome text",
+    "isActive": true,
+    "branding": {
+      "logoAssetId": null
+    },
+    "links": {
+      "publishedCourses": "/v1/public/std-school/courses"
+    }
+  }
+}
+```
+
 ### `GET /v1/public/{tenantCode}/courses`
 
 Returns only published and public-visible courses.

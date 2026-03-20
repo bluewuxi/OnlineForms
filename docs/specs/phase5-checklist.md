@@ -33,7 +33,7 @@ Implement tasks strictly in order. For each task:
   - Add internal APIs for tenant profile update-only workflows
   - Keep tenant create/delete out of scope for these APIs
 
-- [ ] P5-04 Tenant home-page API contract and published course linkage
+- [x] P5-04 Tenant home-page API contract and published course linkage
   Issue: https://github.com/bluewuxi/OnlineForms/issues/38
   Scope:
   - Add tenant home payload endpoint keyed by `tenantCode`

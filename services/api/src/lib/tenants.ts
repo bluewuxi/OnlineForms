@@ -1,6 +1,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
+import { resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
 import { normalizeTenantCode } from "./tenantCodes";
 
@@ -29,6 +30,20 @@ export type PublicTenantDirectoryItem = {
   displayName: string;
   description: string | null;
   isActive: boolean;
+};
+
+export type PublicTenantHome = {
+  tenantCode: string;
+  displayName: string;
+  description: string | null;
+  homePageContent: string | null;
+  isActive: boolean;
+  branding: {
+    logoAssetId: string | null;
+  };
+  links: {
+    publishedCourses: string;
+  };
 };
 
 export type UpdateTenantProfileInput = {
@@ -211,6 +226,26 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
     })
     .filter((item): item is PublicTenantDirectoryItem => item !== null && item.isActive)
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+export async function getPublicTenantHomeByCode(tenantCode: string): Promise<PublicTenantHome> {
+  const normalizedTenantCode = normalizeTenantCode(tenantCode);
+  const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
+  const profile = await getTenantProfile(tenantId);
+  if (!profile.isActive) {
+    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+  }
+  return {
+    tenantCode: profile.tenantCode,
+    displayName: profile.displayName,
+    description: profile.description,
+    homePageContent: profile.homePageContent,
+    isActive: profile.isActive,
+    branding: profile.branding,
+    links: {
+      publishedCourses: `/v1/public/${profile.tenantCode}/courses`
+    }
+  };
 }
 
 export async function listInternalTenantProfiles(limit = 100): Promise<TenantProfile[]> {

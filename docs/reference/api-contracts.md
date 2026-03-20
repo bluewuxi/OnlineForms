@@ -573,6 +573,25 @@ Response `200`:
 }
 ```
 
+### `GET /v1/public/auth-options`
+
+Returns login role options and tenant requirement semantics for frontend auth shell.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "roles": [
+      { "role": "org_admin", "label": "Org Admin", "requiresTenant": true },
+      { "role": "org_editor", "label": "Org Editor", "requiresTenant": true },
+      { "role": "internal_admin", "label": "Internal Admin", "requiresTenant": false },
+      { "role": "platform_admin", "label": "Platform Admin", "requiresTenant": true }
+    ]
+  }
+}
+```
+
 ### `GET /v1/public/{tenantCode}/courses`
 
 Returns only published and public-visible courses.

@@ -516,6 +516,19 @@ components:
       - displayName
       - isActive
       - links
+    PublicAuthRoleOption:
+      properties:
+        role:
+          type: string
+        label:
+          type: string
+        requiresTenant:
+          type: boolean
+      type: object
+      required:
+      - role
+      - label
+      - requiresTenant
     Tenant:
       properties:
         id:
@@ -1453,6 +1466,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/PublicCourseListResponse'
           description: Public course list
+      security: []
+      tags:
+      - Public Catalog
+  /v1/public/auth-options:
+    get:
+      summary: List auth role options for login UX
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      roles:
+                        items:
+                          $ref: '#/components/schemas/PublicAuthRoleOption'
+                        type: array
+                    required:
+                    - roles
+                required:
+                - data
+          description: Auth options
       security: []
       tags:
       - Public Catalog

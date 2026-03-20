@@ -768,6 +768,19 @@ Resources:
             Path: /public/{tenantCode}/tenant-home
             Method: GET
 
+  PublicAuthOptionsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/publicAuthOptionsGet.handler
+      Events:
+        PublicAuthOptionsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/auth-options
+            Method: GET
+
   PublicEnrollmentsCreateFunction:
     Type: AWS::Serverless::Function
     Properties:

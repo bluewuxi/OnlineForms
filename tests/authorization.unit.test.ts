@@ -58,3 +58,7 @@ test("authorizeOrgAction allows internal tenant actions for internal_admin witho
     authorizeOrgAction(auth("internal_admin", "__internal__"), "INTERNAL_TENANT_WRITE", "ten_a")
   );
 });
+
+test("authorizeOrgAction allows ORG_ME_READ for internal_admin", () => {
+  assert.doesNotThrow(() => authorizeOrgAction(auth("internal_admin", "__internal__"), "ORG_ME_READ"));
+});

@@ -23,6 +23,7 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       STACK_NAME: ${{ vars.STACK_NAME }}
+      DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT }}
       API_CUSTOM_DOMAIN_ENABLED: ${{ vars.API_CUSTOM_DOMAIN_ENABLED }}
       API_CUSTOM_DOMAIN_NAME: ${{ vars.API_CUSTOM_DOMAIN_NAME }}
       API_CUSTOM_DOMAIN_CERTIFICATE_ARN: ${{ vars.API_CUSTOM_DOMAIN_CERTIFICATE_ARN }}
@@ -63,6 +64,23 @@ jobs:
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
 
+      - name: Normalize deployment environment
+        run: |
+          if [ -z "$DEPLOYMENT_ENVIRONMENT" ] || [ "$DEPLOYMENT_ENVIRONMENT" = "true" ]; then
+            echo "DEPLOYMENT_ENVIRONMENT=stage" >> "$GITHUB_ENV"
+            echo "Normalized DEPLOYMENT_ENVIRONMENT to stage."
+          fi
+
+      - name: Validate deployment environment
+        run: |
+          case "$DEPLOYMENT_ENVIRONMENT" in
+            local|test|stage|prod) ;;
+            *)
+              echo "Invalid DEPLOYMENT_ENVIRONMENT: '$DEPLOYMENT_ENVIRONMENT'. Expected one of local/test/stage/prod."
+              exit 1
+              ;;
+          esac
+
       - name: SAM deploy
         run: >-
           sam deploy
@@ -71,6 +89,7 @@ jobs:
           --region $AWS_REGION
           --capabilities CAPABILITY_IAM
           --parameter-overrides
+          DeploymentEnvironment=$DEPLOYMENT_ENVIRONMENT
           ManagedCognitoEnabled=true
           CognitoTokenUse=id
           ApiCustomDomainEnabled=$API_CUSTOM_DOMAIN_ENABLED

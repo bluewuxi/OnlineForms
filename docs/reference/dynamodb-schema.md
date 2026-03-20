@@ -496,4 +496,5 @@ Invite and membership activation baseline:
 - Membership activation records on acceptance:
   - `PK=USER#{userId}`, `SK=MEMBERSHIP#{tenantId}` (user edge)
   - `PK=TENANT#{tenantId}`, `SK=MEMBER#{userId}` (tenant edge)
+  - `allowedRoles` (new in Phase 6): list of tenant-scoped roles permitted for this membership
   - audit fields: `createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `activatedAt`, `activatedBy`

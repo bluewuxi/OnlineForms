@@ -76,6 +76,8 @@ Tenant context rule:
 - Membership source record:
   - `PK=USER#{userId}`
   - `SK=MEMBERSHIP#{tenantId}`
+- When membership contains `allowedRoles`, caller role must be included in this list.
+- Backward compatibility: records without `allowedRoles` are treated as single-role memberships using `role`.
 - Missing or non-active membership returns `403 FORBIDDEN`.
 
 ---

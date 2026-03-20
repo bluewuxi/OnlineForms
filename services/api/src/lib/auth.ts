@@ -44,6 +44,7 @@ type MembershipRecord = {
   tenantId: string;
   status: MembershipStatus;
   role: AuthRole;
+  allowedRoles?: AuthRole[];
 };
 type TokenVerifier = { verify: (token: string) => Promise<Record<string, unknown>> };
 
@@ -216,6 +217,13 @@ async function getMembership(userId: string, tenantId: string): Promise<Membersh
   if (!item) return null;
   const status = item.status;
   const role = item.role;
+  const allowedRolesRaw = item.allowedRoles;
+  const membershipAllowedRoles =
+    Array.isArray(allowedRolesRaw)
+      ? allowedRolesRaw.filter(
+          (value): value is AuthRole => typeof value === "string" && allowedRoles.has(value as AuthRole)
+        )
+      : undefined;
   if (
     typeof status !== "string" ||
     typeof role !== "string" ||
@@ -227,7 +235,8 @@ async function getMembership(userId: string, tenantId: string): Promise<Membersh
   return {
     tenantId,
     status: status as MembershipStatus,
-    role: role as AuthRole
+    role: role as AuthRole,
+    allowedRoles: membershipAllowedRoles
   };
 }
 
@@ -242,6 +251,25 @@ async function assertTenantMembership(role: AuthRole, userId: string, tenantId: 
       403,
       "FORBIDDEN",
       "User does not have active membership for the requested tenant."
+    );
+  }
+  const allowedMembershipRoles =
+    membership.allowedRoles && membership.allowedRoles.length > 0
+      ? membership.allowedRoles
+      : [membership.role];
+  if (!allowedMembershipRoles.includes(role)) {
+    emitMembershipDeniedMetric();
+    logAuthAudit("auth_membership_denied", {
+      userId,
+      tenantId,
+      role,
+      membershipRole: membership.role,
+      allowedRoles: allowedMembershipRoles
+    });
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "User role is not allowed for the requested tenant membership."
     );
   }
   logAuthAudit("auth_membership_granted", { userId, tenantId, role, membershipRole: membership.role });

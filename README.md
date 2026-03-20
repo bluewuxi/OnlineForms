@@ -16,6 +16,7 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/guides/COGNITO_AUTH_TROUBLESHOOTING.md`
 - `docs/guides/PHASE5_MIGRATION_RUNBOOK.md`
 - `docs/guides/PHASE6_COGNITO_REFRESH_RUNBOOK.md`
+- `docs/guides/PHASE6_AUTH_ROLELIST_MIGRATION.md`
 - `docs/reference/api-contracts.md`
 - `docs/reference/dynamodb-schema.md`
 - `docs/reference/auth-claims-strategy.md`

@@ -331,13 +331,49 @@ test("authenticateRequest uses tenant claim and allows active membership", async
   });
   __authTestHooks.setMembershipLoaderOverride(async (_userId, tenantId) => {
     if (tenantId !== "ten_1") return null;
-    return { tenantId, status: "active", role: "org_editor" };
+    return { tenantId, status: "active", role: "org_editor", allowedRoles: ["org_editor"] };
   });
   try {
     const auth = await authenticateRequest({ authorization: "Bearer test-token" });
     assert.equal(auth.userId, "usr_1");
     assert.equal(auth.tenantId, "ten_1");
     assert.equal(auth.role, "org_editor");
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest rejects role not included in membership allowedRoles", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_1",
+      "custom:role": "org_editor"
+    })
+  });
+  __authTestHooks.setMembershipLoaderOverride(async (_userId, tenantId) => {
+    if (tenantId !== "ten_1") return null;
+    return { tenantId, status: "active", role: "org_admin", allowedRoles: ["org_admin"] };
+  });
+  try {
+    await assert.rejects(
+      () => authenticateRequest({ authorization: "Bearer test-token" }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        assert.match(apiError.message, /not allowed/i);
+        return true;
+      }
+    );
   } finally {
     __authTestHooks.reset();
     restore();

@@ -40,6 +40,14 @@ Implement tasks strictly in order. For each task:
   - Add CI/deploy assertions for required auth deployment parameters
   - Update runbooks/checklists for production rollout
 
+- [ ] P6-05 Auth-table allowed-role list model and enforcement
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/47
+  Scope:
+  - Extend auth-table schema to support per-user tenant-scoped allowed role lists
+  - Define token role vs allowed-role-list validation and effective-role resolution
+  - Enforce allowed-role checks in auth middleware and add regression tests
+  - Provide migration/backward-compatibility path for existing single-role records
+
 ## Status Legend
 
 - `[ ]` Not started

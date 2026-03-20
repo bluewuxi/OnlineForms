@@ -24,6 +24,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       STACK_NAME: ${{ vars.STACK_NAME }}
       DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT }}
+      COGNITO_TOKEN_USE: ${{ vars.COGNITO_TOKEN_USE }}
       API_CUSTOM_DOMAIN_ENABLED: ${{ vars.API_CUSTOM_DOMAIN_ENABLED }}
       API_CUSTOM_DOMAIN_NAME: ${{ vars.API_CUSTOM_DOMAIN_NAME }}
       API_CUSTOM_DOMAIN_CERTIFICATE_ARN: ${{ vars.API_CUSTOM_DOMAIN_CERTIFICATE_ARN }}
@@ -70,6 +71,10 @@ jobs:
             echo "DEPLOYMENT_ENVIRONMENT=stage" >> "$GITHUB_ENV"
             echo "Normalized DEPLOYMENT_ENVIRONMENT to stage."
           fi
+          if [ -z "$COGNITO_TOKEN_USE" ]; then
+            echo "COGNITO_TOKEN_USE=access" >> "$GITHUB_ENV"
+            echo "Normalized COGNITO_TOKEN_USE to access."
+          fi
 
       - name: Validate deployment environment
         run: |
@@ -77,6 +82,13 @@ jobs:
             local|test|stage|prod) ;;
             *)
               echo "Invalid DEPLOYMENT_ENVIRONMENT: '$DEPLOYMENT_ENVIRONMENT'. Expected one of local/test/stage/prod."
+              exit 1
+              ;;
+          esac
+          case "$COGNITO_TOKEN_USE" in
+            access|id) ;;
+            *)
+              echo "Invalid COGNITO_TOKEN_USE: '$COGNITO_TOKEN_USE'. Expected access or id."
               exit 1
               ;;
           esac
@@ -91,7 +103,7 @@ jobs:
           --parameter-overrides
           DeploymentEnvironment=$DEPLOYMENT_ENVIRONMENT
           ManagedCognitoEnabled=true
-          CognitoTokenUse=id
+          CognitoTokenUse=$COGNITO_TOKEN_USE
           ApiCustomDomainEnabled=$API_CUSTOM_DOMAIN_ENABLED
           ApiCustomDomainName=$API_CUSTOM_DOMAIN_NAME
           ApiCustomDomainCertificateArn=$API_CUSTOM_DOMAIN_CERTIFICATE_ARN

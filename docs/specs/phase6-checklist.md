@@ -19,14 +19,14 @@ Implement tasks strictly in order. For each task:
   - Harden stage/prod auth-mode configuration guardrails
   - Document runtime failure cases and operator expectations
 
-- [ ] P6-02 Cognito token refresh integration runbook and app-client settings
+- [x] P6-02 Cognito token refresh integration runbook and app-client settings
   Issue: https://github.com/bluewuxi/OnlineForms/issues/45
   Scope:
   - Define Cognito app-client settings required for refresh-token sessions
   - Document deployment prerequisites for token lifecycle settings
   - Add rollout validation and rollback notes
 
-- [ ] P6-03 Auth error taxonomy and observability for token lifecycle
+- [x] P6-03 Auth error taxonomy and observability for token lifecycle
   Issue: https://github.com/bluewuxi/OnlineForms/issues/44
   Scope:
   - Standardize auth error semantics for token-expiry/invalid-token branches

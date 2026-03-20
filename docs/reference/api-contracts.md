@@ -138,6 +138,13 @@ Common error codes:
 - `RATE_LIMITED`
 - `INTERNAL_ERROR`
 
+Auth token lifecycle details (`error.details[*].issue`) for `UNAUTHORIZED`:
+
+- `token_missing`: request has no bearer token
+- `token_malformed`: authorization header is not `Bearer <token>`
+- `token_expired`: token expired (retryable with refresh flow)
+- `token_invalid`: token signature/issuer/audience/claims verification failed
+
 ---
 
 ## 5. Data Contracts

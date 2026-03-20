@@ -1,5 +1,7 @@
 type AuthMetricName =
   | "InvalidTokenCount"
+  | "ExpiredTokenCount"
+  | "MalformedTokenCount"
   | "TenantMismatchCount"
   | "RoleDeniedCount"
   | "MembershipDeniedCount";
@@ -34,6 +36,14 @@ function emitMetric(metricName: AuthMetricName, value = 1): void {
 
 export function emitInvalidTokenMetric(): void {
   emitMetric("InvalidTokenCount", 1);
+}
+
+export function emitExpiredTokenMetric(): void {
+  emitMetric("ExpiredTokenCount", 1);
+}
+
+export function emitMalformedTokenMetric(): void {
+  emitMetric("MalformedTokenCount", 1);
 }
 
 export function emitTenantMismatchMetric(): void {

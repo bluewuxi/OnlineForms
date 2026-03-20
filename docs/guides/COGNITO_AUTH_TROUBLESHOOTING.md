@@ -73,7 +73,16 @@ Checks:
 - Metrics namespace: `OnlineForms/Auth`
 - Metrics:
   - `InvalidTokenCount`
+  - `ExpiredTokenCount`
+  - `MalformedTokenCount`
   - `TenantMismatchCount`
   - `RoleDeniedCount`
   - `MembershipDeniedCount`
 - Structured log marker: `\"type\":\"auth_audit\"`
+
+Token-failure issue hints (`error.details[*].issue`):
+
+- `token_missing`: no bearer token present
+- `token_malformed`: malformed `Authorization` header
+- `token_expired`: token expired (refresh candidate)
+- `token_invalid`: non-expiry JWT verification failure

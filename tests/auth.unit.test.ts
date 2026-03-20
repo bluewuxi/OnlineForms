@@ -107,6 +107,25 @@ test("authenticateRequest rejects missing bearer token in cognito mode", async (
         const apiError = asApiError(error);
         assert.equal(apiError.statusCode, 401);
         assert.equal(apiError.code, "UNAUTHORIZED");
+        assert.equal(apiError.details?.[0]?.issue, "token_missing");
+        return true;
+      }
+    );
+  } finally {
+    restore();
+  }
+});
+
+test("authenticateRequest rejects malformed bearer token format", async () => {
+  const restore = withAuthEnv({ AUTH_MODE: "cognito", APP_ENV: "stage" });
+  try {
+    await assert.rejects(
+      () => authenticateRequest({ authorization: "token-only" }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 401);
+        assert.equal(apiError.code, "UNAUTHORIZED");
+        assert.equal(apiError.details?.[0]?.issue, "token_malformed");
         return true;
       }
     );
@@ -226,6 +245,39 @@ test("authenticateRequest validates COGNITO_TOKEN_USE", async () => {
       }
     );
   } finally {
+    restore();
+  }
+});
+
+test("authenticateRequest classifies verifier expiry errors as token_expired", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => {
+      const expiredError = new Error("jwt expired");
+      expiredError.name = "JwtExpiredError";
+      throw expiredError;
+    }
+  });
+  try {
+    await assert.rejects(
+      () => authenticateRequest({ authorization: "Bearer test-token" }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 401);
+        assert.equal(apiError.code, "UNAUTHORIZED");
+        assert.equal(apiError.details?.[0]?.issue, "token_expired");
+        assert.match(apiError.message, /expired/i);
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
     restore();
   }
 });

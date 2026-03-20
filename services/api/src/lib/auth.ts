@@ -3,7 +3,9 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiError } from "./errors";
 import {
+  emitExpiredTokenMetric,
   emitInvalidTokenMetric,
+  emitMalformedTokenMetric,
   emitMembershipDeniedMetric,
   logAuthAudit
 } from "./authObservability";
@@ -62,13 +64,37 @@ function pickHeader(headers: HeaderMap, key: string): string | undefined {
 function getBearerToken(headers: HeaderMap): string {
   const raw = pickHeader(headers, "authorization");
   if (!raw) {
-    throw new ApiError(401, "UNAUTHORIZED", "Missing Authorization header.");
+    throw new ApiError(401, "UNAUTHORIZED", "Missing Authorization header.", [
+      { issue: "token_missing" }
+    ]);
   }
   const match = raw.match(/^Bearer\s+(.+)$/i);
   if (!match?.[1]) {
-    throw new ApiError(401, "UNAUTHORIZED", "Authorization header must use Bearer token.");
+    throw new ApiError(401, "UNAUTHORIZED", "Authorization header must use Bearer token.", [
+      { issue: "token_malformed" }
+    ]);
   }
   return match[1];
+}
+
+function classifyTokenFailure(error: unknown): {
+  message: string;
+  issue: "token_expired" | "token_invalid";
+} {
+  const name = typeof error === "object" && error && "name" in error ? String(error.name) : "";
+  const message =
+    typeof error === "object" && error && "message" in error ? String(error.message) : "";
+  const signature = `${name} ${message}`.toLowerCase();
+  if (signature.includes("expir")) {
+    return {
+      message: "Authentication token has expired.",
+      issue: "token_expired"
+    };
+  }
+  return {
+    message: "Invalid authentication token.",
+    issue: "token_invalid"
+  };
 }
 
 function toRole(value: unknown): AuthRole {
@@ -358,14 +384,27 @@ export async function authenticateRequest(
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.statusCode === 401) {
-        emitInvalidTokenMetric();
-        logAuthAudit("auth_invalid_token", { reason: error.message });
+        const issue = error.details?.[0]?.issue;
+        if (issue === "token_malformed") {
+          emitMalformedTokenMetric();
+        } else {
+          emitInvalidTokenMetric();
+        }
+        logAuthAudit("auth_invalid_token", { reason: error.message, issue });
       }
       throw error;
     }
-    emitInvalidTokenMetric();
-    logAuthAudit("auth_invalid_token", { reason: "jwt_verification_failed" });
-    throw new ApiError(401, "UNAUTHORIZED", "Invalid authentication token.");
+    const classified = classifyTokenFailure(error);
+    if (classified.issue === "token_expired") {
+      emitExpiredTokenMetric();
+    } else {
+      emitInvalidTokenMetric();
+    }
+    logAuthAudit("auth_invalid_token", {
+      reason: "jwt_verification_failed",
+      issue: classified.issue
+    });
+    throw new ApiError(401, "UNAUTHORIZED", classified.message, [{ issue: classified.issue }]);
   }
 
   const userId = toStringClaim(payload.sub, "sub");

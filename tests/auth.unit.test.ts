@@ -158,6 +158,32 @@ test("authenticateRequest blocks mock mode in stage/prod runtime", async () => {
   }
 });
 
+test("authenticateRequest rejects unsupported runtime environment values", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "mock",
+    APP_ENV: "stg"
+  });
+  try {
+    await assert.rejects(
+      () =>
+        authenticateRequest({
+          "x-user-id": "usr_1",
+          "x-tenant-id": "ten_1",
+          "x-role": "org_admin"
+        }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 500);
+        assert.equal(apiError.code, "INTERNAL_ERROR");
+        assert.match(apiError.message, /APP_ENV/i);
+        return true;
+      }
+    );
+  } finally {
+    restore();
+  }
+});
+
 test("authenticateRequest validates required cognito verifier config", async () => {
   const restore = withAuthEnv({
     AUTH_MODE: "cognito",

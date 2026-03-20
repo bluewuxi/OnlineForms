@@ -235,7 +235,11 @@ function getRuntimeEnv(): RuntimeEnv {
   if (raw === "local" || raw === "test" || raw === "stage" || raw === "prod") {
     return raw;
   }
-  return "local";
+  throw new ApiError(
+    500,
+    "INTERNAL_ERROR",
+    "Server auth is not configured: APP_ENV must be one of local/test/stage/prod."
+  );
 }
 
 function getAuthMode(): AuthMode {

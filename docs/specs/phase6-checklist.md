@@ -12,7 +12,7 @@ Implement tasks strictly in order. For each task:
 
 ## Tasks
 
-- [ ] P6-01 Cognito claim contract and environment hardening
+- [x] P6-01 Cognito claim contract and environment hardening
   Issue: https://github.com/bluewuxi/OnlineForms/issues/43
   Scope:
   - Finalize required token-claim contract for org and internal roles

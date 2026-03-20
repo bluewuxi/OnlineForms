@@ -61,7 +61,7 @@ Implement tasks strictly in order. For each task:
   - Allow tenant context to be optional for `internal_admin` role on internal endpoints
   - Keep tenant required for non-internal-admin org routes and update auth docs/tests
 
-- [ ] P5-08 Cognito single-tenant JWT auth context for org sessions
+- [x] P5-08 Cognito single-tenant JWT auth context for org sessions
   Issue: https://github.com/bluewuxi/OnlineForms/issues/42
   Scope:
   - Require tenant claim for org roles in `AUTH_MODE=cognito` (no default-tenant fallback)

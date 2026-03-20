@@ -215,7 +215,7 @@ test("authenticateRequest rejects cognito request when active membership is miss
   __authTestHooks.setVerifierOverride({
     verify: async () => ({
       sub: "usr_1",
-      "custom:defaultTenantId": "ten_1",
+      "custom:tenantId": "ten_1",
       "custom:role": "org_admin"
     })
   });
@@ -236,7 +236,7 @@ test("authenticateRequest rejects cognito request when active membership is miss
   }
 });
 
-test("authenticateRequest resolves x-tenant-id and allows active membership", async () => {
+test("authenticateRequest uses tenant claim and allows active membership", async () => {
   const restore = withAuthEnv({
     AUTH_MODE: "cognito",
     APP_ENV: "stage",
@@ -247,22 +247,149 @@ test("authenticateRequest resolves x-tenant-id and allows active membership", as
   __authTestHooks.setVerifierOverride({
     verify: async () => ({
       sub: "usr_1",
-      "custom:defaultTenantId": "ten_default",
+      "custom:tenantId": "ten_1",
       "custom:role": "org_editor"
     })
   });
   __authTestHooks.setMembershipLoaderOverride(async (_userId, tenantId) => {
-    if (tenantId !== "ten_override") return null;
+    if (tenantId !== "ten_1") return null;
     return { tenantId, status: "active", role: "org_editor" };
   });
   try {
-    const auth = await authenticateRequest({
-      authorization: "Bearer test-token",
-      "x-tenant-id": "ten_override"
-    });
+    const auth = await authenticateRequest({ authorization: "Bearer test-token" });
     assert.equal(auth.userId, "usr_1");
-    assert.equal(auth.tenantId, "ten_override");
+    assert.equal(auth.tenantId, "ten_1");
     assert.equal(auth.role, "org_editor");
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest rejects org role when tenant claim is missing in cognito mode", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:role": "org_admin"
+    })
+  });
+  try {
+    await assert.rejects(
+      () => authenticateRequest({ authorization: "Bearer test-token" }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        assert.match(apiError.message, /custom:tenantId/i);
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest rejects x-tenant-id override when it mismatches tenant claim", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_claim",
+      "custom:role": "org_editor"
+    })
+  });
+  try {
+    await assert.rejects(
+      () =>
+        authenticateRequest({
+          authorization: "Bearer test-token",
+          "x-tenant-id": "ten_other"
+        }),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        assert.match(apiError.message, /Tenant mismatch/i);
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest rejects tenantIdHint mismatch against tenant claim", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_claim",
+      "custom:role": "org_admin"
+    })
+  });
+  try {
+    await assert.rejects(
+      () =>
+        authenticateRequest(
+          { authorization: "Bearer test-token" },
+          { tenantIdHint: "ten_other" }
+        ),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        assert.match(apiError.message, /Tenant mismatch/i);
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest allows internal_admin without tenant claim only when explicitly enabled", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:role": "internal_admin"
+    })
+  });
+  try {
+    const auth = await authenticateRequest(
+      { authorization: "Bearer test-token" },
+      { allowMissingTenantContext: true, requireMembership: false }
+    );
+    assert.equal(auth.role, "internal_admin");
+    assert.equal(auth.tenantId, "__internal__");
   } finally {
     __authTestHooks.reset();
     restore();

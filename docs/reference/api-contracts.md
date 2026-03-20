@@ -22,10 +22,10 @@
 
 ### 2.2 Tenant Resolution
 
-- Organization APIs resolve active `tenantId` in this order:
-  - `x-tenant-id` header (if provided)
-  - route tenant context (for tenant-scoped routes like `/org/tenants/{tenantId}/check`)
-  - JWT default tenant claim (`custom:tenantId` or `tenantId`)
+- Organization APIs in Cognito mode resolve active `tenantId` from JWT tenant claim:
+  - `custom:tenantId` (fallback `tenantId`)
+- `x-tenant-id` header and route tenant context must match the JWT tenant claim when provided.
+- `internal_admin` may omit tenant context only on dedicated internal-management endpoints.
 - Public APIs resolve tenant by `tenantCode` in path.
 - `tenantCode` route values must pass backend guardrails and cannot use reserved slugs such as `org`, `internal`, `api`, `admin`, `health`, or `courses`.
 - All records persisted with `tenantId`.
@@ -52,10 +52,9 @@
 
 - `sub`: user ID
 - Preferred stable custom claims:
-  - `custom:defaultTenantId`
+  - `custom:tenantId` (required for non-`internal_admin` roles)
   - `custom:platformRole`
-- Backward-compatible role/tenant fallbacks accepted in MVP:
-  - tenant: `custom:tenantId`, `tenantId`
+- Backward-compatible role fallbacks accepted in MVP:
   - role: `custom:role`, `role`, first `cognito:groups` entry
 
 ### 3.3 Role Access Matrix (MVP)
@@ -67,7 +66,8 @@
 
 Tenant context rule:
 
-- `x-tenant-id` remains required for non-internal-admin org endpoints.
+- Non-`internal_admin` org requests must carry a tenant in JWT claim.
+- `x-tenant-id` is optional and cannot override JWT tenant claim.
 - `x-tenant-id` may be optional for `internal_admin` on dedicated internal-management endpoints.
 
 ### 3.4 Membership Enforcement

@@ -39,15 +39,14 @@ Use bearer token for org endpoints:
 
 - `Authorization: Bearer <jwt>`
 
-Optional active tenant selection:
+Tenant claim requirement:
 
-- `x-tenant-id: <tenantId>`
+- non-`internal_admin` users: JWT must include `custom:tenantId` (fallback `tenantId`)
+- `internal_admin`: tenant may be omitted only on internal-management endpoints
 
-Tenant context resolution order:
+Tenant consistency rule:
 
-1. `x-tenant-id`
-2. route tenant context
-3. JWT default tenant claim
+- if `x-tenant-id` is sent, it must match the JWT tenant claim
 
 ### Local/test only: mock mode
 
@@ -86,7 +85,6 @@ Get org profile (Cognito mode):
 
 ```bash
 curl -H "Authorization: Bearer <jwt>" \
-     -H "x-tenant-id: 001" \
      https://form-api.kidrawer.com/v1/org/me
 ```
 

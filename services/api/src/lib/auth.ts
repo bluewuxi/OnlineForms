@@ -118,7 +118,24 @@ function fromMockHeaders(headers: HeaderMap, allowMissingTenantContext: boolean)
   };
 }
 
-function pickActiveTenantId(
+function pickActiveTenantIdForMock(
+  headers: HeaderMap,
+  tenantIdHint: string | undefined,
+  role: AuthRole,
+  allowMissingTenantContext: boolean
+): string {
+  const tenantFromHeader = pickHeader(headers, "x-tenant-id")?.trim();
+  if (tenantFromHeader) return tenantFromHeader;
+  if (tenantIdHint?.trim()) return tenantIdHint.trim();
+  if (allowMissingTenantContext && role === "internal_admin") return "__internal__";
+  throw new ApiError(
+    403,
+    "FORBIDDEN",
+    "Unable to resolve tenant context from request. Provide x-tenant-id."
+  );
+}
+
+function pickActiveTenantIdForCognito(
   headers: HeaderMap,
   tenantIdHint: string | undefined,
   tenantIdClaim: string | undefined,
@@ -126,15 +143,37 @@ function pickActiveTenantId(
   allowMissingTenantContext: boolean
 ): string {
   const tenantFromHeader = pickHeader(headers, "x-tenant-id")?.trim();
-  if (tenantFromHeader) return tenantFromHeader;
-  if (tenantIdHint?.trim()) return tenantIdHint.trim();
-  if (tenantIdClaim?.trim()) return tenantIdClaim.trim();
-  if (allowMissingTenantContext && role === "internal_admin") return "__internal__";
-  throw new ApiError(
-    403,
-    "FORBIDDEN",
-    "Unable to resolve tenant context from request. Provide x-tenant-id or include a tenant claim."
-  );
+  const tenantFromHint = tenantIdHint?.trim();
+  const claimTenant = tenantIdClaim?.trim();
+
+  if (role === "internal_admin") {
+    if (claimTenant) return claimTenant;
+    if (tenantFromHeader) return tenantFromHeader;
+    if (tenantFromHint) return tenantFromHint;
+    if (allowMissingTenantContext) return "__internal__";
+    throw new ApiError(403, "FORBIDDEN", "JWT missing required claim: custom:tenantId.");
+  }
+
+  if (!claimTenant) {
+    throw new ApiError(403, "FORBIDDEN", "JWT missing required claim: custom:tenantId.");
+  }
+
+  if (tenantFromHeader && tenantFromHeader !== claimTenant) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Tenant mismatch: x-tenant-id does not match authenticated tenant claim."
+    );
+  }
+  if (tenantFromHint && tenantFromHint !== claimTenant) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Tenant mismatch: route tenant context does not match authenticated tenant claim."
+    );
+  }
+
+  return claimTenant;
 }
 
 async function getMembership(userId: string, tenantId: string): Promise<MembershipRecord | null> {
@@ -290,7 +329,14 @@ export async function authenticateRequest(
         "Server auth is not configured: AUTH_MODE=mock is not allowed in stage/prod."
       );
     }
-    const auth = fromMockHeaders(headers, options.allowMissingTenantContext === true);
+    const authFromHeaders = fromMockHeaders(headers, options.allowMissingTenantContext === true);
+    const tenantId = pickActiveTenantIdForMock(
+      headers,
+      options.tenantIdHint,
+      authFromHeaders.role,
+      options.allowMissingTenantContext === true
+    );
+    const auth: AuthContext = { ...authFromHeaders, tenantId };
     logAuthAudit("auth_authenticated", {
       mode: authMode,
       userId: auth.userId,
@@ -320,7 +366,6 @@ export async function authenticateRequest(
 
   const userId = toStringClaim(payload.sub, "sub");
   const tenantIdClaim = pickFirstString([
-    payload["custom:defaultTenantId"],
     payload["custom:tenantId"],
     payload.tenantId
   ]);
@@ -333,7 +378,7 @@ export async function authenticateRequest(
   ]);
 
   const role = toRole(roleClaim);
-  const tenantId = pickActiveTenantId(
+  const tenantId = pickActiveTenantIdForCognito(
     headers,
     options.tenantIdHint,
     tenantIdClaim,

@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
     "seed:sample": "node scripts/seed-sample-data.js",
+    "migrate:tenant-profiles": "node scripts/migrate-tenant-profiles.js",
     "reconcile:projections": "node scripts/reconcile-public-projections.js"
   },
   "dependencies": {

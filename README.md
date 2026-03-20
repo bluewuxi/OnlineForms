@@ -12,6 +12,7 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/guides/MVP_USER_GUIDE.md`
 - `docs/guides/AUTH_INCIDENT_RUNBOOK.md`
 - `docs/guides/COGNITO_AUTH_TROUBLESHOOTING.md`
+- `docs/guides/PHASE5_MIGRATION_RUNBOOK.md`
 - `docs/reference/api-contracts.md`
 - `docs/reference/dynamodb-schema.md`
 - `docs/reference/auth-claims-strategy.md`
@@ -190,6 +191,19 @@ Smoke request collection:
 - `smoke/phase2-smoke.http`
 - `smoke/phase3-smoke.http`
 - `smoke/phase4-cognito-smoke.http`
+- `smoke/phase5-smoke.http`
+
+Phase 5 tenant-profile migration helper:
+
+```bash
+npm run migrate:tenant-profiles
+```
+
+To apply migration writes (default is dry-run):
+
+```bash
+MIGRATION_DRY_RUN=false npm run migrate:tenant-profiles
+```
 
 Phase 3 operational checks:
 

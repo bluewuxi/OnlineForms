@@ -1,0 +1,28 @@
+@baseUrl = https://form-api.kidrawer.com/v1
+@tenantCode = std-school
+@tenantId = 001
+
+### Public tenant directory
+GET {{baseUrl}}/public/tenants
+
+### Public tenant home
+GET {{baseUrl}}/public/{{tenantCode}}/tenant-home
+
+### Public auth options
+GET {{baseUrl}}/public/auth-options
+
+### Internal tenants list (mock-mode/local use headers)
+GET {{baseUrl}}/internal/tenants
+x-user-id: internal-admin
+x-role: internal_admin
+
+### Internal tenant update (mock-mode/local use headers)
+PATCH {{baseUrl}}/internal/tenants/{{tenantId}}
+content-type: application/json
+x-user-id: internal-admin
+x-role: internal_admin
+
+{
+  "description": "Updated by phase5 smoke",
+  "isActive": true
+}

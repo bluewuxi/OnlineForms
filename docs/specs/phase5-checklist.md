@@ -40,7 +40,7 @@ Implement tasks strictly in order. For each task:
   - Return display/profile fields for tenant landing page
   - Include published course-list link metadata
 
-- [ ] P5-05 Phase 5 migration, seed, and verification pack
+- [x] P5-05 Phase 5 migration, seed, and verification pack
   Issue: https://github.com/bluewuxi/OnlineForms/issues/39
   Scope:
   - Add migration/backfill strategy for newly added tenant fields

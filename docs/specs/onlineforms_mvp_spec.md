@@ -409,6 +409,16 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
 - Internal-manager authorization and tenant update-only management APIs
 - Reserved tenant-code guardrails and tenant home-page API support
 
+### Phase 6
+- Cognito login workflow rollout
+- Token lifecycle guardrails and observability
+- Membership allowed-role model hardening
+
+### Phase 9
+- Hosted UI post-login tenant/role context selection contract
+- Context validation endpoints and membership-bound authorization
+- Extensible phase for upcoming auth workflow features
+
 ---
 
 ## 23. Final Recommendation

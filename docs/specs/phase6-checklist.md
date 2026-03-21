@@ -53,3 +53,5 @@ Implement tasks strictly in order. For each task:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Completed
+
+Phase 9 tasks are tracked in `docs/specs/phase9-checklist.md`.

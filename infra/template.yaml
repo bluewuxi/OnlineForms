@@ -341,6 +341,38 @@ Resources:
             Path: /org/me
             Method: GET
 
+  OrgSessionContextsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgSessionContextsGet.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgSessionContextsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/session-contexts
+            Method: GET
+
+  OrgSessionContextValidateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgSessionContextValidate.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgSessionContextValidateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/session-context
+            Method: POST
+
   OrgTenantCheckFunction:
     Type: AWS::Serverless::Function
     Properties:

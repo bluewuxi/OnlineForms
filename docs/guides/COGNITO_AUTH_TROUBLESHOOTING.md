@@ -20,6 +20,18 @@ Managed Cognito stack now provisions Hosted UI domain and OAuth code flow on the
   - `CognitoHostedUiDomain`
   - `CognitoHostedUiDomainUrl`
 
+## Post-login Tenant/Role Context
+
+After Hosted UI authentication, frontend must resolve and validate tenant/role context before opening org pages.
+
+- `GET /v1/org/session-contexts`
+  - bearer auth required
+  - returns active memberships and allowed roles per tenant for the authenticated user
+- `POST /v1/org/session-context`
+  - bearer auth required
+  - body: `{ "tenantId": "...", "role": "org_admin|org_editor|internal_admin|platform_admin" }`
+  - validates selected context against membership policy
+
 ## Common Symptoms
 
 ## 401 `UNAUTHORIZED`

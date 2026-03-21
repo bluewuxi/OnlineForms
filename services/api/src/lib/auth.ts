@@ -182,6 +182,9 @@ function pickActiveTenantIdForCognito(
   }
 
   if (!claimTenant) {
+    if (tenantFromHeader) return tenantFromHeader;
+    if (tenantFromHint) return tenantFromHint;
+    if (allowMissingTenantContext) return "__unscoped__";
     throw new ApiError(403, "FORBIDDEN", "JWT missing required claim: custom:tenantId.");
   }
 
@@ -447,8 +450,21 @@ export async function authenticateRequest(
     payload.role,
     Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined
   ]);
-
-  const role = toRole(roleClaim);
+  const tokenRole = toRole(roleClaim);
+  const requestedRoleRaw = pickHeader(headers, "x-role");
+  const requestedRole = requestedRoleRaw ? toRole(requestedRoleRaw) : undefined;
+  if (
+    requestedRole &&
+    (requestedRole === "platform_admin" || requestedRole === "internal_admin") &&
+    requestedRole !== tokenRole
+  ) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Requested role is not allowed by authenticated token claims."
+    );
+  }
+  const role = requestedRole ?? tokenRole;
   const tenantId = pickActiveTenantIdForCognito(
     headers,
     options.tenantIdHint,
@@ -465,6 +481,7 @@ export async function authenticateRequest(
     userId,
     tenantId,
     role,
+    tokenRole,
     membershipChecked: options.requireMembership !== false
   });
 

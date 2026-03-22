@@ -420,6 +420,9 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
 - Dual-intent login model:
   - tenant portal via membership-selected tenant/role
   - internal portal via global internal claim/group
+- Internal portal directory capabilities:
+  - tenant list
+  - list of users with internal-portal access
 - Extensible phase for upcoming auth workflow features
 
 ---

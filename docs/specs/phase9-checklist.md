@@ -50,6 +50,15 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Add migration guidance for existing users lacking internal claim/group
   - Add troubleshooting guidance for mixed internal + tenant users
 
+- [ ] P9-06 Internal portal directories (tenants + internal-access users)
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/53
+  Scope:
+  - Provide backend directory support for internal portal:
+    - tenant list for internal management
+    - users with internal-portal access capability
+  - Finalize query/pagination contract for internal directory APIs
+  - Add tests and documentation updates
+
 ## Status Legend
 
 - `[ ]` Not started

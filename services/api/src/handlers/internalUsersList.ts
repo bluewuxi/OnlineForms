@@ -28,11 +28,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const cursor = event.queryStringParameters?.cursor;
     const result = await listInternalAccessUsers(limit, cursor);
 
-    return jsonResponse(
-      200,
-      result,
-      correlation
-    );
+    return jsonResponse(200, result, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }

@@ -21,7 +21,7 @@ Phase 10 is intended for iterative internal-portal capabilities and can be exten
   - Document add-by-email/remove-access error contracts
   - Align docs with frontend Phase F10 requirements
 
-- [ ] P10-02 Internal users access management API (list/detail/add/remove)
+- [x] P10-02 Internal users access management API (list/detail/add/remove)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/55
   Scope:
   - List internal-access users

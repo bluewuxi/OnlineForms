@@ -17,7 +17,9 @@ export type OrgPolicyAction =
   | "ORG_TENANT_SETTINGS_WRITE"
   | "ORG_TENANT_INVITE_CREATE"
   | "INTERNAL_TENANT_READ"
-  | "INTERNAL_TENANT_WRITE";
+  | "INTERNAL_TENANT_WRITE"
+  | "INTERNAL_USER_READ"
+  | "INTERNAL_USER_WRITE";
 
 type Policy = {
   roles: AuthRole[];
@@ -39,7 +41,9 @@ const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false },
   INTERNAL_TENANT_READ: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
-  INTERNAL_TENANT_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true }
+  INTERNAL_TENANT_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
+  INTERNAL_USER_READ: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
+  INTERNAL_USER_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true }
 };
 
 export function authorizeOrgAction(

@@ -125,6 +125,7 @@ Resources:
           - POST
           - PATCH
           - PUT
+          - DELETE
           - OPTIONS
         MaxAge: 600
 
@@ -772,6 +773,11 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:ListUsersInGroup
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:AdminRemoveUserFromGroup
               Resource: "*"
       Events:
         InternalAccessUsersListRoute:
@@ -780,6 +786,88 @@ Resources:
             ApiId: !Ref OnlineFormsHttpApi
             Path: /internal/access-users
             Method: GET
+
+  InternalUsersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersList.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ListUsersInGroup
+              Resource: "*"
+      Events:
+        InternalUsersListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users
+            Method: GET
+
+  InternalUsersGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersGet.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: "*"
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalUsersGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}
+            Method: GET
+
+  InternalUsersCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersCreate.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminAddUserToGroup
+              Resource: "*"
+      Events:
+        InternalUsersCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users
+            Method: POST
+
+  InternalUsersDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersDelete.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminRemoveUserFromGroup
+              Resource: "*"
+      Events:
+        InternalUsersDeleteRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}
+            Method: DELETE
 
   PaymentsStubFunction:
     Type: AWS::Serverless::Function

@@ -28,12 +28,15 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Harden edge-case contracts and regression tests
   - Update rollout runbook and troubleshooting notes
 
-- [ ] P9-03 Extensible auth workflow backlog slot
+- [x] P9-03 Extensible auth workflow backlog slot
   Issue: https://github.com/bluewuxi/OnlineForms/issues/48
   Scope:
-  - Carry incremental auth workflow features as requirements evolve
-  - Capture scope per enhancement before implementation
-  - Deliver with tests/docs/checklist updates
+- Carry incremental auth workflow features as requirements evolve
+- Capture scope per enhancement before implementation
+- Deliver with tests/docs/checklist updates
+  Delivered scope:
+  - Added optional `status` filter for `GET /v1/org/session-contexts` (`active|invited|suspended`)
+  - Added handler + unit/integration regression coverage for context filtering contracts
 
 - [x] P9-04 Dual-intent auth contract (tenant portal vs internal portal)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/51

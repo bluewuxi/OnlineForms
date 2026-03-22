@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   assertTenantRoleAllowed,
+  filterUserTenantContextsByStatus,
+  parseContextStatusFilter,
   type UserTenantContext
 } from "../services/api/src/lib/authContexts";
 import { ApiError } from "../services/api/src/lib/errors";
@@ -65,4 +67,31 @@ test("assertTenantRoleAllowed rejects disallowed role", () => {
       return true;
     }
   );
+});
+
+test("parseContextStatusFilter parses and deduplicates valid statuses", () => {
+  const statuses = parseContextStatusFilter("active, invited,active");
+  assert.deepEqual(statuses, ["active", "invited"]);
+});
+
+test("parseContextStatusFilter rejects invalid values", () => {
+  assert.throws(
+    () => parseContextStatusFilter("active,blocked"),
+    (error: unknown) => {
+      const apiError = asApiError(error);
+      assert.equal(apiError.statusCode, 400);
+      assert.equal(apiError.code, "VALIDATION_ERROR");
+      return true;
+    }
+  );
+});
+
+test("filterUserTenantContextsByStatus applies status filter", () => {
+  const contexts: UserTenantContext[] = [
+    { tenantId: "ten_1", status: "active", roles: ["org_admin"] },
+    { tenantId: "ten_2", status: "invited", roles: ["org_editor"] }
+  ];
+  const filtered = filterUserTenantContextsByStatus(contexts, ["active"]);
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].tenantId, "ten_1");
 });

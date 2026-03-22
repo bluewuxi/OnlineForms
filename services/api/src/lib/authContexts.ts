@@ -9,20 +9,27 @@ import { ApiError } from "./errors";
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const authTableName = process.env.ONLINEFORMS_AUTH_TABLE ?? AUTH_TABLE_NAME_DEFAULT;
 export type SessionContextRole = "org_admin" | "org_editor" | "platform_admin" | "internal_admin";
+export type SessionContextStatus = "active" | "invited" | "suspended";
 const supportedRoles = new Set<SessionContextRole>([
   "org_admin",
   "org_editor",
   "platform_admin",
   "internal_admin"
 ]);
+const supportedStatuses = new Set<SessionContextStatus>(["active", "invited", "suspended"]);
 
 export type UserTenantContext = {
   tenantId: string;
-  status: "active" | "invited" | "suspended";
+  status: SessionContextStatus;
   roles: SessionContextRole[];
 };
 
+let testContextLoaderOverride: ((userId: string) => Promise<UserTenantContext[]>) | null = null;
+
 export async function listUserTenantContexts(userId: string): Promise<UserTenantContext[]> {
+  if (testContextLoaderOverride) {
+    return testContextLoaderOverride(userId);
+  }
   const out = await ddb.send(
     new QueryCommand({
       TableName: authTableName,
@@ -39,8 +46,8 @@ export async function listUserTenantContexts(userId: string): Promise<UserTenant
     .map((item): UserTenantContext | null => {
       const tenantId = typeof item.tenantId === "string" ? item.tenantId.trim() : "";
       const status =
-        item.status === "active" || item.status === "invited" || item.status === "suspended"
-          ? item.status
+        typeof item.status === "string" && supportedStatuses.has(item.status as SessionContextStatus)
+          ? (item.status as SessionContextStatus)
           : null;
       if (!tenantId || !status) return null;
 
@@ -66,6 +73,30 @@ export async function listUserTenantContexts(userId: string): Promise<UserTenant
     .filter((value): value is UserTenantContext => Boolean(value));
 }
 
+export function parseContextStatusFilter(
+  rawStatus: string | undefined
+): SessionContextStatus[] | undefined {
+  if (!rawStatus || rawStatus.trim().length === 0) return undefined;
+  const statuses = rawStatus
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  if (statuses.length === 0) return undefined;
+  const invalid = statuses.find((entry) => !supportedStatuses.has(entry as SessionContextStatus));
+  if (invalid) {
+    throw new ApiError(400, "VALIDATION_ERROR", "status filter is invalid.");
+  }
+  return Array.from(new Set(statuses as SessionContextStatus[]));
+}
+
+export function filterUserTenantContextsByStatus(
+  contexts: UserTenantContext[],
+  statuses: SessionContextStatus[] | undefined
+): UserTenantContext[] {
+  if (!statuses || statuses.length === 0) return contexts;
+  return contexts.filter((context) => statuses.includes(context.status));
+}
+
 export function assertTenantRoleAllowed(
   contexts: UserTenantContext[],
   tenantId: string,
@@ -79,3 +110,12 @@ export function assertTenantRoleAllowed(
     throw new ApiError(403, "FORBIDDEN", "Selected role is not allowed for selected tenant.");
   }
 }
+
+export const __authContextsTestHooks = {
+  setContextLoaderOverride(loader: ((userId: string) => Promise<UserTenantContext[]>) | null): void {
+    testContextLoaderOverride = loader;
+  },
+  reset(): void {
+    testContextLoaderOverride = null;
+  }
+};

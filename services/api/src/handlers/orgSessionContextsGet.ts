@@ -3,7 +3,11 @@ import { authenticateRequest, hasTokenRoleCapability } from "../lib/auth";
 import { emitSessionContextsEmptyMetric, logAuthAudit } from "../lib/authObservability";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
-import { listUserTenantContexts } from "../lib/authContexts";
+import {
+  filterUserTenantContextsByStatus,
+  listUserTenantContexts,
+  parseContextStatusFilter
+} from "../lib/authContexts";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
@@ -12,7 +16,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       requireMembership: false,
       allowMissingTenantContext: true
     });
-    const contexts = await listUserTenantContexts(auth.userId);
+    const statuses = parseContextStatusFilter(event.queryStringParameters?.status);
+    const contexts = filterUserTenantContextsByStatus(
+      await listUserTenantContexts(auth.userId),
+      statuses
+    );
     const activeCount = contexts.filter((row) => row.status === "active").length;
     if (activeCount === 0) {
       emitSessionContextsEmptyMetric();
@@ -23,7 +31,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tokenRole: auth.role,
       contextsTotal: contexts.length,
       activeContexts: activeCount,
-      canAccessInternalPortal
+      canAccessInternalPortal,
+      statusFilter: statuses
     });
 
     return jsonResponse(

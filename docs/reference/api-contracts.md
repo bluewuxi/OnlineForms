@@ -528,6 +528,50 @@ Server behavior:
 
 ---
 
+## 6.6 Session Context APIs
+
+### `GET /v1/org/session-contexts`
+
+Returns tenant memberships/roles available for post-login context selection.
+
+Query:
+
+- `status` (optional CSV filter): `active|invited|suspended`
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_01J...",
+    "tokenRole": "org_admin",
+    "canAccessInternalPortal": false,
+    "contexts": [
+      {
+        "tenantId": "ten_01J...",
+        "status": "active",
+        "roles": ["org_admin", "org_editor"]
+      }
+    ]
+  }
+}
+```
+
+### `POST /v1/org/session-context`
+
+Validates selected `tenantId` and `role` against active membership.
+
+Request body:
+
+```json
+{
+  "tenantId": "ten_01J...",
+  "role": "org_admin"
+}
+```
+
+---
+
 ## 7. Public API (Anonymous)
 
 Tenant is resolved via `tenantCode` path segment.

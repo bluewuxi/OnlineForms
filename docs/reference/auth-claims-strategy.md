@@ -1,40 +1,51 @@
-# OnlineForms Auth Claim Strategy (Phase 5)
+# OnlineForms Auth Claim Strategy (Phase 9)
 
 ## Goal
 
-Keep JWT claims minimal and stable for single-tenant-per-login SaaS sessions while tenant membership and role enforcement is resolved from `OnlineFormsAuth`.
+Keep JWT claims minimal and stable while supporting dual login intents:
+- tenant portal login (tenant + role context selected post-login)
+- internal portal login (global internal capability)
 
 ## Stable Claim Set
 
-Use these custom claims as the contract:
+Use these claims as baseline contract:
 
-- `custom:tenantId`
 - `custom:platformRole`
 
 Backward-compatible role fallbacks remain supported:
 
 - role: `custom:role`, `role`, first `cognito:groups` entry
 
+Internal portal capability may come from:
+
+- `custom:platformRole=internal_admin`, or
+- `cognito:groups` containing `internal_admin`
+
 ## Why This Avoids Claim Explosion
 
 - JWTs do not carry membership lists.
-- Tenant membership list stays in DynamoDB (`OnlineFormsAuth`) and is checked at request time.
-- JWT remains compact and scoped to one tenant per login session.
+- Tenant memberships and per-tenant roles stay in DynamoDB (`OnlineFormsAuth`).
+- Selected tenant context is validated against membership at session-context API step.
 
 ## Authorization Decision Path
 
-For protected org endpoints:
+For tenant portal endpoints:
 
 1. Verify Cognito JWT (`sub`, token use, issuer/audience).
-2. Resolve authenticated tenant from JWT claim:
-   - `custom:tenantId` (fallback `tenantId`)
-3. Reject request if `x-tenant-id` header or route tenant context conflicts with JWT tenant claim.
-4. Resolve caller role (`custom:platformRole` fallback chain).
-5. Apply endpoint authorization policy.
-6. For non-platform callers, require active membership in `OnlineFormsAuth`:
+2. Resolve caller role (`custom:platformRole` fallback chain, or explicit requested role where allowed).
+3. Resolve active tenant context (`x-tenant-id` / route hint / claim fallback).
+4. Validate selected tenant+role against active membership in `OnlineFormsAuth`:
    - `PK=USER#{sub}`
    - `SK=MEMBERSHIP#{tenantId}`
-7. Execute tenant-scoped business operation.
+   - role must be in `allowedRoles` (or legacy `role` fallback)
+5. Apply endpoint authorization policy.
+6. Execute tenant-scoped business operation.
+
+For internal portal endpoints:
+
+1. Verify Cognito JWT.
+2. Require `internal_admin` capability from claim/group.
+3. Do not require tenant membership context for internal-management routes.
 
 ## Platform Admin Guardrail
 

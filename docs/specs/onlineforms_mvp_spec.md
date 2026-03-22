@@ -417,6 +417,9 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
 ### Phase 9
 - Hosted UI post-login tenant/role context selection contract
 - Context validation endpoints and membership-bound authorization
+- Dual-intent login model:
+  - tenant portal via membership-selected tenant/role
+  - internal portal via global internal claim/group
 - Extensible phase for upcoming auth workflow features
 
 ---

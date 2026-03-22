@@ -35,6 +35,21 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Capture scope per enhancement before implementation
   - Deliver with tests/docs/checklist updates
 
+- [ ] P9-04 Dual-intent auth contract (tenant portal vs internal portal)
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/51
+  Scope:
+  - Separate tenant-portal and internal-portal access decisions
+  - Keep tenant access membership-driven from `OnlineFormsAuth`
+  - Keep internal access as global `internal_admin` claim/group capability
+  - Harden route-policy boundaries and add focused regression tests
+
+- [ ] P9-05 Internal-access group mapping and rollout runbook
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/52
+  Scope:
+  - Define canonical Cognito group/claim mapping for internal portal access
+  - Add migration guidance for existing users lacking internal claim/group
+  - Add troubleshooting guidance for mixed internal + tenant users
+
 ## Status Legend
 
 - `[ ]` Not started

@@ -425,6 +425,18 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
   - list of users with internal-portal access
 - Extensible phase for upcoming auth workflow features
 
+### Phase 10
+- Internal portal IA refresh with dedicated top-nav model (`Home`, `Tenants`, `Users`, `Logout`)
+- Internal tenants management upgrade:
+  - list-first tenant view
+  - right-drawer display/edit
+  - create-tenant capability
+- Internal users management upgrade:
+  - list-first user view
+  - right-drawer user access detail (tenant/roles)
+  - add-by-email and remove-internal-access workflows
+- API contract and observability hardening for internal portal operations
+
 ---
 
 ## 23. Final Recommendation

@@ -8,7 +8,9 @@ type AuthMetricName =
   | "SessionContextsEmptyCount"
   | "SessionContextValidationSuccessCount"
   | "SessionContextValidationDeniedCount"
-  | "SessionContextValidationInvalidCount";
+  | "SessionContextValidationInvalidCount"
+  | "InternalAccessGrantCount"
+  | "InternalAccessRevokeCount";
 
 type AuthAuditEvent =
   | "auth_authenticated"
@@ -20,7 +22,10 @@ type AuthAuditEvent =
   | "auth_session_contexts_listed"
   | "auth_session_context_validation_succeeded"
   | "auth_session_context_validation_denied"
-  | "auth_session_context_validation_invalid";
+  | "auth_session_context_validation_invalid"
+  | "auth_internal_access_granted"
+  | "auth_internal_access_revoked"
+  | "auth_internal_access_mutation_failed";
 
 const serviceName = process.env.SERVICE_NAME ?? "onlineforms-api";
 
@@ -80,6 +85,14 @@ export function emitSessionContextValidationDeniedMetric(): void {
 
 export function emitSessionContextValidationInvalidMetric(): void {
   emitMetric("SessionContextValidationInvalidCount", 1);
+}
+
+export function emitInternalAccessGrantMetric(): void {
+  emitMetric("InternalAccessGrantCount", 1);
+}
+
+export function emitInternalAccessRevokeMetric(): void {
+  emitMetric("InternalAccessRevokeCount", 1);
 }
 
 export function logAuthAudit(event: AuthAuditEvent, details: Record<string, unknown>): void {

@@ -14,6 +14,10 @@ Operational notes for post-login tenant/role context selection flow.
   - Emitted when context validation is rejected with `403`.
 - `SessionContextValidationInvalidCount`
   - Emitted when context validation request fails with `400`.
+- `InternalAccessGrantCount`
+  - Emitted when internal access is granted through internal users API.
+- `InternalAccessRevokeCount`
+  - Emitted when internal access is removed through internal users API.
 
 ## Audit Events (`type=auth_audit`)
 
@@ -21,6 +25,9 @@ Operational notes for post-login tenant/role context selection flow.
 - `auth_session_context_validation_succeeded`
 - `auth_session_context_validation_denied`
 - `auth_session_context_validation_invalid`
+- `auth_internal_access_granted`
+- `auth_internal_access_revoked`
+- `auth_internal_access_mutation_failed`
 
 ## Troubleshooting
 

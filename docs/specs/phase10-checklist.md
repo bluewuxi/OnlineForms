@@ -29,7 +29,7 @@ Phase 10 is intended for iterative internal-portal capabilities and can be exten
   - Remove internal access for user
   - Return user detail payload with tenant memberships + roles
 
-- [ ] P10-03 Internal portal contract hardening (authz, audit, observability)
+- [x] P10-03 Internal portal contract hardening (authz, audit, observability)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/56
   Scope:
   - Harden authorization boundaries for internal management APIs

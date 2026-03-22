@@ -148,6 +148,30 @@ test("internalUsersCreate validates email is required", async () => {
   }
 });
 
+test("internalUsersCreate denies non-internal roles", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await createHandler(
+        makeEvent("POST", "/internal/users", {
+          headers: {
+            "x-role": "org_editor",
+            "x-user-id": "usr_2",
+            "x-tenant-id": "ten_1"
+          },
+          body: JSON.stringify({ email: "user@example.com" })
+        }),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 403);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
 test("internalUsersCreate returns 404 when email user is not found", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
@@ -192,6 +216,32 @@ test("internalUsersDelete removes internal access", async () => {
       )
     );
     assert.equal(result.statusCode, 200);
+  } finally {
+    __internalAccessUsersTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("internalUsersDelete returns conflict when user has no internal access", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  __internalAccessUsersTestHooks.setUserOpsOverride({
+    remove: async () => {
+      throw new ApiError(409, "CONFLICT", "User does not currently have internal access.");
+    }
+  });
+  try {
+    const result = asStructuredResult(
+      await deleteHandler(
+        makeEvent("DELETE", "/internal/users/{userId}", {
+          headers: internalHeaders,
+          pathParameters: { userId: "usr_internal_2" }
+        }),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 409);
   } finally {
     __internalAccessUsersTestHooks.reset();
     process.env.AUTH_MODE = oldMode;

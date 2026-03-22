@@ -21,7 +21,7 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Validate selected tenant/role against active membership + allowed roles
   - Keep Cognito auth contract compatibility and secure role-override guards
 
-- [ ] P9-02 Auth context observability and contract hardening
+- [x] P9-02 Auth context observability and contract hardening
   Issue: https://github.com/bluewuxi/OnlineForms/issues/49
   Scope:
   - Expand telemetry and failure diagnostics for context selection flow

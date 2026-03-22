@@ -1,5 +1,11 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest, type AuthRole } from "../lib/auth";
+import {
+  emitSessionContextValidationDeniedMetric,
+  emitSessionContextValidationInvalidMetric,
+  emitSessionContextValidationSuccessMetric,
+  logAuthAudit
+} from "../lib/authObservability";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
@@ -55,6 +61,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const contexts = await listUserTenantContexts(auth.userId);
     assertTenantRoleAllowed(contexts, tenantId, role);
+    emitSessionContextValidationSuccessMetric();
+    logAuthAudit("auth_session_context_validation_succeeded", {
+      userId: auth.userId,
+      tenantId,
+      role
+    });
 
     return jsonResponse(
       200,
@@ -68,6 +80,19 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       correlation
     );
   } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.statusCode === 400) {
+        emitSessionContextValidationInvalidMetric();
+        logAuthAudit("auth_session_context_validation_invalid", {
+          reason: error.message
+        });
+      } else if (error.statusCode === 403) {
+        emitSessionContextValidationDeniedMetric();
+        logAuthAudit("auth_session_context_validation_denied", {
+          reason: error.message
+        });
+      }
+    }
     return errorResponse(error, correlation);
   }
 };

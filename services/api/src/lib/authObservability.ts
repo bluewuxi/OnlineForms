@@ -4,7 +4,11 @@ type AuthMetricName =
   | "MalformedTokenCount"
   | "TenantMismatchCount"
   | "RoleDeniedCount"
-  | "MembershipDeniedCount";
+  | "MembershipDeniedCount"
+  | "SessionContextsEmptyCount"
+  | "SessionContextValidationSuccessCount"
+  | "SessionContextValidationDeniedCount"
+  | "SessionContextValidationInvalidCount";
 
 type AuthAuditEvent =
   | "auth_authenticated"
@@ -12,7 +16,11 @@ type AuthAuditEvent =
   | "auth_membership_denied"
   | "auth_membership_granted"
   | "auth_role_denied"
-  | "auth_tenant_mismatch";
+  | "auth_tenant_mismatch"
+  | "auth_session_contexts_listed"
+  | "auth_session_context_validation_succeeded"
+  | "auth_session_context_validation_denied"
+  | "auth_session_context_validation_invalid";
 
 const serviceName = process.env.SERVICE_NAME ?? "onlineforms-api";
 
@@ -56,6 +64,22 @@ export function emitRoleDeniedMetric(): void {
 
 export function emitMembershipDeniedMetric(): void {
   emitMetric("MembershipDeniedCount", 1);
+}
+
+export function emitSessionContextsEmptyMetric(): void {
+  emitMetric("SessionContextsEmptyCount", 1);
+}
+
+export function emitSessionContextValidationSuccessMetric(): void {
+  emitMetric("SessionContextValidationSuccessCount", 1);
+}
+
+export function emitSessionContextValidationDeniedMetric(): void {
+  emitMetric("SessionContextValidationDeniedCount", 1);
+}
+
+export function emitSessionContextValidationInvalidMetric(): void {
+  emitMetric("SessionContextValidationInvalidCount", 1);
 }
 
 export function logAuthAudit(event: AuthAuditEvent, details: Record<string, unknown>): void {

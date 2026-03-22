@@ -825,6 +825,11 @@ Return `429 RATE_LIMITED` when exceeded.
   - `statusCode`
   - latency
 - Auth decisions emit structured audit events (`type=auth_audit`) and auth metrics in namespace `OnlineForms/Auth`.
+- Session-context diagnostics metrics:
+  - `SessionContextsEmptyCount`
+  - `SessionContextValidationSuccessCount`
+  - `SessionContextValidationDeniedCount`
+  - `SessionContextValidationInvalidCount`
 
 ---
 

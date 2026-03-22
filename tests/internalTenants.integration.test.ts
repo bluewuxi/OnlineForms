@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { handler as listHandler } from "../services/api/src/handlers/internalTenantsList";
+import { handler as createHandler } from "../services/api/src/handlers/internalTenantsCreate";
+import { handler as getHandler } from "../services/api/src/handlers/internalTenantsGet";
 import { handler as updateHandler } from "../services/api/src/handlers/internalTenantsUpdate";
 
 function asStructuredResult(
@@ -15,7 +17,7 @@ function asStructuredResult(
 
 function makeEvent(
   path: string,
-  method: "GET" | "PATCH",
+  method: "GET" | "POST" | "PATCH",
   headers?: Record<string, string>,
   pathParameters?: Record<string, string>,
   queryStringParameters?: Record<string, string>,
@@ -115,6 +117,73 @@ test("internalTenantsUpdate returns 400 when tenantId path is missing", async ()
       )
     );
     assert.equal(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("internalTenantsCreate returns 400 for invalid payload", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await createHandler(
+        makeEvent(
+          "/internal/tenants",
+          "POST",
+          { "x-role": "internal_admin", "x-user-id": "usr_1" },
+          undefined,
+          undefined,
+          { displayName: "Only Name" }
+        ),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("internalTenantsGet returns 400 when tenantId path is missing", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await getHandler(
+        makeEvent(
+          "/internal/tenants/",
+          "GET",
+          { "x-role": "internal_admin", "x-user-id": "usr_1" },
+          {} as never
+        ),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("internalTenantsGet denies non-internal roles", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await getHandler(
+        makeEvent("/internal/tenants/{tenantId}", "GET", {
+          "x-role": "org_admin",
+          "x-user-id": "usr_1",
+          "x-tenant-id": "ten_1"
+        }, { tenantId: "001" }),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 403);
   } finally {
     process.env.AUTH_MODE = oldMode;
   }

@@ -1,5 +1,12 @@
+import { randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  ScanCommand,
+  TransactWriteCommand,
+  UpdateCommand
+} from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
 import { resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
@@ -49,6 +56,14 @@ export type PublicTenantHome = {
 
 export type UpdateTenantProfileInput = {
   displayName?: string;
+  description?: string | null;
+  isActive?: boolean;
+  homePageContent?: string | null;
+};
+
+export type CreateTenantProfileInput = {
+  tenantCode: string;
+  displayName: string;
   description?: string | null;
   isActive?: boolean;
   homePageContent?: string | null;
@@ -147,6 +162,90 @@ export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): Up
   }
 
   return out;
+}
+
+function normalizeTenantProfileCreate(input: CreateTenantProfileInput): {
+  tenantCode: string;
+  displayName: string;
+  description: string | null;
+  isActive: boolean;
+  homePageContent: string | null;
+} {
+  const details: Array<{ field?: string; issue: string }> = [];
+
+  const tenantCodeRaw = typeof input.tenantCode === "string" ? input.tenantCode : "";
+  let tenantCode: string | null = null;
+  try {
+    tenantCode = normalizeTenantCode(tenantCodeRaw, {
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      messagePrefix: "tenantCode is invalid."
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      details.push({ field: "tenantCode", issue: error.message });
+    } else {
+      throw error;
+    }
+  }
+
+  const displayName = typeof input.displayName === "string" ? input.displayName.trim() : "";
+  if (!displayName) {
+    details.push({ field: "displayName", issue: "displayName is required." });
+  } else if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+    details.push({
+      field: "displayName",
+      issue: `Must be at most ${MAX_DISPLAY_NAME_LENGTH} characters.`
+    });
+  }
+
+  const descriptionValue =
+    input.description == null
+      ? null
+      : typeof input.description === "string"
+        ? input.description.trim()
+        : undefined;
+  if (descriptionValue === undefined) {
+    details.push({ field: "description", issue: "Must be a string or null." });
+  } else if (descriptionValue && descriptionValue.length > MAX_DESCRIPTION_LENGTH) {
+    details.push({
+      field: "description",
+      issue: `Must be at most ${MAX_DESCRIPTION_LENGTH} characters.`
+    });
+  }
+
+  const homePageContentValue =
+    input.homePageContent == null
+      ? null
+      : typeof input.homePageContent === "string"
+        ? input.homePageContent.trim()
+        : undefined;
+  if (homePageContentValue === undefined) {
+    details.push({ field: "homePageContent", issue: "Must be a string or null." });
+  } else if (homePageContentValue && homePageContentValue.length > MAX_HOME_PAGE_CONTENT_LENGTH) {
+    details.push({
+      field: "homePageContent",
+      issue: `Must be at most ${MAX_HOME_PAGE_CONTENT_LENGTH} characters.`
+    });
+  }
+
+  const isActive = input.isActive ?? true;
+  if (typeof isActive !== "boolean") {
+    details.push({ field: "isActive", issue: "Must be a boolean." });
+  }
+
+  if (details.length > 0 || !tenantCode) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Invalid tenant profile create payload.", details);
+  }
+
+  return {
+    tenantCode,
+    displayName,
+    description: descriptionValue && descriptionValue.length > 0 ? descriptionValue : null,
+    isActive,
+    homePageContent:
+      homePageContentValue && homePageContentValue.length > 0 ? homePageContentValue : null
+  };
 }
 
 function toTenantProfile(tenantId: string, item: Record<string, unknown>): TenantProfile {
@@ -385,4 +484,66 @@ export async function updateTenantProfile(
   }
 
   return toTenantProfile(tenantId, out.Attributes as Record<string, unknown>);
+}
+
+export async function createTenantProfile(input: CreateTenantProfileInput): Promise<TenantProfile> {
+  const normalized = normalizeTenantProfileCreate(input);
+  const now = new Date().toISOString();
+  const tenantId = `ten_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+  const profileItem = {
+    PK: tenantPk(tenantId),
+    SK: "PROFILE",
+    entityType: "TENANT",
+    tenantId,
+    tenantCode: normalized.tenantCode,
+    displayName: normalized.displayName,
+    description: normalized.description,
+    isActive: normalized.isActive,
+    status: normalized.isActive ? "active" : "inactive",
+    homePageContent: normalized.homePageContent,
+    branding: {
+      logoAssetId: null
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+  const tenantCodeMapItem = {
+    PK: `TENANTCODE#${normalized.tenantCode}`,
+    SK: "MAP",
+    tenantCode: normalized.tenantCode,
+    tenantId
+  };
+
+  try {
+    await ddb.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: tableName,
+              Item: profileItem,
+              ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+            }
+          },
+          {
+            Put: {
+              TableName: tableName,
+              Item: tenantCodeMapItem,
+              ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+            }
+          }
+        ]
+      })
+    );
+  } catch (error) {
+    const message =
+      typeof error === "object" && error && "name" in error ? String((error as { name: unknown }).name) : "";
+    if (message.includes("TransactionCanceledException")) {
+      throw new ApiError(409, "CONFLICT", "tenantCode already exists.");
+    }
+    throw error;
+  }
+
+  return toTenantProfile(tenantId, profileItem as unknown as Record<string, unknown>);
 }

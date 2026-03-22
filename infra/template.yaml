@@ -745,6 +745,42 @@ Resources:
             Path: /internal/tenants
             Method: GET
 
+  InternalTenantsCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantsCreate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantsCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants
+            Method: POST
+
+  InternalTenantsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantsGet.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants/{tenantId}
+            Method: GET
+
   InternalTenantsUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:

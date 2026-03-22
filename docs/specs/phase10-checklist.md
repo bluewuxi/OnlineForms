@@ -36,7 +36,7 @@ Phase 10 is intended for iterative internal-portal capabilities and can be exten
   - Add audit/metrics for internal user access mutations
   - Add regression tests for denied/edge scenarios
 
-- [ ] P10-04 Internal tenants management API expansion (list/detail/create/update)
+- [x] P10-04 Internal tenants management API expansion (list/detail/create/update)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/57
   Scope:
   - Expand tenant APIs for list-first drawer UX

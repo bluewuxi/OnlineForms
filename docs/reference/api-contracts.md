@@ -735,6 +735,35 @@ Query:
 
 - `limit` (optional, default `100`, max `200`)
 
+### `GET /v1/internal/access-users`
+
+List users with internal portal access capability (`internal_admin` via Cognito group/claim mapping).
+
+Query:
+
+- `limit` (optional, default `50`, max `200`)
+- `cursor` (optional pagination cursor)
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "userId": "usr_internal_1",
+      "username": "internal-user-1",
+      "email": "internal-1@example.com",
+      "enabled": true,
+      "status": "CONFIRMED"
+    }
+  ],
+  "page": {
+    "limit": 50,
+    "nextCursor": null
+  }
+}
+```
+
 ### `PATCH /v1/internal/tenants/{tenantId}`
 
 Update-only tenant profile fields used by management tooling:

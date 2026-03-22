@@ -749,6 +749,25 @@ Resources:
             Path: /internal/tenants/{tenantId}
             Method: PATCH
 
+  InternalAccessUsersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalAccessUsersList.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ListUsersInGroup
+              Resource: "*"
+      Events:
+        InternalAccessUsersListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/access-users
+            Method: GET
+
   PaymentsStubFunction:
     Type: AWS::Serverless::Function
     Properties:

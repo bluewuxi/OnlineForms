@@ -1,5 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { authenticateRequest } from "../lib/auth";
+import { authenticateRequest, hasTokenRoleCapability } from "../lib/auth";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { listUserTenantContexts } from "../lib/authContexts";
@@ -12,6 +12,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       allowMissingTenantContext: true
     });
     const contexts = await listUserTenantContexts(auth.userId);
+    const canAccessInternalPortal = hasTokenRoleCapability(auth.claims, "internal_admin");
 
     return jsonResponse(
       200,
@@ -19,6 +20,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         data: {
           userId: auth.userId,
           tokenRole: auth.role,
+          canAccessInternalPortal,
           contexts
         }
       },

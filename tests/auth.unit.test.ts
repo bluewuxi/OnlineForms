@@ -4,6 +4,7 @@ import {
   __authTestHooks,
   assertTenantAccess,
   authenticateRequest,
+  hasTokenRoleCapability,
   requireAnyRole,
   type AuthContext
 } from "../services/api/src/lib/auth";
@@ -508,6 +509,89 @@ test("authenticateRequest allows internal_admin without tenant claim only when e
     __authTestHooks.reset();
     restore();
   }
+});
+
+test("authenticateRequest allows requested internal_admin role when cognito groups include internal_admin", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_1",
+      "custom:role": "org_admin",
+      "cognito:groups": ["org_admin", "internal_admin"]
+    })
+  });
+  try {
+    const auth = await authenticateRequest(
+      {
+        authorization: "Bearer test-token",
+        "x-role": "internal_admin"
+      },
+      { allowMissingTenantContext: true, requireMembership: false }
+    );
+    assert.equal(auth.role, "internal_admin");
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("authenticateRequest rejects requested internal_admin when token claims do not include internal_admin", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_1",
+      "custom:role": "org_admin",
+      "cognito:groups": ["org_admin"]
+    })
+  });
+  try {
+    await assert.rejects(
+      () =>
+        authenticateRequest(
+          {
+            authorization: "Bearer test-token",
+            "x-role": "internal_admin"
+          },
+          { allowMissingTenantContext: true, requireMembership: false }
+        ),
+      (error: unknown) => {
+        const apiError = asApiError(error);
+        assert.equal(apiError.statusCode, 403);
+        assert.equal(apiError.code, "FORBIDDEN");
+        assert.match(apiError.message, /not allowed/i);
+        return true;
+      }
+    );
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
+test("hasTokenRoleCapability checks all claim sources including cognito groups", () => {
+  const claims = {
+    "custom:platformRole": "org_admin",
+    "custom:role": "org_editor",
+    role: "org_editor",
+    "cognito:groups": ["org_editor", "internal_admin"]
+  } as Record<string, unknown>;
+
+  assert.equal(hasTokenRoleCapability(claims, "internal_admin"), true);
+  assert.equal(hasTokenRoleCapability(claims, "platform_admin"), false);
 });
 
 test("requireAnyRole rejects non-allowed role", () => {

@@ -35,7 +35,7 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Capture scope per enhancement before implementation
   - Deliver with tests/docs/checklist updates
 
-- [ ] P9-04 Dual-intent auth contract (tenant portal vs internal portal)
+- [x] P9-04 Dual-intent auth contract (tenant portal vs internal portal)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/51
   Scope:
   - Separate tenant-portal and internal-portal access decisions

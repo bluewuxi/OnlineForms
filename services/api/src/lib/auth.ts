@@ -126,6 +126,21 @@ function pickFirstString(values: unknown[]): string | undefined {
   return undefined;
 }
 
+function claimMatchesRole(value: unknown, role: AuthRole): boolean {
+  return typeof value === "string" && value.trim() === role;
+}
+
+function hasRoleCapabilityInPayload(payload: Record<string, unknown>, role: AuthRole): boolean {
+  if (claimMatchesRole(payload["custom:platformRole"], role)) return true;
+  if (claimMatchesRole(payload["custom:role"], role)) return true;
+  if (claimMatchesRole(payload.role, role)) return true;
+  const groups = payload["cognito:groups"];
+  if (Array.isArray(groups)) {
+    return groups.some((entry) => claimMatchesRole(entry, role));
+  }
+  return false;
+}
+
 function fromMockHeaders(headers: HeaderMap, allowMissingTenantContext: boolean): AuthContext {
   const userId = pickHeader(headers, "x-user-id") ?? "mock-user";
   const role = toRole(pickHeader(headers, "x-role"));
@@ -375,6 +390,13 @@ export const __authTestHooks = {
   }
 };
 
+export function hasTokenRoleCapability(
+  claims: Record<string, unknown>,
+  role: AuthRole
+): boolean {
+  return hasRoleCapabilityInPayload(claims, role);
+}
+
 export async function authenticateRequest(
   headers: HeaderMap,
   options: AuthenticateOptions = {}
@@ -456,7 +478,7 @@ export async function authenticateRequest(
   if (
     requestedRole &&
     (requestedRole === "platform_admin" || requestedRole === "internal_admin") &&
-    requestedRole !== tokenRole
+    !hasRoleCapabilityInPayload(payload, requestedRole)
   ) {
     throw new ApiError(
       403,

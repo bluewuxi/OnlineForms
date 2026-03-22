@@ -21,6 +21,11 @@ Internal portal capability may come from:
 - `custom:platformRole=internal_admin`, or
 - `cognito:groups` containing `internal_admin`
 
+Canonical operational mapping:
+
+- CloudFormation parameter: `CognitoInternalGroupName` (default `internal_admin`)
+- Runtime env var: `COGNITO_INTERNAL_GROUP_NAME`
+
 ## Why This Avoids Claim Explosion
 
 - JWTs do not carry membership lists.

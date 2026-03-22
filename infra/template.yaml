@@ -42,6 +42,11 @@ Parameters:
     Type: String
     Default: https://form.kidrawer.com/org/login
     Description: OAuth logout URL for Cognito Hosted UI.
+  CognitoInternalGroupName:
+    Type: String
+    Default: internal_admin
+    Description: Cognito group name used for internal portal capability.
+    AllowedPattern: "^[A-Za-z0-9_\\-]+$"
   ApiCustomDomainEnabled:
     Type: String
     Default: "false"
@@ -92,6 +97,7 @@ Globals:
         COGNITO_USER_POOL_ID: !If [UseManagedCognito, !Ref OnlineFormsUserPool, !Ref ExternalCognitoUserPoolId]
         COGNITO_CLIENT_ID: !If [UseManagedCognito, !Ref OnlineFormsUserPoolClient, !Ref ExternalCognitoClientId]
         COGNITO_TOKEN_USE: !Ref CognitoTokenUse
+        COGNITO_INTERNAL_GROUP_NAME: !Ref CognitoInternalGroupName
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
         ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
@@ -294,6 +300,13 @@ Resources:
     Condition: UseManagedCognito
     Properties:
       GroupName: platform_admin
+      UserPoolId: !Ref OnlineFormsUserPool
+
+  OnlineFormsInternalAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: UseManagedCognito
+    Properties:
+      GroupName: !Ref CognitoInternalGroupName
       UserPoolId: !Ref OnlineFormsUserPool
 
   OnlineFormsAssetsBucket:
@@ -1080,4 +1093,8 @@ Outputs:
     Condition: UseManagedCognito
     Description: Cognito Hosted UI base URL
     Value: !Sub "https://${OnlineFormsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+  CognitoInternalGroupName:
+    Condition: UseManagedCognito
+    Description: Internal portal Cognito group name
+    Value: !Ref CognitoInternalGroupName
 

@@ -43,7 +43,7 @@ Phase 9 is intentionally extensible and will absorb upcoming auth/workflow featu
   - Keep internal access as global `internal_admin` claim/group capability
   - Harden route-policy boundaries and add focused regression tests
 
-- [ ] P9-05 Internal-access group mapping and rollout runbook
+- [x] P9-05 Internal-access group mapping and rollout runbook
   Issue: https://github.com/bluewuxi/OnlineForms/issues/52
   Scope:
   - Define canonical Cognito group/claim mapping for internal portal access

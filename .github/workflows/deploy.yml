@@ -121,3 +121,46 @@ jobs:
           --resolve-s3
           --no-confirm-changeset
           --no-fail-on-empty-changeset
+
+      - name: CloudFormation diagnostics (on failure)
+        if: failure()
+        run: |
+          echo "Collecting CloudFormation diagnostics for stack: $STACK_NAME"
+          LATEST_CHANGESET_ARN=$(aws cloudformation list-change-sets \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "sort_by(Summaries,&CreationTime)[-1].ChangeSetId" \
+            --output text)
+
+          if [ -n "$LATEST_CHANGESET_ARN" ] && [ "$LATEST_CHANGESET_ARN" != "None" ]; then
+            echo "Latest change set ARN: $LATEST_CHANGESET_ARN"
+            echo "=== describe-change-set (status/reason) ==="
+            aws cloudformation describe-change-set \
+              --change-set-name "$LATEST_CHANGESET_ARN" \
+              --region "$AWS_REGION" \
+              --query "{ChangeSetName:ChangeSetName,Status:Status,StatusReason:StatusReason,ExecutionStatus:ExecutionStatus}" \
+              --output table || true
+
+            echo "=== describe-change-set-hooks ==="
+            aws cloudformation describe-change-set-hooks \
+              --stack-name "$STACK_NAME" \
+              --change-set-name "$LATEST_CHANGESET_ARN" \
+              --region "$AWS_REGION" \
+              --output json || true
+
+            echo "=== list-hook-results ==="
+            aws cloudformation list-hook-results \
+              --target-type CHANGE_SET \
+              --target-id "$LATEST_CHANGESET_ARN" \
+              --region "$AWS_REGION" \
+              --output json || true
+          else
+            echo "No change set found for stack $STACK_NAME."
+          fi
+
+          echo "=== recent stack events (latest 40) ==="
+          aws cloudformation describe-stack-events \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "StackEvents[0:40].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true

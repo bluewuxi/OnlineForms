@@ -47,6 +47,13 @@ Parameters:
     Default: internal_admin
     Description: Cognito group name used for internal portal capability.
     AllowedPattern: "^[A-Za-z0-9_\\-]+$"
+  ManageInternalAdminGroupResource:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Whether CloudFormation should create/manage the internal admin Cognito group resource.
   ApiCustomDomainEnabled:
     Type: String
     Default: "false"
@@ -76,6 +83,8 @@ Mappings:
 
 Conditions:
   UseManagedCognito: !Equals [!Ref ManagedCognitoEnabled, "true"]
+  ManageInternalAdminGroup: !Equals [!Ref ManageInternalAdminGroupResource, "true"]
+  CreateInternalAdminGroup: !And [!Condition UseManagedCognito, !Condition ManageInternalAdminGroup]
   HasApiCustomDomainCertificateArn: !Not [!Equals [!Ref ApiCustomDomainCertificateArn, ""]]
   HasApiCustomDomainHostedZoneId: !Not [!Equals [!Ref ApiCustomDomainHostedZoneId, ""]]
   UseApiCustomDomain: !And
@@ -305,7 +314,7 @@ Resources:
 
   OnlineFormsInternalAdminGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Condition: UseManagedCognito
+    Condition: CreateInternalAdminGroup
     Properties:
       GroupName: !Ref CognitoInternalGroupName
       UserPoolId: !Ref OnlineFormsUserPool

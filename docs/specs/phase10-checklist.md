@@ -14,7 +14,7 @@ Phase 10 is intended for iterative internal-portal capabilities and can be exten
 
 ## Tasks
 
-- [ ] P10-01 Internal portal API contract docs update
+- [x] P10-01 Internal portal API contract docs update
   Issue: https://github.com/bluewuxi/OnlineForms/issues/54
   Scope:
   - Define and publish API contracts required by internal `Tenants`/`Users` drawers

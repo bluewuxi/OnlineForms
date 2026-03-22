@@ -779,6 +779,32 @@ Query:
 
 - `limit` (optional, default `100`, max `200`)
 
+### `GET /v1/internal/tenants/{tenantId}`
+
+Get a single tenant profile for internal drawer display/edit.
+
+### `POST /v1/internal/tenants`
+
+Create a new tenant profile for internal management.
+
+Request body:
+
+```json
+{
+  "tenantCode": "new-school",
+  "displayName": "New School",
+  "description": "Optional tenant description",
+  "isActive": true,
+  "homePageContent": "Optional tenant home content"
+}
+```
+
+Validation expectations:
+
+- `tenantCode` must pass reserved-slug and format guardrails.
+- `tenantCode` must be globally unique.
+- `displayName` required, length-limited.
+
 ### `GET /v1/internal/access-users`
 
 List users with internal portal access capability (`internal_admin` via Cognito group/claim mapping).
@@ -807,6 +833,66 @@ Response:
   }
 }
 ```
+
+### `GET /v1/internal/users`
+
+List internal users for users drawer page.
+
+Query:
+
+- `limit` (optional, default `50`, max `200`)
+- `cursor` (optional pagination cursor)
+
+### `GET /v1/internal/users/{userId}`
+
+Get internal user detail payload for drawer display, including tenant memberships and allowed roles.
+
+Response payload shape:
+
+```json
+{
+  "data": {
+    "userId": "usr_internal_1",
+    "username": "internal-user-1",
+    "email": "internal-1@example.com",
+    "enabled": true,
+    "status": "CONFIRMED",
+    "memberships": [
+      {
+        "tenantId": "001",
+        "status": "active",
+        "roles": ["org_admin", "org_editor"]
+      }
+    ]
+  }
+}
+```
+
+### `POST /v1/internal/users`
+
+Grant internal access by email.
+
+Request body:
+
+```json
+{
+  "email": "operator@example.com"
+}
+```
+
+Error contracts:
+
+- `404 NOT_FOUND` when user does not exist in Cognito user pool.
+- `409 CONFLICT` when user already has internal access.
+
+### `DELETE /v1/internal/users/{userId}`
+
+Remove internal access for a user (remove from internal group capability).
+
+Error contracts:
+
+- `404 NOT_FOUND` when user is not present in user pool.
+- `409 CONFLICT` when user does not currently have internal access.
 
 ### `PATCH /v1/internal/tenants/{tenantId}`
 

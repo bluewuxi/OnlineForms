@@ -16,6 +16,7 @@ Managed Cognito stack now provisions Hosted UI domain and OAuth code flow on the
 - Domain prefix parameter: `CognitoHostedUiDomainPrefix` (default `online-form-auth`)
 - Callback URL parameter: `CognitoHostedUiCallbackUrl`
 - Logout URL parameter: `CognitoHostedUiLogoutUrl`
+- Home logout URL parameter: `CognitoHostedUiHomeLogoutUrl`
 - Stack outputs:
   - `CognitoHostedUiDomain`
   - `CognitoHostedUiDomainUrl`

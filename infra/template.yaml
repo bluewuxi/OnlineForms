@@ -42,6 +42,10 @@ Parameters:
     Type: String
     Default: https://form.kidrawer.com/org/login
     Description: OAuth logout URL for Cognito Hosted UI.
+  CognitoHostedUiHomeLogoutUrl:
+    Type: String
+    Default: https://form.kidrawer.com/
+    Description: Additional logout URL for Cognito Hosted UI (public portal home).
   CognitoInternalGroupName:
     Type: String
     Default: internal_admin
@@ -283,6 +287,7 @@ Resources:
         - !Ref CognitoHostedUiCallbackUrl
       LogoutURLs:
         - !Ref CognitoHostedUiLogoutUrl
+        - !Ref CognitoHostedUiHomeLogoutUrl
 
   OnlineFormsUserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain

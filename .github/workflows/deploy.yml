@@ -25,6 +25,7 @@ jobs:
       STACK_NAME: ${{ vars.STACK_NAME }}
       DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT }}
       COGNITO_TOKEN_USE: ${{ vars.COGNITO_TOKEN_USE }}
+      COGNITO_HOSTED_UI_HOME_LOGOUT_URL: ${{ vars.COGNITO_HOSTED_UI_HOME_LOGOUT_URL }}
       API_CUSTOM_DOMAIN_ENABLED: ${{ vars.API_CUSTOM_DOMAIN_ENABLED }}
       API_CUSTOM_DOMAIN_NAME: ${{ vars.API_CUSTOM_DOMAIN_NAME }}
       API_CUSTOM_DOMAIN_CERTIFICATE_ARN: ${{ vars.API_CUSTOM_DOMAIN_CERTIFICATE_ARN }}
@@ -75,6 +76,10 @@ jobs:
             echo "COGNITO_TOKEN_USE=access" >> "$GITHUB_ENV"
             echo "Normalized COGNITO_TOKEN_USE to access."
           fi
+          if [ -z "$COGNITO_HOSTED_UI_HOME_LOGOUT_URL" ]; then
+            echo "COGNITO_HOSTED_UI_HOME_LOGOUT_URL=https://form.kidrawer.com/" >> "$GITHUB_ENV"
+            echo "Normalized COGNITO_HOSTED_UI_HOME_LOGOUT_URL to https://form.kidrawer.com/."
+          fi
 
       - name: Validate deployment environment
         run: |
@@ -114,6 +119,7 @@ jobs:
           DeploymentEnvironment=$DEPLOYMENT_ENVIRONMENT
           ManagedCognitoEnabled=true
           CognitoTokenUse=$COGNITO_TOKEN_USE
+          CognitoHostedUiHomeLogoutUrl=$COGNITO_HOSTED_UI_HOME_LOGOUT_URL
           ApiCustomDomainEnabled=$API_CUSTOM_DOMAIN_ENABLED
           ApiCustomDomainName=$API_CUSTOM_DOMAIN_NAME
           ApiCustomDomainCertificateArn=$API_CUSTOM_DOMAIN_CERTIFICATE_ARN

@@ -4,7 +4,11 @@ import { GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { __coursesTestHooks } from "../services/api/src/lib/courses";
 import { __formSchemasTestHooks } from "../services/api/src/lib/formSchemas";
 import { ApiError } from "../services/api/src/lib/errors";
-import { __submissionsTestHooks, createPublicEnrollment } from "../services/api/src/lib/submissions";
+import {
+  __submissionsTestHooks,
+  createPublicEnrollment,
+  getOrgSubmission
+} from "../services/api/src/lib/submissions";
 
 function asApiError(error: unknown): ApiError {
   assert.ok(error instanceof ApiError);
@@ -83,6 +87,94 @@ test("createPublicEnrollment uses a single transaction for idempotency and submi
 
   assert.equal(result.status, "submitted");
   assert.equal(commands.filter((command) => command instanceof TransactWriteCommand).length, 1);
+});
+
+test("createPublicEnrollment persists applicant identity derived from schema answers", async () => {
+  __coursesTestHooks.setPublicCourseDetailOverride(async () => ({
+    id: "crs_001",
+    title: "Intro to AI",
+    shortDescription: "Foundations course",
+    imageUrl: null,
+    startDate: "2026-04-01",
+    endDate: "2026-04-28",
+    deliveryMode: "online",
+    pricingMode: "free",
+    locationText: null,
+    enrollmentOpenAt: "2026-03-10T00:00:00Z",
+    enrollmentCloseAt: "2026-03-31T23:59:59Z",
+    enrollmentOpenNow: true,
+    enrollmentStatus: "open",
+    links: {
+      detail: "/v1/public/std-school/courses/crs_001",
+      enrollmentForm: "/v1/public/std-school/courses/crs_001/form"
+    },
+    fullDescription: "Detailed syllabus",
+    capacity: 120,
+    formAvailable: true
+  }));
+  __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
+    formId: "frm_001",
+    version: 1,
+    tenantId: "ten_001",
+    courseId: "crs_001",
+    status: "active",
+    fields: [
+      {
+        fieldId: "first_name",
+        type: "short_text",
+        label: "First name",
+        required: true,
+        displayOrder: 1
+      },
+      {
+        fieldId: "last_name",
+        type: "short_text",
+        label: "Last name",
+        required: true,
+        displayOrder: 2
+      },
+      {
+        fieldId: "email",
+        type: "email",
+        label: "Email",
+        required: true,
+        displayOrder: 3
+      }
+    ],
+    createdAt: "2026-03-10T00:00:00Z",
+    updatedAt: "2026-03-10T00:00:00Z"
+  }));
+
+  let persistedApplicant: Record<string, unknown> | undefined;
+  __submissionsTestHooks.setDdbSendOverride(async (command) => {
+    if (command instanceof TransactWriteCommand) {
+      const items = command.input.TransactItems ?? [];
+      persistedApplicant = items[1]?.Put?.Item?.applicant as Record<string, unknown> | undefined;
+      return {};
+    }
+    if (command instanceof GetCommand) {
+      const key = command.input.Key as { SK?: string };
+      if (key.SK === "MAP") {
+        return { Item: { tenantId: "ten_001", status: "active" } };
+      }
+    }
+    throw new Error(`Unexpected command: ${(command as { constructor?: { name?: string } }).constructor?.name}`);
+  });
+
+  await createPublicEnrollment("std-school", "crs_001", "3c579f90-4962-4a49-9ced-e6a37f63500a", {
+    formVersion: 1,
+    answers: {
+      first_name: "Alice",
+      last_name: "Learner",
+      email: "alice@example.com"
+    }
+  });
+
+  assert.deepEqual(persistedApplicant, {
+    firstName: "Alice",
+    lastName: "Learner",
+    email: "alice@example.com"
+  });
 });
 
 test("createPublicEnrollment replays prior success when transaction collides on the same idempotency key", async () => {
@@ -262,4 +354,71 @@ test("createPublicEnrollment rejects reused idempotency key when the prior reque
       return true;
     }
   );
+});
+
+test("getOrgSubmission derives applicantSummary from stored applicant identity", async () => {
+  __submissionsTestHooks.setDdbSendOverride(async (command) => {
+    if (command instanceof GetCommand) {
+      return {
+        Item: {
+          submissionId: "sub_001",
+          tenantId: "ten_001",
+          tenantCode: "std-school",
+          courseId: "crs_001",
+          formId: "frm_001",
+          formVersion: 1,
+          status: "submitted",
+          applicant: {
+            firstName: "Alice",
+            lastName: "Learner",
+            email: "alice@example.com"
+          },
+          answers: {},
+          submittedAt: "2026-03-25T00:00:00.000Z",
+          reviewedAt: null,
+          reviewedBy: null,
+          createdAt: "2026-03-25T00:00:00.000Z",
+          updatedAt: "2026-03-25T00:00:00.000Z"
+        }
+      };
+    }
+    throw new Error(`Unexpected command: ${(command as { constructor?: { name?: string } }).constructor?.name}`);
+  });
+
+  const result = await getOrgSubmission("ten_001", "sub_001");
+  assert.equal(result.applicantSummary?.email, "alice@example.com");
+  assert.equal(result.applicantSummary?.name, "Alice Learner");
+});
+
+test("getOrgSubmission uses applicant.name when a full-name field was persisted", async () => {
+  __submissionsTestHooks.setDdbSendOverride(async (command) => {
+    if (command instanceof GetCommand) {
+      return {
+        Item: {
+          submissionId: "sub_002",
+          tenantId: "ten_001",
+          tenantCode: "std-school",
+          courseId: "crs_001",
+          formId: "frm_001",
+          formVersion: 1,
+          status: "submitted",
+          applicant: {
+            name: "Alice Learner",
+            email: "alice@example.com"
+          },
+          answers: {},
+          submittedAt: "2026-03-25T00:00:00.000Z",
+          reviewedAt: null,
+          reviewedBy: null,
+          createdAt: "2026-03-25T00:00:00.000Z",
+          updatedAt: "2026-03-25T00:00:00.000Z"
+        }
+      };
+    }
+    throw new Error(`Unexpected command: ${(command as { constructor?: { name?: string } }).constructor?.name}`);
+  });
+
+  const result = await getOrgSubmission("ten_001", "sub_002");
+  assert.equal(result.applicantSummary?.email, "alice@example.com");
+  assert.equal(result.applicantSummary?.name, "Alice Learner");
 });

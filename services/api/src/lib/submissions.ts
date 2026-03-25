@@ -174,11 +174,14 @@ function submissionFromItem(item: Record<string, unknown>): Submission {
   const emailValue = applicant.email;
   const firstNameValue = applicant.firstName ?? applicant.first_name;
   const lastNameValue = applicant.lastName ?? applicant.last_name;
+  const explicitNameValue = applicant.name;
   const fullName =
-    [firstNameValue, lastNameValue]
-      .filter((v) => typeof v === "string" && v.trim().length > 0)
-      .map((v) => String(v).trim())
-      .join(" ") || null;
+    (typeof explicitNameValue === "string" && explicitNameValue.trim().length > 0
+      ? explicitNameValue.trim()
+      : [firstNameValue, lastNameValue]
+          .filter((v) => typeof v === "string" && v.trim().length > 0)
+          .map((v) => String(v).trim())
+          .join(" ")) || null;
 
   return {
     id: item.submissionId as string,
@@ -242,6 +245,50 @@ function stableStringify(value: unknown): string {
 
 function hashRequest(payload: unknown): string {
   return `sha256:${createHash("sha256").update(stableStringify(payload)).digest("hex")}`;
+}
+
+function normalizeFieldId(fieldId: string): string {
+  return fieldId.replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function isTextAnswer(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function extractApplicantIdentity(
+  fields: FormField[],
+  answers: Record<string, unknown>
+): Record<string, unknown> {
+  const applicant: Record<string, unknown> = {};
+  const fullNameFieldIds = new Set(["fullname", "name", "applicantname"]);
+  const firstNameFieldIds = new Set(["firstname", "givenname"]);
+  const lastNameFieldIds = new Set(["lastname", "familyname", "surname"]);
+
+  for (const field of fields) {
+    const answer = answers[field.fieldId];
+    if (!isTextAnswer(answer)) {
+      continue;
+    }
+
+    const normalizedFieldId = normalizeFieldId(field.fieldId);
+    if (field.type === "email" && applicant.email === undefined) {
+      applicant.email = answer.trim();
+      continue;
+    }
+    if (fullNameFieldIds.has(normalizedFieldId) && applicant.name === undefined) {
+      applicant.name = answer.trim();
+      continue;
+    }
+    if (firstNameFieldIds.has(normalizedFieldId) && applicant.firstName === undefined) {
+      applicant.firstName = answer.trim();
+      continue;
+    }
+    if (lastNameFieldIds.has(normalizedFieldId) && applicant.lastName === undefined) {
+      applicant.lastName = answer.trim();
+    }
+  }
+
+  return applicant;
 }
 
 function validateText(field: FormField, value: string, issues: Array<{ field?: string; issue: string }>): void {
@@ -582,7 +629,7 @@ export async function createPublicEnrollment(
     formId: schema.formId,
     formVersion: schema.version,
     status: "submitted",
-    applicant: {},
+    applicant: extractApplicantIdentity(schema.fields, input.answers),
     answers: input.answers,
     meta: input.meta ?? null,
     submittedAt: nowIso,

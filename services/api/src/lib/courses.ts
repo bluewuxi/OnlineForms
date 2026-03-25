@@ -70,6 +70,15 @@ export type PublicCourse = {
   endDate: string;
   deliveryMode: DeliveryMode;
   pricingMode: PricingMode;
+  locationText: string | null;
+  enrollmentOpenAt: string;
+  enrollmentCloseAt: string;
+  enrollmentOpenNow: boolean;
+  enrollmentStatus: "upcoming" | "open" | "closed";
+  links: {
+    detail: string;
+    enrollmentForm: string;
+  };
 };
 
 export type PublicCoursesListResult = {
@@ -82,15 +91,20 @@ export type PublicCoursesListResult = {
 
 export type PublicCourseDetail = PublicCourse & {
   fullDescription: string;
-  enrollmentOpenAt: string;
-  enrollmentCloseAt: string;
-  enrollmentOpenNow: boolean;
+  capacity: number | null;
+  formAvailable: boolean;
 };
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
 const COURSE_PUBLIC_PROJECTION_VERSION = 1;
+let testPublicCoursesListOverride:
+  | ((tenantCode: string, q?: string, limitRaw?: number, cursor?: string) => Promise<PublicCoursesListResult>)
+  | null = null;
+let testPublicCourseDetailOverride:
+  | ((tenantCode: string, courseId: string) => Promise<PublicCourseDetail>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -130,6 +144,35 @@ async function resolveTenantCodeById(tenantId: string): Promise<string> {
 function imageUrlFromAssetId(imageAssetId: string | null): string | null {
   if (!imageAssetId) return null;
   return `https://cdn.onlineforms.com/assets/${imageAssetId}`;
+}
+
+function publicCourseLinks(tenantCode: string, courseId: string): { detail: string; enrollmentForm: string } {
+  return {
+    detail: `/v1/public/${tenantCode}/courses/${courseId}`,
+    enrollmentForm: `/v1/public/${tenantCode}/courses/${courseId}/form`
+  };
+}
+
+function computeEnrollmentWindow(
+  enrollmentOpenAt: string,
+  enrollmentCloseAt: string
+): { enrollmentOpenNow: boolean; enrollmentStatus: "upcoming" | "open" | "closed" } {
+  const nowMs = Date.now();
+  const openAtMs = Date.parse(enrollmentOpenAt);
+  const closeAtMs = Date.parse(enrollmentCloseAt);
+  const enrollmentOpenNow =
+    Number.isFinite(openAtMs) && Number.isFinite(closeAtMs) && openAtMs <= nowMs && nowMs <= closeAtMs;
+
+  if (!Number.isFinite(openAtMs) || !Number.isFinite(closeAtMs)) {
+    return { enrollmentOpenNow: false, enrollmentStatus: "closed" };
+  }
+  if (nowMs < openAtMs) {
+    return { enrollmentOpenNow: false, enrollmentStatus: "upcoming" };
+  }
+  if (nowMs > closeAtMs) {
+    return { enrollmentOpenNow: false, enrollmentStatus: "closed" };
+  }
+  return { enrollmentOpenNow: true, enrollmentStatus: "open" };
 }
 
 function parsePublicListLimit(limitRaw: number | undefined): number {
@@ -187,15 +230,26 @@ function courseFromItem(item: Record<string, unknown>): Course {
 }
 
 function publicCourseFromItem(item: Record<string, unknown>): PublicCourse {
+  const tenantCode = item.tenantCode as string;
+  const courseId = item.courseId as string;
+  const enrollmentOpenAt = item.enrollmentOpenAt as string;
+  const enrollmentCloseAt = item.enrollmentCloseAt as string;
+  const enrollmentWindow = computeEnrollmentWindow(enrollmentOpenAt, enrollmentCloseAt);
   return {
-    id: item.courseId as string,
+    id: courseId,
     title: item.title as string,
     shortDescription: item.shortDescription as string,
     imageUrl: (item.imageUrl as string | null) ?? null,
     startDate: item.startDate as string,
     endDate: item.endDate as string,
     deliveryMode: item.deliveryMode as DeliveryMode,
-    pricingMode: item.pricingMode as PricingMode
+    pricingMode: item.pricingMode as PricingMode,
+    locationText: (item.locationText as string | null) ?? null,
+    enrollmentOpenAt,
+    enrollmentCloseAt,
+    enrollmentOpenNow: enrollmentWindow.enrollmentOpenNow,
+    enrollmentStatus: enrollmentWindow.enrollmentStatus,
+    links: publicCourseLinks(tenantCode, courseId)
   };
 }
 
@@ -217,18 +271,11 @@ function isValidPublicProjection(item: Record<string, unknown>, tenantCode: stri
 }
 
 function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourseDetail {
-  const nowMs = Date.now();
-  const openAtMs = Date.parse(String(item.enrollmentOpenAt ?? ""));
-  const closeAtMs = Date.parse(String(item.enrollmentCloseAt ?? ""));
-  const enrollmentOpenNow =
-    Number.isFinite(openAtMs) && Number.isFinite(closeAtMs) && openAtMs <= nowMs && nowMs <= closeAtMs;
-
   return {
     ...publicCourseFromItem(item),
     fullDescription: item.fullDescription as string,
-    enrollmentOpenAt: item.enrollmentOpenAt as string,
-    enrollmentCloseAt: item.enrollmentCloseAt as string,
-    enrollmentOpenNow
+    capacity: (item.capacity as number | null) ?? null,
+    formAvailable: Boolean(item.activeFormId) && Number.isInteger(item.activeFormVersion)
   };
 }
 
@@ -250,7 +297,11 @@ function buildPublicProjectionItem(course: Course, tenantCode: string): Record<s
     enrollmentOpenAt: course.enrollmentOpenAt,
     enrollmentCloseAt: course.enrollmentCloseAt,
     deliveryMode: course.deliveryMode,
+    locationText: course.locationText,
+    capacity: course.capacity,
     pricingMode: course.pricingMode,
+    activeFormId: course.activeFormId,
+    activeFormVersion: course.activeFormVersion,
     status: course.status,
     publicVisible: course.publicVisible,
     updatedAt: course.updatedAt,
@@ -537,6 +588,9 @@ export async function listPublicCourses(
   limitRaw?: number,
   cursor?: string
 ): Promise<PublicCoursesListResult> {
+  if (testPublicCoursesListOverride) {
+    return testPublicCoursesListOverride(tenantCode, q, limitRaw, cursor);
+  }
   const normalizedTenantCode = normalizeTenantCode(tenantCode);
   await resolveTenantIdByCode(normalizedTenantCode);
   const limit = parsePublicListLimit(limitRaw);
@@ -580,6 +634,9 @@ export async function getPublicCourseDetail(
   tenantCode: string,
   courseId: string
 ): Promise<PublicCourseDetail> {
+  if (testPublicCourseDetailOverride) {
+    return testPublicCourseDetailOverride(tenantCode, courseId);
+  }
   const normalizedTenantCode = normalizeTenantCode(tenantCode);
   const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
   const out = await ddb.send(
@@ -622,3 +679,22 @@ export async function reconcilePublicProjectionsForTenant(
 
   return { upserted, deleted };
 }
+
+export const __coursesTestHooks = {
+  setPublicCoursesListOverride(
+    loader:
+      | ((tenantCode: string, q?: string, limitRaw?: number, cursor?: string) => Promise<PublicCoursesListResult>)
+      | null
+  ): void {
+    testPublicCoursesListOverride = loader;
+  },
+  setPublicCourseDetailOverride(
+    loader: ((tenantCode: string, courseId: string) => Promise<PublicCourseDetail>) | null
+  ): void {
+    testPublicCourseDetailOverride = loader;
+  },
+  reset(): void {
+    testPublicCoursesListOverride = null;
+    testPublicCourseDetailOverride = null;
+  }
+};

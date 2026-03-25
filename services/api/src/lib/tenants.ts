@@ -38,6 +38,14 @@ export type PublicTenantDirectoryItem = {
   displayName: string;
   description: string | null;
   isActive: boolean;
+  branding: {
+    logoAssetId: string | null;
+    logoUrl: string | null;
+  };
+  links: {
+    home: string;
+    courses: string;
+  };
 };
 
 export type PublicTenantHome = {
@@ -48,8 +56,10 @@ export type PublicTenantHome = {
   isActive: boolean;
   branding: {
     logoAssetId: string | null;
+    logoUrl: string | null;
   };
   links: {
+    home: string;
     publishedCourses: string;
   };
 };
@@ -74,6 +84,8 @@ const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
 const MAX_DISPLAY_NAME_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
+let testPublicTenantDirectoryOverride: ((limit: number) => Promise<PublicTenantDirectoryItem[]>) | null = null;
+let testPublicTenantHomeOverride: ((tenantCode: string) => Promise<PublicTenantHome>) | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -89,6 +101,18 @@ function resolveIsActive(item: Record<string, unknown>): boolean {
   if (typeof item.isActive === "boolean") return item.isActive;
   if (typeof item.status === "string") return item.status.toLowerCase() === "active";
   return true;
+}
+
+function assetUrlFromAssetId(assetId: string | null): string | null {
+  if (!assetId) return null;
+  return `https://cdn.onlineforms.com/assets/${assetId}`;
+}
+
+function buildPublicTenantLinks(tenantCode: string): { home: string; courses: string } {
+  return {
+    home: `/v1/public/${tenantCode}/tenant-home`,
+    courses: `/v1/public/${tenantCode}/courses`
+  };
 }
 
 export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): UpdateTenantProfileInput {
@@ -289,6 +313,9 @@ export async function getTenantProfile(tenantId: string): Promise<TenantProfile>
 }
 
 export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenantDirectoryItem[]> {
+  if (testPublicTenantDirectoryOverride) {
+    return testPublicTenantDirectoryOverride(limit);
+  }
   const normalizedLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 50;
   const out = await ddb.send(
     new ScanCommand({
@@ -314,16 +341,23 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
       const displayName = asString(item.displayName);
       if (!tenantId || !tenantCode || !displayName) return null;
       const isActive = resolveIsActive(item);
+      const normalizedTenantCode = normalizeTenantCode(tenantCode, {
+        statusCode: 409,
+        code: "CONFLICT",
+        messagePrefix: "Tenant profile has invalid tenantCode."
+      });
+      const logoAssetId = asString((item.branding as Record<string, unknown> | undefined)?.logoAssetId);
       return {
         tenantId,
-        tenantCode: normalizeTenantCode(tenantCode, {
-          statusCode: 409,
-          code: "CONFLICT",
-          messagePrefix: "Tenant profile has invalid tenantCode."
-        }),
+        tenantCode: normalizedTenantCode,
         displayName,
         description: asString(item.description),
-        isActive
+        isActive,
+        branding: {
+          logoAssetId,
+          logoUrl: assetUrlFromAssetId(logoAssetId)
+        },
+        links: buildPublicTenantLinks(normalizedTenantCode)
       } as PublicTenantDirectoryItem;
     })
     .filter((item): item is PublicTenantDirectoryItem => item !== null && item.isActive)
@@ -331,6 +365,9 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
 }
 
 export async function getPublicTenantHomeByCode(tenantCode: string): Promise<PublicTenantHome> {
+  if (testPublicTenantHomeOverride) {
+    return testPublicTenantHomeOverride(tenantCode);
+  }
   const normalizedTenantCode = normalizeTenantCode(tenantCode);
   const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
   const profile = await getTenantProfile(tenantId);
@@ -343,8 +380,12 @@ export async function getPublicTenantHomeByCode(tenantCode: string): Promise<Pub
     description: profile.description,
     homePageContent: profile.homePageContent,
     isActive: profile.isActive,
-    branding: profile.branding,
+    branding: {
+      logoAssetId: profile.branding.logoAssetId,
+      logoUrl: assetUrlFromAssetId(profile.branding.logoAssetId)
+    },
     links: {
+      home: `/v1/public/${profile.tenantCode}/tenant-home`,
       publishedCourses: `/v1/public/${profile.tenantCode}/courses`
     }
   };
@@ -547,3 +588,16 @@ export async function createTenantProfile(input: CreateTenantProfileInput): Prom
 
   return toTenantProfile(tenantId, profileItem as unknown as Record<string, unknown>);
 }
+
+export const __tenantsTestHooks = {
+  setPublicTenantDirectoryOverride(loader: ((limit: number) => Promise<PublicTenantDirectoryItem[]>) | null): void {
+    testPublicTenantDirectoryOverride = loader;
+  },
+  setPublicTenantHomeOverride(loader: ((tenantCode: string) => Promise<PublicTenantHome>) | null): void {
+    testPublicTenantHomeOverride = loader;
+  },
+  reset(): void {
+    testPublicTenantDirectoryOverride = null;
+    testPublicTenantHomeOverride = null;
+  }
+};

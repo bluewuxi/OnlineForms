@@ -21,7 +21,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Normalize documentation for frontend-consumed responses, query params, and errors
   - Close contract gaps before frontend implementation drifts around unstable assumptions
 
-- [ ] P12-02 Public portal support payloads and UX metadata
+- [x] P12-02 Public portal support payloads and UX metadata
   Issue: https://github.com/bluewuxi/OnlineForms/issues/65
   Scope:
   - Ensure tenant-home, course-list, and course-detail endpoints return the metadata needed by the new public UI

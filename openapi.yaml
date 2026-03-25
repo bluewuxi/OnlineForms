@@ -157,11 +157,31 @@ components:
               type: string
             submissionId:
               type: string
+            tenantCode:
+              type: string
+            courseId:
+              type: string
+            courseTitle:
+              type: string
+            links:
+              type: object
+              properties:
+                tenantHome:
+                  type: string
+                course:
+                  type: string
+              required:
+              - tenantHome
+              - course
           type: object
           required:
           - submissionId
           - status
           - submittedAt
+          - tenantCode
+          - courseId
+          - courseTitle
+          - links
       type: object
       required:
       - data
@@ -402,16 +422,14 @@ components:
           allOf:
           - $ref: '#/components/schemas/PublicCourse'
           - properties:
-              enrollmentOpenNow:
-                type: boolean
-              enrollmentCloseAt:
-                format: date-time
-                type: string
               fullDescription:
                 type: string
-              enrollmentOpenAt:
-                format: date-time
-                type: string
+              capacity:
+                type:
+                - integer
+                - "null"
+              formAvailable:
+                type: boolean
             type: object
       type: object
       required:
@@ -488,12 +506,39 @@ components:
           - "null"
         isActive:
           type: boolean
+        branding:
+          type: object
+          properties:
+            logoAssetId:
+              type:
+              - string
+              - "null"
+            logoUrl:
+              format: uri
+              type:
+              - string
+              - "null"
+          required:
+          - logoAssetId
+          - logoUrl
+        links:
+          type: object
+          properties:
+            home:
+              type: string
+            courses:
+              type: string
+          required:
+          - home
+          - courses
       type: object
       required:
       - tenantId
       - tenantCode
       - displayName
       - isActive
+      - branding
+      - links
     PublicTenantDirectoryResponse:
       properties:
         data:
@@ -529,12 +574,23 @@ components:
               type:
               - string
               - "null"
+            logoUrl:
+              format: uri
+              type:
+              - string
+              - "null"
+          required:
+          - logoAssetId
+          - logoUrl
         links:
           type: object
           properties:
+            home:
+              type: string
             publishedCourses:
               type: string
           required:
+          - home
           - publishedCourses
       type: object
       required:
@@ -1269,6 +1325,34 @@ components:
           type: string
         pricingMode:
           $ref: '#/components/schemas/PricingMode'
+        locationText:
+          type:
+          - string
+          - "null"
+        enrollmentOpenAt:
+          format: date-time
+          type: string
+        enrollmentCloseAt:
+          format: date-time
+          type: string
+        enrollmentOpenNow:
+          type: boolean
+        enrollmentStatus:
+          enum:
+          - upcoming
+          - open
+          - closed
+          type: string
+        links:
+          type: object
+          properties:
+            detail:
+              type: string
+            enrollmentForm:
+              type: string
+          required:
+          - detail
+          - enrollmentForm
       type: object
       required:
       - id
@@ -1278,6 +1362,12 @@ components:
       - endDate
       - deliveryMode
       - pricingMode
+      - locationText
+      - enrollmentOpenAt
+      - enrollmentCloseAt
+      - enrollmentOpenNow
+      - enrollmentStatus
+      - links
     CoursePublishResponse:
       properties:
         data:

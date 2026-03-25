@@ -73,6 +73,13 @@ export type EnrollmentCreateResult = {
   submissionId: string;
   status: "submitted";
   submittedAt: string;
+  tenantCode: string;
+  courseId: string;
+  courseTitle: string;
+  links: {
+    tenantHome: string;
+    course: string;
+  };
 };
 
 type IdempotencyRecord = {
@@ -82,6 +89,14 @@ type IdempotencyRecord = {
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+let testCreatePublicEnrollmentOverride:
+  | ((
+      tenantCode: string,
+      courseId: string,
+      idempotencyKeyRaw: string,
+      input: CreateEnrollmentInput
+    ) => Promise<EnrollmentCreateResult>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -492,6 +507,9 @@ export async function createPublicEnrollment(
   idempotencyKeyRaw: string,
   input: CreateEnrollmentInput
 ): Promise<EnrollmentCreateResult> {
+  if (testCreatePublicEnrollmentOverride) {
+    return testCreatePublicEnrollmentOverride(tenantCode, courseId, idempotencyKeyRaw, input);
+  }
   validateCreateEnrollmentInput(input);
   const idempotencyKey = normalizeIdempotencyKey(idempotencyKeyRaw);
   const tenantId = await resolveTenantIdByCode(tenantCode);
@@ -520,7 +538,14 @@ export async function createPublicEnrollment(
   const snapshot: EnrollmentCreateResult = {
     submissionId,
     status: "submitted",
-    submittedAt: nowIso
+    submittedAt: nowIso,
+    tenantCode: tenantCode.trim().toLowerCase(),
+    courseId,
+    courseTitle: publicCourse.title,
+    links: {
+      tenantHome: `/v1/public/${tenantCode.trim().toLowerCase()}/tenant-home`,
+      course: `/v1/public/${tenantCode.trim().toLowerCase()}/courses/${courseId}`
+    }
   };
 
   try {
@@ -594,3 +619,21 @@ export async function createPublicEnrollment(
 
   return snapshot;
 }
+
+export const __submissionsTestHooks = {
+  setCreatePublicEnrollmentOverride(
+    loader:
+      | ((
+          tenantCode: string,
+          courseId: string,
+          idempotencyKeyRaw: string,
+          input: CreateEnrollmentInput
+        ) => Promise<EnrollmentCreateResult>)
+      | null
+  ): void {
+    testCreatePublicEnrollmentOverride = loader;
+  },
+  reset(): void {
+    testCreatePublicEnrollmentOverride = null;
+  }
+};

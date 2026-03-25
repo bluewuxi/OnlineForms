@@ -713,7 +713,15 @@ Response `200`:
       "tenantCode": "std-school",
       "displayName": "Standard School",
       "description": "Public tenant landing content.",
-      "isActive": true
+      "isActive": true,
+      "branding": {
+        "logoAssetId": "ast_logo_001",
+        "logoUrl": "https://cdn.onlineforms.com/assets/ast_logo_001"
+      },
+      "links": {
+        "home": "/v1/public/std-school/tenant-home",
+        "courses": "/v1/public/std-school/courses"
+      }
     }
   ],
   "page": { "limit": 50, "nextCursor": null }
@@ -735,9 +743,11 @@ Response `200`:
     "homePageContent": "Welcome text",
     "isActive": true,
     "branding": {
-      "logoAssetId": null
+      "logoAssetId": null,
+      "logoUrl": null
     },
     "links": {
+      "home": "/v1/public/std-school/tenant-home",
       "publishedCourses": "/v1/public/std-school/courses"
     }
   }
@@ -784,7 +794,16 @@ Response `200`:
       "startDate": "2026-04-01",
       "endDate": "2026-04-28",
       "deliveryMode": "online",
-      "pricingMode": "free"
+      "pricingMode": "free",
+      "locationText": null,
+      "enrollmentOpenAt": "2026-03-10T00:00:00Z",
+      "enrollmentCloseAt": "2026-03-31T23:59:59Z",
+      "enrollmentOpenNow": true,
+      "enrollmentStatus": "open",
+      "links": {
+        "detail": "/v1/public/std-school/courses/crs_01JABC...",
+        "enrollmentForm": "/v1/public/std-school/courses/crs_01JABC.../form"
+      }
     }
   ],
   "page": { "limit": 20, "nextCursor": null }
@@ -794,6 +813,35 @@ Response `200`:
 ### `GET /v1/public/{tenantCode}/courses/{courseId}`
 
 Returns published course detail and enrollment window status.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "id": "crs_01JABC...",
+    "title": "Intro to AI",
+    "shortDescription": "4-week foundation course",
+    "fullDescription": "Detailed syllabus...",
+    "imageUrl": "https://cdn.onlineforms.com/assets/ast_01JABC...",
+    "startDate": "2026-04-01",
+    "endDate": "2026-04-28",
+    "deliveryMode": "online",
+    "pricingMode": "free",
+    "locationText": "Central campus",
+    "capacity": 120,
+    "enrollmentOpenAt": "2026-03-10T00:00:00Z",
+    "enrollmentCloseAt": "2026-03-31T23:59:59Z",
+    "enrollmentOpenNow": true,
+    "enrollmentStatus": "open",
+    "formAvailable": true,
+    "links": {
+      "detail": "/v1/public/std-school/courses/crs_01JABC...",
+      "enrollmentForm": "/v1/public/std-school/courses/crs_01JABC.../form"
+    }
+  }
+}
+```
 
 ---
 
@@ -853,7 +901,14 @@ Response `201`:
   "data": {
     "submissionId": "sub_01JABC...",
     "status": "submitted",
-    "submittedAt": "2026-03-09T01:30:00Z"
+    "submittedAt": "2026-03-09T01:30:00Z",
+    "tenantCode": "std-school",
+    "courseId": "crs_01JABC...",
+    "courseTitle": "Intro to AI",
+    "links": {
+      "tenantHome": "/v1/public/std-school/tenant-home",
+      "course": "/v1/public/std-school/courses/crs_01JABC..."
+    }
   }
 }
 ```

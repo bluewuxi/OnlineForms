@@ -23,7 +23,9 @@ function makeEvent(path: string, pathParameters?: Record<string, string>, body?:
     headers: {
       "x-user-id": "usr_1",
       "x-tenant-id": "ten_1",
-      "x-role": "org_admin"
+      "x-role": "org_admin",
+      "x-user-email": "admin@example.com",
+      "x-email-verified": "true"
     },
     pathParameters,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -91,6 +93,26 @@ test("orgTenantInviteAccept returns 400 when inviteId path is missing", async ()
       )
     );
     assert.equal(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantInviteAccept returns 403 when authenticated email is missing", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = makeEvent("/org/tenants/ten_1/invites/inv_1/accept", {
+      tenantId: "ten_1",
+      inviteId: "inv_1"
+    });
+    delete event.headers["x-user-email"];
+    delete event.headers["x-email-verified"];
+    const result = asStructuredResult(
+      await acceptInviteHandler(event, {} as never, () => undefined)
+    );
+    assert.equal(result.statusCode, 403);
+    assert.match(String(result.body), /verified authenticated email/i);
   } finally {
     process.env.AUTH_MODE = oldMode;
   }

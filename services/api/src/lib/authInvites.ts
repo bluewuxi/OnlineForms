@@ -129,7 +129,8 @@ export async function createTenantInvite(
 export async function acceptTenantInvite(
   tenantId: string,
   inviteId: string,
-  acceptedByUserId: string
+  acceptedByUserId: string,
+  acceptedByEmail: string
 ): Promise<{ tenantId: string; userId: string; role: "org_admin" | "org_editor"; activatedAt: string }> {
   const inviteKey = {
     PK: authTenantPk(tenantId),
@@ -157,6 +158,11 @@ export async function acceptTenantInvite(
   }
   if (typeof role !== "string" || !allowedInviteRoles.has(role as AuthRole)) {
     throw new ApiError(409, "CONFLICT", "Invite role is invalid.");
+  }
+  const inviteEmail = typeof invite.email === "string" ? normalizeEmail(invite.email) : null;
+  const callerEmail = normalizeEmail(acceptedByEmail);
+  if (!inviteEmail || callerEmail !== inviteEmail) {
+    throw new ApiError(403, "FORBIDDEN", "Authenticated user email does not match the invite target.");
   }
 
   const now = new Date().toISOString();

@@ -14,6 +14,8 @@ function auth(role: AuthContext["role"], tenantId = "ten_1"): AuthContext {
     userId: "usr_1",
     tenantId,
     role,
+    email: null,
+    emailVerified: false,
     claims: {}
   };
 }

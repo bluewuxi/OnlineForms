@@ -21,7 +21,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tenantIdHint: tenantId,
       requireMembership: false
     });
-    const data = await acceptTenantInvite(tenantId, inviteId, auth.userId);
+    if (!auth.email || !auth.emailVerified) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "Invite acceptance requires a verified authenticated email address."
+      );
+    }
+    const data = await acceptTenantInvite(tenantId, inviteId, auth.userId, auth.email);
     return jsonResponse(200, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

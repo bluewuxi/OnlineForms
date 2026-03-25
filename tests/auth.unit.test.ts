@@ -54,11 +54,15 @@ test("authenticateRequest uses mock headers when AUTH_MODE=mock", async () => {
     const auth = await authenticateRequest({
       "x-user-id": "usr_1",
       "x-tenant-id": "ten_1",
-      "x-role": "org_admin"
+      "x-role": "org_admin",
+      "x-user-email": "admin@example.com",
+      "x-email-verified": "true"
     });
     assert.equal(auth.userId, "usr_1");
     assert.equal(auth.tenantId, "ten_1");
     assert.equal(auth.role, "org_admin");
+    assert.equal(auth.email, "admin@example.com");
+    assert.equal(auth.emailVerified, true);
   } finally {
     restore();
   }
@@ -542,6 +546,39 @@ test("authenticateRequest allows requested internal_admin role when cognito grou
   }
 });
 
+test("authenticateRequest exposes cognito email and email_verified claims", async () => {
+  const restore = withAuthEnv({
+    AUTH_MODE: "cognito",
+    APP_ENV: "stage",
+    COGNITO_USER_POOL_ID: "ap-southeast-2_xxxxxxxx",
+    COGNITO_CLIENT_ID: "example-client-id",
+    COGNITO_TOKEN_USE: "access"
+  });
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "usr_1",
+      "custom:tenantId": "ten_1",
+      "custom:role": "org_admin",
+      email: "editor@example.com",
+      email_verified: true
+    })
+  });
+  __authTestHooks.setMembershipLoaderOverride(async (userId, tenantId) => ({
+    tenantId,
+    status: "active",
+    role: "org_admin",
+    allowedRoles: ["org_admin"]
+  }));
+  try {
+    const auth = await authenticateRequest({ authorization: "Bearer test-token" });
+    assert.equal(auth.email, "editor@example.com");
+    assert.equal(auth.emailVerified, true);
+  } finally {
+    __authTestHooks.reset();
+    restore();
+  }
+});
+
 test("authenticateRequest rejects requested internal_admin when token claims do not include internal_admin", async () => {
   const restore = withAuthEnv({
     AUTH_MODE: "cognito",
@@ -599,6 +636,8 @@ test("requireAnyRole rejects non-allowed role", () => {
     userId: "usr_1",
     tenantId: "ten_1",
     role: "org_editor",
+    email: null,
+    emailVerified: false,
     claims: {}
   };
   assert.throws(
@@ -617,12 +656,16 @@ test("assertTenantAccess denies cross-tenant for org role and allows platform_ad
     userId: "usr_1",
     tenantId: "ten_1",
     role: "org_admin",
+    email: null,
+    emailVerified: false,
     claims: {}
   };
   const platformAuth: AuthContext = {
     userId: "usr_2",
     tenantId: "ten_2",
     role: "platform_admin",
+    email: null,
+    emailVerified: false,
     claims: {}
   };
 

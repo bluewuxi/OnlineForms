@@ -22,6 +22,8 @@ export type AuthContext = {
   userId: string;
   tenantId: string;
   role: AuthRole;
+  email: string | null;
+  emailVerified: boolean;
   claims: Record<string, unknown>;
 };
 
@@ -118,6 +120,16 @@ function toOptionalStringClaim(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function toOptionalBooleanClaim(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return undefined;
+}
+
 function pickFirstString(values: unknown[]): string | undefined {
   for (const value of values) {
     const parsed = toOptionalStringClaim(value);
@@ -145,6 +157,8 @@ function fromMockHeaders(headers: HeaderMap, allowMissingTenantContext: boolean)
   const userId = pickHeader(headers, "x-user-id") ?? "mock-user";
   const role = toRole(pickHeader(headers, "x-role"));
   const tenantId = pickHeader(headers, "x-tenant-id");
+  const email = toOptionalStringClaim(pickHeader(headers, "x-user-email")) ?? null;
+  const emailVerified = toOptionalBooleanClaim(pickHeader(headers, "x-email-verified")) ?? email !== null;
   const resolvedTenantId =
     typeof tenantId === "string" && tenantId.trim().length > 0
       ? tenantId
@@ -156,6 +170,8 @@ function fromMockHeaders(headers: HeaderMap, allowMissingTenantContext: boolean)
     userId,
     tenantId: resolvedTenantId,
     role,
+    email,
+    emailVerified,
     claims: {}
   };
 }
@@ -511,6 +527,8 @@ export async function authenticateRequest(
     userId,
     tenantId,
     role,
+    email: toOptionalStringClaim(payload.email) ?? null,
+    emailVerified: toOptionalBooleanClaim(payload.email_verified) ?? false,
     claims: payload as Record<string, unknown>
   };
 }

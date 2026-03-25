@@ -43,7 +43,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Support frontend initialization for org and internal shells with minimal round trips
   - Clarify auth-expiry and invalid-context error behavior for UI handling
 
-- [ ] P12-05 Branding, assets, and observability hardening for frontend rollout
+- [x] P12-05 Branding, assets, and observability hardening for frontend rollout
   Issue: https://github.com/bluewuxi/OnlineForms/issues/68
   Scope:
   - Harden branding and asset contracts used by public and org pages

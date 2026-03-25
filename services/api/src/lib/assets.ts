@@ -22,6 +22,15 @@ export type UploadTicket = {
   headers: Record<string, string>;
   expiresAt: string;
   publicUrl: string;
+  asset: {
+    id: string;
+    purpose: UploadPurpose;
+    status: AssetStatus;
+    fileName: string;
+    contentType: UploadContentType;
+    sizeBytes: number;
+    publicUrl: string;
+  };
 };
 
 export type AssetStatus = "upload_pending" | "uploaded";
@@ -43,6 +52,9 @@ export type Asset = {
 const s3 = new S3Client({});
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+let testCreateUploadTicketOverride:
+  | ((tenantId: string, input: CreateUploadTicketInput) => Promise<UploadTicket>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -91,6 +103,9 @@ export async function createUploadTicket(
   tenantId: string,
   input: CreateUploadTicketInput
 ): Promise<UploadTicket> {
+  if (testCreateUploadTicketOverride) {
+    return testCreateUploadTicketOverride(tenantId, input);
+  }
   validateInput(input);
 
   const bucket = process.env.ONLINEFORMS_ASSETS_BUCKET;
@@ -149,7 +164,16 @@ export async function createUploadTicket(
       "Content-Type": input.contentType
     },
     expiresAt,
-    publicUrl
+    publicUrl,
+    asset: {
+      id: assetId,
+      purpose: input.purpose,
+      status: "upload_pending",
+      fileName: sanitizeFileName(input.fileName),
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+      publicUrl
+    }
   };
 }
 
@@ -177,10 +201,25 @@ export async function assertAssetBindable(
 ): Promise<Asset> {
   const asset = await getOrgAsset(tenantId, assetId);
   if (asset.purpose !== purpose) {
-    throw new ApiError(409, "CONFLICT", `Asset purpose mismatch. Expected ${purpose}.`);
+    throw new ApiError(409, "CONFLICT", `Asset purpose mismatch. Expected ${purpose}.`, [
+      { field: "assetId", issue: "asset_purpose_mismatch" }
+    ]);
   }
   if (asset.status !== "uploaded" && asset.status !== "upload_pending") {
-    throw new ApiError(409, "CONFLICT", "Asset is not in a bindable status.");
+    throw new ApiError(409, "CONFLICT", "Asset is not in a bindable status.", [
+      { field: "assetId", issue: "asset_not_bindable" }
+    ]);
   }
   return asset;
 }
+
+export const __assetsTestHooks = {
+  setCreateUploadTicketOverride(
+    loader: ((tenantId: string, input: CreateUploadTicketInput) => Promise<UploadTicket>) | null
+  ): void {
+    testCreateUploadTicketOverride = loader;
+  },
+  reset(): void {
+    testCreateUploadTicketOverride = null;
+  }
+};

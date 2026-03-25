@@ -596,6 +596,16 @@ Request body:
 
 Response `201`: `Asset Upload Ticket` object.
 
+Current response additions for frontend flows:
+
+- `asset.id`
+- `asset.purpose`
+- `asset.status`
+- `asset.fileName`
+- `asset.contentType`
+- `asset.sizeBytes`
+- `asset.publicUrl`
+
 Validation:
 
 - allowed MIME: `image/png`, `image/jpeg`, `image/webp`
@@ -718,6 +728,7 @@ Response `200`:
   "data": {
     "tenantId": "ten_01JABC...",
     "logoAssetId": "ast_01JABC...",
+    "logoUrl": "https://cdn.onlineforms.com/assets/ast_01JABC...",
     "updatedAt": "2026-03-09T01:30:00Z"
   }
 }
@@ -1022,6 +1033,12 @@ Response `201`:
 }
 ```
 
+Successful frontend-facing workflow telemetry now emits:
+
+- `OnlineForms/Frontend.AssetUploadTicketCreateCount`
+- `OnlineForms/Frontend.BrandingUpdateCount`
+- `OnlineForms/Frontend.PublicEnrollmentCreateCount`
+
 ---
 
 ## 8. Platform Admin API (Optional/Internal)
@@ -1237,6 +1254,10 @@ Return `429 RATE_LIMITED` when exceeded.
   - `SessionContextValidationSuccessCount`
   - `SessionContextValidationDeniedCount`
   - `SessionContextValidationInvalidCount`
+- Frontend workflow metrics in namespace `OnlineForms/Frontend`:
+  - `AssetUploadTicketCreateCount`
+  - `BrandingUpdateCount`
+  - `PublicEnrollmentCreateCount`
 
 ---
 

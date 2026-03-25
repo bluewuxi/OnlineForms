@@ -15,6 +15,7 @@ import { normalizeTenantCode } from "./tenantCodes";
 export type TenantBranding = {
   tenantId: string;
   logoAssetId: string | null;
+  logoUrl: string | null;
   updatedAt: string;
 };
 
@@ -86,6 +87,9 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
 let testPublicTenantDirectoryOverride: ((limit: number) => Promise<PublicTenantDirectoryItem[]>) | null = null;
 let testPublicTenantHomeOverride: ((tenantCode: string) => Promise<PublicTenantHome>) | null = null;
+let testUpdateTenantBrandingOverride:
+  | ((tenantId: string, logoAssetId: string | null) => Promise<TenantBranding>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -424,6 +428,9 @@ export async function updateTenantBranding(
   tenantId: string,
   logoAssetId: string | null
 ): Promise<TenantBranding> {
+  if (testUpdateTenantBrandingOverride) {
+    return testUpdateTenantBrandingOverride(tenantId, logoAssetId);
+  }
   if (logoAssetId) {
     await assertAssetBindable(tenantId, logoAssetId, "org_logo");
   }
@@ -454,6 +461,7 @@ export async function updateTenantBranding(
   return {
     tenantId,
     logoAssetId,
+    logoUrl: assetUrlFromAssetId(logoAssetId),
     updatedAt: now
   };
 }
@@ -596,8 +604,14 @@ export const __tenantsTestHooks = {
   setPublicTenantHomeOverride(loader: ((tenantCode: string) => Promise<PublicTenantHome>) | null): void {
     testPublicTenantHomeOverride = loader;
   },
+  setUpdateTenantBrandingOverride(
+    loader: ((tenantId: string, logoAssetId: string | null) => Promise<TenantBranding>) | null
+  ): void {
+    testUpdateTenantBrandingOverride = loader;
+  },
   reset(): void {
     testPublicTenantDirectoryOverride = null;
     testPublicTenantHomeOverride = null;
+    testUpdateTenantBrandingOverride = null;
   }
 };

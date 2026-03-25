@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
+import { emitPublicEnrollmentCreateMetric, logFrontendAudit } from "../lib/frontendObservability";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { parseJsonBody } from "../lib/request";
 import { createPublicEnrollment, type CreateEnrollmentInput } from "../lib/submissions";
@@ -36,6 +37,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const idempotencyKey = getRequiredHeader(event.headers, "Idempotency-Key");
     const body = parseJsonBody<CreateEnrollmentInput>(event);
     const data = await createPublicEnrollment(tenantCode, courseId, idempotencyKey, body);
+    emitPublicEnrollmentCreateMetric();
+    logFrontendAudit("frontend_public_enrollment_created", {
+      tenantCode,
+      courseId,
+      submissionId: data.submissionId
+    });
 
     return jsonResponse(201, { data }, correlation);
   } catch (error) {

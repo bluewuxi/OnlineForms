@@ -232,6 +232,42 @@ components:
         publicUrl:
           format: uri
           type: string
+        asset:
+          type: object
+          properties:
+            id:
+              type: string
+            purpose:
+              enum:
+              - course_image
+              - org_logo
+              type: string
+            status:
+              enum:
+              - upload_pending
+              - uploaded
+              type: string
+            fileName:
+              type: string
+            contentType:
+              enum:
+              - image/png
+              - image/jpeg
+              - image/webp
+              type: string
+            sizeBytes:
+              type: integer
+            publicUrl:
+              format: uri
+              type: string
+          required:
+          - id
+          - purpose
+          - status
+          - fileName
+          - contentType
+          - sizeBytes
+          - publicUrl
       type: object
       required:
       - assetId
@@ -240,6 +276,7 @@ components:
       - headers
       - expiresAt
       - publicUrl
+      - asset
     CourseStatus:
       enum:
       - draft
@@ -875,12 +912,18 @@ components:
               type:
               - string
               - "null"
+            logoUrl:
+              format: uri
+              type:
+              - string
+              - "null"
             updatedAt:
               format: date-time
               type: string
           required:
           - tenantId
           - logoAssetId
+          - logoUrl
           - updatedAt
       type: object
       required:

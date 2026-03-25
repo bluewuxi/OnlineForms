@@ -61,10 +61,22 @@ test("orgSessionContextsGet filters contexts by status", async () => {
     );
     assert.equal(result.statusCode, 200);
     const body = JSON.parse(result.body as string) as {
-      data: { contexts: Array<{ tenantId: string; status: string }> };
+      data: {
+        contexts: Array<{ tenantId: string; status: string }>;
+        availablePortals: string[];
+        selectionRequired: boolean;
+        suggestedContext: { tenantId: string | null; role: string; portal: string } | null;
+      };
     };
     assert.equal(body.data.contexts.length, 1);
     assert.equal(body.data.contexts[0].tenantId, "ten_1");
+    assert.deepEqual(body.data.availablePortals, ["org"]);
+    assert.equal(body.data.selectionRequired, false);
+    assert.deepEqual(body.data.suggestedContext, {
+      tenantId: "ten_1",
+      role: "org_admin",
+      portal: "org"
+    });
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
@@ -81,6 +93,40 @@ test("orgSessionContextsGet returns 400 on invalid status filter", async () => {
       await handler(makeEvent({ status: "active,blocked" }), {} as never, () => undefined)
     );
     assert.equal(result.statusCode, 400);
+  } finally {
+    __authContextsTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgSessionContextsGet exposes internal portal bootstrap option", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  __authContextsTestHooks.setContextLoaderOverride(async () => []);
+
+  try {
+    const event = makeEvent();
+    event.headers["x-role"] = "internal_admin";
+    event.headers["x-tenant-id"] = "";
+
+    const result = asStructuredResult(await handler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: {
+        canAccessInternalPortal: boolean;
+        availablePortals: string[];
+        selectionRequired: boolean;
+        suggestedContext: { tenantId: string | null; role: string; portal: string } | null;
+      };
+    };
+    assert.equal(body.data.canAccessInternalPortal, true);
+    assert.deepEqual(body.data.availablePortals, ["internal"]);
+    assert.equal(body.data.selectionRequired, false);
+    assert.deepEqual(body.data.suggestedContext, {
+      tenantId: null,
+      role: "internal_admin",
+      portal: "internal"
+    });
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;

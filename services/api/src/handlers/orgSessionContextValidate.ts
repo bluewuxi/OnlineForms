@@ -9,6 +9,7 @@ import {
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { buildSessionBootstrapResponseData } from "../lib/sessionBootstrap";
 import { assertTenantRoleAllowed, listUserTenantContexts } from "../lib/authContexts";
 
 type ContextPayload = {
@@ -18,7 +19,7 @@ type ContextPayload = {
 
 const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "internal_admin", "platform_admin"]);
 
-function parsePayload(body: string | undefined): { tenantId: string; role: AuthRole } {
+function parsePayload(body: string | undefined): { tenantId?: string; role: AuthRole } {
   if (!body) {
     throw new ApiError(400, "VALIDATION_ERROR", "Request body is required.");
   }
@@ -31,14 +32,16 @@ function parsePayload(body: string | undefined): { tenantId: string; role: AuthR
 
   const tenantId = typeof parsed.tenantId === "string" ? parsed.tenantId.trim() : "";
   const roleRaw = typeof parsed.role === "string" ? parsed.role.trim() : "";
-  if (!tenantId) {
-    throw new ApiError(400, "VALIDATION_ERROR", "tenantId is required.");
-  }
   if (!allowedRoles.has(roleRaw as AuthRole)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "role is invalid.");
+    throw new ApiError(400, "VALIDATION_ERROR", "role is invalid.", [{ field: "role", issue: "invalid_role" }]);
+  }
+  if (!tenantId && roleRaw !== "internal_admin") {
+    throw new ApiError(400, "VALIDATION_ERROR", "tenantId is required.", [
+      { field: "tenantId", issue: "tenant_required" }
+    ]);
   }
 
-  return { tenantId, role: roleRaw as AuthRole };
+  return { tenantId: tenantId || undefined, role: roleRaw as AuthRole };
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -46,12 +49,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   try {
     const { tenantId, role } = parsePayload(event.body);
+    const authHeaders: Record<string, string | undefined> = {
+      ...(event.headers ?? {}),
+      "x-role": role
+    };
+    if (tenantId) {
+      authHeaders["x-tenant-id"] = tenantId;
+    }
     const auth = await authenticateRequest(
-      {
-        ...(event.headers ?? {}),
-        "x-tenant-id": tenantId,
-        "x-role": role
-      },
+      authHeaders,
       {
         requireMembership: false,
         allowMissingTenantContext: true,
@@ -59,8 +65,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       }
     );
 
-    const contexts = await listUserTenantContexts(auth.userId);
-    assertTenantRoleAllowed(contexts, tenantId, role);
+    if (role !== "internal_admin" && tenantId) {
+      const contexts = await listUserTenantContexts(auth.userId);
+      assertTenantRoleAllowed(contexts, tenantId, role);
+    } else if (role !== "internal_admin") {
+      throw new ApiError(400, "VALIDATION_ERROR", "tenantId is required.", [
+        { field: "tenantId", issue: "tenant_required" }
+      ]);
+    }
     emitSessionContextValidationSuccessMetric();
     logAuthAudit("auth_session_context_validation_succeeded", {
       userId: auth.userId,
@@ -71,11 +83,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return jsonResponse(
       200,
       {
-        data: {
-          userId: auth.userId,
-          tenantId,
-          role
-        }
+        data: buildSessionBootstrapResponseData(auth.userId, role, tenantId ?? null)
       },
       correlation
     );

@@ -104,10 +104,14 @@ export function assertTenantRoleAllowed(
 ): void {
   const context = contexts.find((item) => item.tenantId === tenantId);
   if (!context || context.status !== "active") {
-    throw new ApiError(403, "FORBIDDEN", "User does not have active membership for selected tenant.");
+    throw new ApiError(403, "FORBIDDEN", "User does not have active membership for selected tenant.", [
+      { field: "tenantId", issue: "invalid_context" }
+    ]);
   }
   if (!context.roles.includes(role)) {
-    throw new ApiError(403, "FORBIDDEN", "Selected role is not allowed for selected tenant.");
+    throw new ApiError(403, "FORBIDDEN", "Selected role is not allowed for selected tenant.", [
+      { field: "role", issue: "invalid_context" }
+    ]);
   }
 }
 

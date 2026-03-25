@@ -3,6 +3,7 @@ import { authenticateRequest, hasTokenRoleCapability } from "../lib/auth";
 import { emitSessionContextsEmptyMetric, logAuthAudit } from "../lib/authObservability";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { buildSuggestedContext, listAvailablePortals } from "../lib/sessionBootstrap";
 import {
   filterUserTenantContextsByStatus,
   listUserTenantContexts,
@@ -25,13 +26,18 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (activeCount === 0) {
       emitSessionContextsEmptyMetric();
     }
-    const canAccessInternalPortal = hasTokenRoleCapability(auth.claims, "internal_admin");
+    const canAccessInternalPortal =
+      auth.role === "internal_admin" || hasTokenRoleCapability(auth.claims, "internal_admin");
+    const availablePortals = listAvailablePortals(contexts, canAccessInternalPortal);
+    const suggestedContext = buildSuggestedContext(contexts, canAccessInternalPortal);
     logAuthAudit("auth_session_contexts_listed", {
       userId: auth.userId,
       tokenRole: auth.role,
       contextsTotal: contexts.length,
       activeContexts: activeCount,
       canAccessInternalPortal,
+      availablePortals,
+      selectionRequired: suggestedContext === null,
       statusFilter: statuses
     });
 
@@ -42,6 +48,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           userId: auth.userId,
           tokenRole: auth.role,
           canAccessInternalPortal,
+          availablePortals,
+          selectionRequired: suggestedContext === null,
+          suggestedContext,
           contexts
         }
       },

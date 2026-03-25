@@ -57,11 +57,46 @@ test("orgMe returns auth context in mock mode", async () => {
     assert.ok(result.body);
 
     const body = JSON.parse(result.body as string) as {
-      data: { userId: string; tenantId: string; role: string };
+      data: {
+        userId: string;
+        tenantId: string | null;
+        role: string;
+        shell: { portal: string; tenantScoped: boolean };
+      };
     };
     assert.equal(body.data.userId, "usr_1");
     assert.equal(body.data.tenantId, "ten_1");
     assert.equal(body.data.role, "org_admin");
+    assert.deepEqual(body.data.shell, { portal: "org", tenantScoped: true });
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgMe allows internal_admin bootstrap without tenant context", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = makeEvent({
+      "x-user-id": "usr_1",
+      "x-role": "internal_admin",
+      "x-tenant-id": ""
+    });
+
+    const result = asStructuredResult(await handler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: {
+        userId: string;
+        tenantId: string | null;
+        role: string;
+        shell: { portal: string; tenantScoped: boolean };
+      };
+    };
+    assert.equal(body.data.userId, "usr_1");
+    assert.equal(body.data.tenantId, null);
+    assert.equal(body.data.role, "internal_admin");
+    assert.deepEqual(body.data.shell, { portal: "internal", tenantScoped: false });
   } finally {
     process.env.AUTH_MODE = oldMode;
   }

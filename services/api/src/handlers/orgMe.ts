@@ -3,22 +3,22 @@ import { authenticateRequest } from "../lib/auth";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { buildSessionBootstrapResponseData, toNullableTenantId } from "../lib/sessionBootstrap";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
 
   try {
-    const auth = await authenticateRequest(event.headers);
+    const auth = await authenticateRequest(event.headers, {
+      allowMissingTenantContext: true,
+      requireMembership: false
+    });
     authorizeOrgAction(auth, "ORG_ME_READ");
 
     return jsonResponse(
       200,
       {
-        data: {
-          userId: auth.userId,
-          tenantId: auth.tenantId,
-          role: auth.role
-        }
+        data: buildSessionBootstrapResponseData(auth.userId, auth.role, toNullableTenantId(auth.tenantId))
       },
       correlation
     );

@@ -671,16 +671,34 @@ components:
             userId:
               type: string
             tenantId:
-              type: string
+              type:
+              - string
+              - "null"
             role:
               type: string
+            shell:
+              $ref: '#/components/schemas/SessionShell'
           required:
           - userId
           - tenantId
           - role
+          - shell
       type: object
       required:
       - data
+    SessionShell:
+      properties:
+        portal:
+          enum:
+          - org
+          - internal
+          type: string
+        tenantScoped:
+          type: boolean
+      required:
+      - portal
+      - tenantScoped
+      type: object
     SessionContext:
       properties:
         tenantId:
@@ -700,6 +718,24 @@ components:
       - tenantId
       - status
       - roles
+    SessionContextSelection:
+      properties:
+        tenantId:
+          type:
+          - string
+          - "null"
+        role:
+          type: string
+        portal:
+          enum:
+          - org
+          - internal
+          type: string
+      required:
+      - tenantId
+      - role
+      - portal
+      type: object
     SessionContextsResponse:
       properties:
         data:
@@ -711,6 +747,19 @@ components:
               type: string
             canAccessInternalPortal:
               type: boolean
+            availablePortals:
+              items:
+                enum:
+                - org
+                - internal
+                type: string
+              type: array
+            selectionRequired:
+              type: boolean
+            suggestedContext:
+              anyOf:
+              - $ref: '#/components/schemas/SessionContextSelection'
+              - type: "null"
             contexts:
               items:
                 $ref: '#/components/schemas/SessionContext'
@@ -719,6 +768,9 @@ components:
           - userId
           - tokenRole
           - canAccessInternalPortal
+          - availablePortals
+          - selectionRequired
+          - suggestedContext
           - contexts
       type: object
       required:
@@ -747,10 +799,13 @@ components:
               - "null"
             role:
               type: string
+            shell:
+              $ref: '#/components/schemas/SessionShell'
           required:
           - userId
           - tenantId
           - role
+          - shell
       type: object
       required:
       - data

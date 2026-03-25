@@ -35,7 +35,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Add any missing summaries, filters, or workflow status fields needed by the organization portal
   - Preserve backward compatibility where practical
 
-- [ ] P12-04 Frontend auth/session bootstrap and shell data contracts
+- [x] P12-04 Frontend auth/session bootstrap and shell data contracts
   Issue: https://github.com/bluewuxi/OnlineForms/issues/67
   Scope:
   - Finalize session bootstrap payloads needed after login and context selection

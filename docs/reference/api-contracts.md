@@ -650,10 +650,19 @@ Response `200`:
   "data": {
     "userId": "usr_01J...",
     "tenantId": "ten_01J...",
-    "role": "org_admin"
+    "role": "org_admin",
+    "shell": {
+      "portal": "org",
+      "tenantScoped": true
+    }
   }
 }
 ```
+
+Notes:
+
+- `internal_admin` may receive `tenantId: null`.
+- `shell.portal` is `internal` only when bootstrapping the internal shell without tenant context.
 
 ### `GET /v1/org/audit`
 
@@ -734,6 +743,13 @@ Response `200`:
     "userId": "usr_01J...",
     "tokenRole": "org_admin",
     "canAccessInternalPortal": false,
+    "availablePortals": ["org"],
+    "selectionRequired": false,
+    "suggestedContext": {
+      "tenantId": "ten_01J...",
+      "role": "org_admin",
+      "portal": "org"
+    },
     "contexts": [
       {
         "tenantId": "ten_01J...",
@@ -765,10 +781,20 @@ Response `200`:
   "data": {
     "userId": "usr_01J...",
     "tenantId": "ten_01J...",
-    "role": "org_admin"
+    "role": "org_admin",
+    "shell": {
+      "portal": "org",
+      "tenantScoped": true
+    }
   }
 }
 ```
+
+Error handling notes for frontend bootstrap:
+
+- `400 VALIDATION_ERROR` with `error.details[*].issue=tenant_required` when org roles omit `tenantId`
+- `403 FORBIDDEN` with `error.details[*].issue=invalid_context` when the selected tenant/role is not allowed
+- `401 UNAUTHORIZED` with token issues such as `token_expired` still uses the standard auth error envelope
 
 ---
 

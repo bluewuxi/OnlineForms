@@ -12,7 +12,7 @@ const tenantDescription =
   "Demo school tenant profile used for local smoke and integration checks.";
 const tenantHomePageContent =
   process.env.SEED_TENANT_HOME_PAGE_CONTENT ||
-  "Welcome to Demo School. Explore our published courses and enroll online.";
+  "Welcome to Demo School, where practical short courses are presented in a calm, modern learning portal. Browse the latest catalogue, review course details clearly, and complete your enrollment in one focused session.";
 const tenantIsActiveRaw = process.env.SEED_TENANT_IS_ACTIVE || "true";
 const tenantIsActive = tenantIsActiveRaw.toLowerCase() !== "false";
 const courseId = process.env.SEED_COURSE_ID || "std_001";

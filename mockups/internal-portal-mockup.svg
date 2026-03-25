@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">OnlineForms internal portal mockup</title>
+  <desc id="desc">Low fidelity visual mockup for the internal tenant management portal.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ebeff1"/>
+      <stop offset="100%" stop-color="#dee4e8"/>
+    </linearGradient>
+    <style>
+      .sans { font-family: Arial, Helvetica, sans-serif; }
+      .serif { font-family: Georgia, 'Times New Roman', serif; }
+      .muted { fill: #68737c; }
+      .tiny { font-size: 13px; letter-spacing: 1.8px; text-transform: uppercase; }
+      .small { font-size: 16px; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="1024" fill="url(#bg)"/>
+  <rect x="28" y="24" width="1384" height="976" rx="22" fill="#f9fbfc"/>
+
+  <rect x="28" y="24" width="1384" height="82" rx="22" fill="#102733"/>
+  <text x="74" y="74" class="sans" font-size="28" fill="#f7fbfc">OnlineForms Internal</text>
+  <text x="404" y="74" class="sans small" fill="#c8d6dd">Home</text>
+  <text x="486" y="74" class="sans small" fill="#ffffff">Tenants</text>
+  <text x="576" y="74" class="sans small" fill="#c8d6dd">Users</text>
+  <text x="1298" y="74" class="sans small" fill="#c8d6dd">Logout</text>
+
+  <text x="76" y="176" class="sans tiny muted">Directory</text>
+  <text x="76" y="226" class="serif" font-size="50" fill="#15242b">Tenants</text>
+  <text x="76" y="262" class="sans small muted">List-first layout with detail in a right drawer, matching the documented internal workflow.</text>
+
+  <rect x="76" y="302" width="844" height="74" rx="18" fill="#eef2f4"/>
+  <rect x="100" y="320" width="256" height="38" rx="19" fill="#ffffff"/>
+  <text x="126" y="345" class="sans small" fill="#8c96a0">Search name or code</text>
+  <rect x="674" y="320" width="106" height="38" rx="19" fill="#ffffff"/>
+  <text x="709" y="345" class="sans small" fill="#4d5962">Active</text>
+  <rect x="794" y="320" width="102" height="38" rx="19" fill="#d3a85e"/>
+  <text x="824" y="345" class="sans small" fill="#15242b">Create</text>
+
+  <rect x="76" y="404" width="844" height="504" rx="22" fill="#ffffff"/>
+  <text x="108" y="452" class="sans tiny muted">Tenant list</text>
+  <line x1="108" y1="484" x2="888" y2="484" stroke="#e6eaed"/>
+  <text x="108" y="528" class="sans small muted">Code</text>
+  <text x="252" y="528" class="sans small muted">Display name</text>
+  <text x="592" y="528" class="sans small muted">Status</text>
+  <text x="724" y="528" class="sans small muted">Updated</text>
+
+  <rect x="96" y="548" width="804" height="80" rx="14" fill="#f4f7f8"/>
+  <text x="120" y="596" class="sans small" fill="#15242b">std-school</text>
+  <text x="252" y="596" class="sans small" fill="#15242b">Std School</text>
+  <rect x="582" y="570" width="82" height="30" rx="15" fill="#dbe8df"/>
+  <text x="607" y="590" class="sans small" fill="#335043">Active</text>
+  <text x="724" y="596" class="sans small muted">24 Mar</text>
+
+  <rect x="96" y="642" width="804" height="80" rx="14" fill="#ffffff"/>
+  <text x="120" y="690" class="sans small" fill="#15242b">north-hub</text>
+  <text x="252" y="690" class="sans small" fill="#15242b">North Hub</text>
+  <rect x="582" y="664" width="96" height="30" rx="15" fill="#efe3c8"/>
+  <text x="608" y="684" class="sans small" fill="#75561e">Drafting</text>
+  <text x="724" y="690" class="sans small muted">23 Mar</text>
+
+  <rect x="96" y="736" width="804" height="80" rx="14" fill="#ffffff"/>
+  <text x="120" y="784" class="sans small" fill="#15242b">metro-west</text>
+  <text x="252" y="784" class="sans small" fill="#15242b">Metro West</text>
+  <rect x="582" y="758" width="96" height="30" rx="15" fill="#ebd8d6"/>
+  <text x="608" y="778" class="sans small" fill="#73403b">Inactive</text>
+  <text x="724" y="784" class="sans small muted">20 Mar</text>
+
+  <rect x="958" y="164" width="382" height="744" rx="24" fill="#112f3b"/>
+  <text x="994" y="216" class="sans tiny" fill="#c7d8df">Selected tenant</text>
+  <text x="994" y="270" class="serif" font-size="42" fill="#ffffff">Std School</text>
+  <text x="994" y="308" class="sans small" fill="#d4dee3">Detail stays in-context in a drawer instead of routing away from the list.</text>
+
+  <rect x="994" y="350" width="310" height="142" rx="18" fill="#1b4452"/>
+  <text x="1020" y="390" class="sans tiny" fill="#cbd8de">Profile</text>
+  <text x="1020" y="430" class="sans small" fill="#ffffff">Code: std-school</text>
+  <text x="1020" y="460" class="sans small" fill="#ffffff">Status: active</text>
+
+  <rect x="994" y="526" width="310" height="180" rx="18" fill="#173b47"/>
+  <text x="1020" y="566" class="sans tiny" fill="#cbd8de">Home page content</text>
+  <rect x="1020" y="596" width="258" height="14" rx="7" fill="#94aab3"/>
+  <rect x="1020" y="626" width="236" height="14" rx="7" fill="#94aab3"/>
+  <rect x="1020" y="656" width="208" height="14" rx="7" fill="#94aab3"/>
+
+  <rect x="994" y="740" width="146" height="44" rx="22" fill="#d3a85e"/>
+  <text x="1038" y="768" class="sans small" fill="#15242b">Save tenant</text>
+  <rect x="1158" y="740" width="146" height="44" rx="22" fill="none" stroke="#6d8792"/>
+  <text x="1200" y="768" class="sans small" fill="#d9e4e8">View users</text>
+</svg>

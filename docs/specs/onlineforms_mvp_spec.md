@@ -437,6 +437,27 @@ Because the product’s early traffic is uncertain and bursty, this stack minimi
   - add-by-email and remove-internal-access workflows
 - API contract and observability hardening for internal portal operations
 
+### Phase 11
+- Frontend UI implementation using `docs/reference/ui-design-spec.md` as the baseline style source
+- Public portal rollout:
+  - tenant home and public catalog
+  - course detail page
+  - enrollment form and success state
+- Organization portal rollout:
+  - top-level navigation and app shell
+  - course-first authoring workspace
+  - submissions and settings surfaces
+- Internal portal UI rollout:
+  - top-nav implementation
+  - tenants and users list-detail drawers
+
+### Phase 12
+- Backend support changes for frontend rollout
+- Contract audit and API documentation alignment for frontend consumers
+- Public portal payload shaping for tenant/catalog/detail/enrollment UX
+- Organization portal contract shaping for list-detail workflows
+- Auth/session bootstrap, branding/assets, and observability hardening for shipped UI
+
 ---
 
 ## 23. Final Recommendation

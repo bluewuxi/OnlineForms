@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">OnlineForms public portal mockup</title>
+  <desc id="desc">Low fidelity visual mockup for the tenant-branded public course catalog.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3efe7"/>
+      <stop offset="100%" stop-color="#e3ddd1"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2b4c5a"/>
+      <stop offset="100%" stop-color="#182d36"/>
+    </linearGradient>
+    <linearGradient id="art" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d9bf8f"/>
+      <stop offset="100%" stop-color="#c89047"/>
+    </linearGradient>
+    <style>
+      .serif { font-family: Georgia, 'Times New Roman', serif; }
+      .sans { font-family: Arial, Helvetica, sans-serif; }
+      .muted { fill: #607278; }
+      .label { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+      .body { font-size: 22px; }
+      .small { font-size: 16px; }
+      .chip { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="1024" fill="url(#bg)"/>
+  <rect x="40" y="32" width="1360" height="960" rx="28" fill="#fcfaf5"/>
+
+  <rect x="40" y="32" width="1360" height="428" rx="28" fill="url(#hero)"/>
+  <rect x="872" y="92" width="440" height="292" rx="24" fill="url(#art)"/>
+  <circle cx="1210" cy="210" r="118" fill="#ead9be" opacity="0.3"/>
+  <rect x="930" y="146" width="212" height="18" rx="9" fill="#f4ebdc" opacity="0.8"/>
+  <rect x="930" y="176" width="280" height="18" rx="9" fill="#f4ebdc" opacity="0.6"/>
+  <rect x="930" y="230" width="160" height="94" rx="16" fill="#f7f1e7" opacity="0.9"/>
+  <rect x="1110" y="230" width="150" height="94" rx="16" fill="#f2dfbf" opacity="0.9"/>
+
+  <text x="94" y="94" class="sans label" fill="#d8e5e8">Std School</text>
+  <text x="94" y="170" class="serif" font-size="68" fill="#f9f5ed">Short courses</text>
+  <text x="94" y="244" class="serif" font-size="68" fill="#f9f5ed">with a calmer</text>
+  <text x="94" y="318" class="serif" font-size="68" fill="#f9f5ed">way to enrol.</text>
+  <text x="96" y="372" class="sans body" fill="#d6e0e2">Browse free classes, review details, and finish the form in one session.</text>
+
+  <rect x="96" y="400" width="176" height="48" rx="24" fill="#d6a660"/>
+  <text x="131" y="430" class="sans small" fill="#132229">Browse courses</text>
+  <rect x="288" y="400" width="160" height="48" rx="24" fill="none" stroke="#d2dde0"/>
+  <text x="335" y="430" class="sans small" fill="#eef4f5">About campus</text>
+
+  <text x="96" y="516" class="sans label muted">Available this term</text>
+
+  <rect x="96" y="554" width="380" height="170" rx="18" fill="#f4eee2"/>
+  <rect x="500" y="554" width="380" height="170" rx="18" fill="#f6f2ea"/>
+  <rect x="904" y="554" width="400" height="170" rx="18" fill="#efe7d8"/>
+
+  <text x="126" y="600" class="sans chip" fill="#7c6640">In person</text>
+  <text x="126" y="646" class="serif" font-size="36" fill="#1d2e35">Intro to AI</text>
+  <text x="126" y="684" class="sans small muted">Evening course • 6 weeks • Central campus</text>
+  <rect x="126" y="700" width="116" height="12" rx="6" fill="#d9c8a8"/>
+
+  <text x="530" y="600" class="sans chip" fill="#5d706d">Online</text>
+  <text x="530" y="646" class="serif" font-size="36" fill="#1d2e35">Digital Writing</text>
+  <text x="530" y="684" class="sans small muted">Remote cohort • 4 weeks • Beginner friendly</text>
+  <rect x="530" y="700" width="138" height="12" rx="6" fill="#cfdad0"/>
+
+  <text x="934" y="600" class="sans chip" fill="#7c6640">Popular</text>
+  <text x="934" y="646" class="serif" font-size="36" fill="#1d2e35">How this works</text>
+  <text x="934" y="686" class="sans small muted">1. Choose a course</text>
+  <text x="934" y="716" class="sans small muted">2. Review schedule and requirements</text>
+  <text x="934" y="746" class="sans small muted">3. Complete the enrolment form</text>
+
+  <line x1="96" y1="790" x2="1304" y2="790" stroke="#ded7ca"/>
+  <text x="96" y="838" class="sans label muted">Why this design direction</text>
+  <text x="96" y="892" class="serif" font-size="42" fill="#1d2e35">Editorial and trustworthy, with tenant identity</text>
+  <text x="96" y="930" class="sans small muted">Large imagery, restrained accent color, clear call-to-action, and minimal friction for applicants.</text>
+</svg>

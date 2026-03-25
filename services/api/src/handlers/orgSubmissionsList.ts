@@ -2,8 +2,10 @@ import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest } from "../lib/auth";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
+import { listCourses } from "../lib/courses";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { toOrgSubmissionView } from "../lib/orgViews";
 import { listOrgSubmissions, type SubmissionStatus } from "../lib/submissions";
 
 function parseLimit(value: string | undefined): number | undefined {
@@ -38,8 +40,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       limit: parseLimit(query.limit),
       cursor: query.cursor
     });
+    const courses = await listCourses(auth.tenantId);
+    const courseTitles = new Map(courses.map((course) => [course.id, course.title] as const));
+    const data = result.data.map((submission) =>
+      toOrgSubmissionView(submission, {
+        courseTitle: courseTitles.get(submission.courseId) ?? null
+      })
+    );
 
-    return jsonResponse(200, result, correlation);
+    return jsonResponse(200, { ...result, data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }

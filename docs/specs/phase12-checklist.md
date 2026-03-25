@@ -28,7 +28,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Add any missing presentation-safe fields needed for enrollment entry and success states
   - Keep payloads tenant-scoped and stable for cached public rendering
 
-- [ ] P12-03 Organization portal list-detail and workflow support contracts
+- [x] P12-03 Organization portal list-detail and workflow support contracts
   Issue: https://github.com/bluewuxi/OnlineForms/issues/66
   Scope:
   - Shape course, form-schema, and submission APIs for list-detail UI patterns
@@ -39,6 +39,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
   Issue: https://github.com/bluewuxi/OnlineForms/issues/67
   Scope:
   - Finalize session bootstrap payloads needed after login and context selection
+  - Support `internal_admin` context validation when no tenant is selected, while preserving tenant-bound validation for org roles
   - Support frontend initialization for org and internal shells with minimal round trips
   - Clarify auth-expiry and invalid-context error behavior for UI handling
 

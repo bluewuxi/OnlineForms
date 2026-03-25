@@ -5,6 +5,7 @@ import { createCorrelationContext } from "../lib/correlation";
 import { type UpdateCourseInput, updateCourse } from "../lib/courses";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { toOrgCourseView } from "../lib/orgViews";
 import { parseJsonBody } from "../lib/request";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -18,7 +19,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const input = parseJsonBody<UpdateCourseInput>(event);
     const course = await updateCourse(auth.tenantId, courseId, auth.userId, input);
-    return jsonResponse(200, { data: course }, correlation);
+    return jsonResponse(200, { data: toOrgCourseView(course) }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }

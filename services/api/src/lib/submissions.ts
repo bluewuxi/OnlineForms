@@ -39,6 +39,7 @@ export type Submission = {
   };
   course?: {
     id: string;
+    title?: string | null;
   };
 };
 
@@ -96,6 +97,12 @@ let testCreatePublicEnrollmentOverride:
       idempotencyKeyRaw: string,
       input: CreateEnrollmentInput
     ) => Promise<EnrollmentCreateResult>)
+  | null = null;
+let testListOrgSubmissionsOverride:
+  | ((tenantId: string, input: ListSubmissionsInput) => Promise<ListSubmissionsResult>)
+  | null = null;
+let testGetOrgSubmissionOverride:
+  | ((tenantId: string, submissionId: string) => Promise<Submission>)
   | null = null;
 
 function tenantPk(tenantId: string): string {
@@ -351,6 +358,9 @@ export async function listOrgSubmissions(
   tenantId: string,
   input: ListSubmissionsInput
 ): Promise<ListSubmissionsResult> {
+  if (testListOrgSubmissionsOverride) {
+    return testListOrgSubmissionsOverride(tenantId, input);
+  }
   const limit = parseLimit(input.limit);
   const offset = decodeOffsetCursor(input.cursor);
   const submittedFrom = input.submittedFrom ? parseIsoDateTime(input.submittedFrom, "submittedFrom") : undefined;
@@ -418,6 +428,9 @@ export async function listOrgSubmissions(
 }
 
 export async function getOrgSubmission(tenantId: string, submissionId: string): Promise<Submission> {
+  if (testGetOrgSubmissionOverride) {
+    return testGetOrgSubmissionOverride(tenantId, submissionId);
+  }
   const out = await ddb.send(
     new GetCommand({
       TableName: tableName,
@@ -621,6 +634,16 @@ export async function createPublicEnrollment(
 }
 
 export const __submissionsTestHooks = {
+  setListOrgSubmissionsOverride(
+    loader: ((tenantId: string, input: ListSubmissionsInput) => Promise<ListSubmissionsResult>) | null
+  ): void {
+    testListOrgSubmissionsOverride = loader;
+  },
+  setGetOrgSubmissionOverride(
+    loader: ((tenantId: string, submissionId: string) => Promise<Submission>) | null
+  ): void {
+    testGetOrgSubmissionOverride = loader;
+  },
   setCreatePublicEnrollmentOverride(
     loader:
       | ((
@@ -634,6 +657,8 @@ export const __submissionsTestHooks = {
     testCreatePublicEnrollmentOverride = loader;
   },
   reset(): void {
+    testListOrgSubmissionsOverride = null;
+    testGetOrgSubmissionOverride = null;
     testCreatePublicEnrollmentOverride = null;
   }
 };

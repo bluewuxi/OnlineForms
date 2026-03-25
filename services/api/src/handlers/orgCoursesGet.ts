@@ -5,6 +5,7 @@ import { createCorrelationContext } from "../lib/correlation";
 import { getCourse } from "../lib/courses";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { toOrgCourseView } from "../lib/orgViews";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
@@ -16,7 +17,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (!courseId) throw new ApiError(400, "VALIDATION_ERROR", "Missing courseId path parameter.");
 
     const course = await getCourse(auth.tenantId, courseId);
-    return jsonResponse(200, { data: course }, correlation);
+    return jsonResponse(200, { data: toOrgCourseView(course) }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }

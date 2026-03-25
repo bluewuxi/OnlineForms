@@ -61,6 +61,14 @@ export type UpdateCourseInput = Partial<CreateCourseInput> & {
   publicVisible?: boolean;
 };
 
+export type ListCoursesInput = {
+  status?: CourseStatus;
+  pricingMode?: PricingMode;
+  deliveryMode?: DeliveryMode;
+  publicVisible?: boolean;
+  q?: string;
+};
+
 export type PublicCourse = {
   id: string;
   title: string;
@@ -105,6 +113,8 @@ let testPublicCoursesListOverride:
 let testPublicCourseDetailOverride:
   | ((tenantCode: string, courseId: string) => Promise<PublicCourseDetail>)
   | null = null;
+let testGetCourseOverride: ((tenantId: string, courseId: string) => Promise<Course>) | null = null;
+let testListCoursesOverride: ((tenantId: string, input?: ListCoursesInput) => Promise<Course[]>) | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -401,6 +411,9 @@ export async function createCourse(
 }
 
 export async function getCourse(tenantId: string, courseId: string): Promise<Course> {
+  if (testGetCourseOverride) {
+    return testGetCourseOverride(tenantId, courseId);
+  }
   const out = await ddb.send(
     new GetCommand({
       TableName: tableName,
@@ -412,7 +425,10 @@ export async function getCourse(tenantId: string, courseId: string): Promise<Cou
   return courseFromItem(out.Item as Record<string, unknown>);
 }
 
-export async function listCourses(tenantId: string): Promise<Course[]> {
+export async function listCourses(tenantId: string, input: ListCoursesInput = {}): Promise<Course[]> {
+  if (testListCoursesOverride) {
+    return testListCoursesOverride(tenantId, input);
+  }
   const out = await ddb.send(
     new QueryCommand({
       TableName: tableName,
@@ -423,7 +439,21 @@ export async function listCourses(tenantId: string): Promise<Course[]> {
       }
     })
   );
-  return (out.Items ?? []).map((i) => courseFromItem(i as Record<string, unknown>));
+  const keyword = input.q?.trim().toLowerCase();
+  return (out.Items ?? [])
+    .map((i) => courseFromItem(i as Record<string, unknown>))
+    .filter((course) => {
+      if (input.status && course.status !== input.status) return false;
+      if (input.pricingMode && course.pricingMode !== input.pricingMode) return false;
+      if (input.deliveryMode && course.deliveryMode !== input.deliveryMode) return false;
+      if (input.publicVisible !== undefined && course.publicVisible !== input.publicVisible) return false;
+      if (keyword) {
+        const haystack = `${course.title} ${course.shortDescription} ${course.fullDescription}`.toLowerCase();
+        if (!haystack.includes(keyword)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function updateCourse(
@@ -681,6 +711,12 @@ export async function reconcilePublicProjectionsForTenant(
 }
 
 export const __coursesTestHooks = {
+  setGetCourseOverride(loader: ((tenantId: string, courseId: string) => Promise<Course>) | null): void {
+    testGetCourseOverride = loader;
+  },
+  setListCoursesOverride(loader: ((tenantId: string, input?: ListCoursesInput) => Promise<Course[]>) | null): void {
+    testListCoursesOverride = loader;
+  },
   setPublicCoursesListOverride(
     loader:
       | ((tenantCode: string, q?: string, limitRaw?: number, cursor?: string) => Promise<PublicCoursesListResult>)
@@ -694,6 +730,8 @@ export const __coursesTestHooks = {
     testPublicCourseDetailOverride = loader;
   },
   reset(): void {
+    testGetCourseOverride = null;
+    testListCoursesOverride = null;
     testPublicCoursesListOverride = null;
     testPublicCourseDetailOverride = null;
   }

@@ -15,7 +15,6 @@ This document now reflects the implemented backend shape used by the upcoming UI
 
 Important baseline notes from the audit:
 
-- `GET /v1/org/courses` currently returns the full course rows without server-side filtering; query filters documented for future UI support should be treated as backlog until implemented.
 - Course records use `activeFormId` and `activeFormVersion` in the backend model, not `formId` and `formVersion`.
 - Submission records include UI-friendly summary fields:
   - `applicantSummary`
@@ -352,16 +351,50 @@ Response `201`:
 
 List tenant courses.
 
-Current implementation note:
+Filters:
 
-- Returns all tenant courses for the authenticated tenant.
-- Server-side `status`, `q`, and `pricingMode` filters are planned for later frontend-support work and should not yet be assumed by the UI.
+- `status`
+- `q`
+- `pricingMode`
+- `deliveryMode`
+- `publicVisible`
 
 Response `200`:
 
 ```json
 {
-  "data": [],
+  "data": [
+    {
+      "id": "crs_01JABC...",
+      "tenantId": "ten_01JABC...",
+      "title": "Intro to AI",
+      "shortDescription": "4-week foundation course",
+      "fullDescription": "Detailed syllabus...",
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-28",
+      "enrollmentOpenAt": "2026-03-10T00:00:00Z",
+      "enrollmentCloseAt": "2026-03-31T23:59:59Z",
+      "deliveryMode": "online",
+      "locationText": null,
+      "capacity": 120,
+      "status": "draft",
+      "publicVisible": false,
+      "pricingMode": "free",
+      "paymentEnabledFlag": false,
+      "imageAssetId": null,
+      "activeFormId": "frm_01JABC...",
+      "activeFormVersion": 3,
+      "createdAt": "2026-03-09T01:00:00Z",
+      "updatedAt": "2026-03-09T01:10:00Z",
+      "createdBy": "usr_01J...",
+      "updatedBy": "usr_01J...",
+      "workflow": {
+        "enrollmentStatus": "open",
+        "hasActiveForm": true,
+        "publishReady": true
+      }
+    }
+  ],
   "page": { "limit": 20, "nextCursor": null }
 }
 ```
@@ -369,6 +402,8 @@ Response `200`:
 ### `GET /v1/org/courses/{courseId}`
 
 Get full course details.
+
+Response shape is the same as the course list item, including `workflow`.
 
 ### `PATCH /v1/org/courses/{courseId}`
 
@@ -434,18 +469,27 @@ Response `200`:
 {
   "data": {
     "formId": "frm_01JABC...",
-    "version": 4
+    "version": 4,
+    "summary": {
+      "fieldCount": 6,
+      "requiredFieldCount": 3,
+      "fieldTypes": ["email", "short_text", "single_select"]
+    }
   }
 }
 ```
 
 ### `GET /v1/org/courses/{courseId}/form-schema`
 
-Returns latest active schema.
+Returns latest active schema plus a `summary` block:
+
+- `fieldCount`
+- `requiredFieldCount`
+- `fieldTypes`
 
 ### `GET /v1/org/courses/{courseId}/form-schema/versions/{version}`
 
-Returns specific immutable schema version.
+Returns specific immutable schema version plus the same `summary` block.
 
 ---
 
@@ -466,7 +510,40 @@ Response `200`:
 
 ```json
 {
-  "data": [],
+  "data": [
+    {
+      "id": "sub_01JABC...",
+      "tenantId": "ten_01JABC...",
+      "tenantCode": "std-school",
+      "courseId": "crs_01JABC...",
+      "formId": "frm_01JABC...",
+      "formVersion": 3,
+      "status": "submitted",
+      "applicant": {
+        "email": "alice@example.com"
+      },
+      "answers": {
+        "first_name": "Alice"
+      },
+      "submittedAt": "2026-03-09T01:30:00Z",
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "createdAt": "2026-03-09T01:30:00Z",
+      "updatedAt": "2026-03-09T01:30:00Z",
+      "applicantSummary": {
+        "email": "alice@example.com",
+        "name": "Alice"
+      },
+      "course": {
+        "id": "crs_01JABC...",
+        "title": "Intro to AI"
+      },
+      "workflow": {
+        "canReview": true,
+        "isTerminal": false
+      }
+    }
+  ],
   "page": { "limit": 20, "nextCursor": null }
 }
 ```
@@ -474,6 +551,12 @@ Response `200`:
 ### `GET /v1/org/submissions/{submissionId}`
 
 Get submission details.
+
+Response includes:
+
+- `course.title` when course metadata is available
+- `workflow.canReview`
+- `workflow.isTerminal`
 
 ### `PATCH /v1/org/submissions/{submissionId}`
 

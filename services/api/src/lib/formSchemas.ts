@@ -74,6 +74,12 @@ type FormSchemaItem = {
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+let testGetLatestCourseFormSchemaOverride:
+  | ((tenantId: string, courseId: string) => Promise<FormSchema>)
+  | null = null;
+let testGetCourseFormSchemaVersionOverride:
+  | ((tenantId: string, courseId: string, version: number) => Promise<FormSchema>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -221,6 +227,9 @@ export async function upsertCourseFormSchema(
 }
 
 export async function getLatestCourseFormSchema(tenantId: string, courseId: string): Promise<FormSchema> {
+  if (testGetLatestCourseFormSchemaOverride) {
+    return testGetLatestCourseFormSchemaOverride(tenantId, courseId);
+  }
   await getCourse(tenantId, courseId);
   const latest = await getLatestItem(tenantId, courseId);
   if (!latest) throw new ApiError(404, "NOT_FOUND", "Form schema not found for course.");
@@ -232,6 +241,9 @@ export async function getCourseFormSchemaVersion(
   courseId: string,
   version: number
 ): Promise<FormSchema> {
+  if (testGetCourseFormSchemaVersionOverride) {
+    return testGetCourseFormSchemaVersionOverride(tenantId, courseId, version);
+  }
   if (!Number.isInteger(version) || version < 1) {
     throw new ApiError(400, "VALIDATION_ERROR", "version must be a positive integer.");
   }
@@ -247,3 +259,20 @@ export async function getCourseFormSchemaVersion(
   if (!out.Item) throw new ApiError(404, "NOT_FOUND", "Form schema version not found.");
   return fromItem(out.Item as FormSchemaItem);
 }
+
+export const __formSchemasTestHooks = {
+  setGetLatestCourseFormSchemaOverride(
+    loader: ((tenantId: string, courseId: string) => Promise<FormSchema>) | null
+  ): void {
+    testGetLatestCourseFormSchemaOverride = loader;
+  },
+  setGetCourseFormSchemaVersionOverride(
+    loader: ((tenantId: string, courseId: string, version: number) => Promise<FormSchema>) | null
+  ): void {
+    testGetCourseFormSchemaVersionOverride = loader;
+  },
+  reset(): void {
+    testGetLatestCourseFormSchemaOverride = null;
+    testGetCourseFormSchemaVersionOverride = null;
+  }
+};

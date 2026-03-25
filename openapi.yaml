@@ -28,7 +28,7 @@ components:
     FormSchemaResponse:
       properties:
         data:
-          $ref: '#/components/schemas/FormSchema'
+          $ref: '#/components/schemas/OrgFormSchema'
       type: object
       required:
       - data
@@ -134,6 +134,32 @@ components:
       - pricingMode
       - createdAt
       - updatedAt
+    OrgCourseWorkflow:
+      properties:
+        enrollmentStatus:
+          enum:
+          - upcoming
+          - open
+          - closed
+          type: string
+        hasActiveForm:
+          type: boolean
+        publishReady:
+          type: boolean
+      required:
+      - enrollmentStatus
+      - hasActiveForm
+      - publishReady
+      type: object
+    OrgCourse:
+      allOf:
+      - $ref: '#/components/schemas/Course'
+      - type: object
+        properties:
+          workflow:
+            $ref: '#/components/schemas/OrgCourseWorkflow'
+        required:
+        - workflow
     PageMeta:
       properties:
         limit:
@@ -224,7 +250,7 @@ components:
       properties:
         courseId:
           type: string
-        id:
+        formId:
           type: string
         createdAt:
           format: date-time
@@ -247,12 +273,38 @@ components:
           type: string
       type: object
       required:
-      - id
+      - formId
       - tenantId
       - courseId
       - version
       - status
       - fields
+    OrgFormSchemaSummary:
+      properties:
+        fieldCount:
+          minimum: 0
+          type: integer
+        requiredFieldCount:
+          minimum: 0
+          type: integer
+        fieldTypes:
+          items:
+            $ref: '#/components/schemas/FormFieldType'
+          type: array
+      required:
+      - fieldCount
+      - requiredFieldCount
+      - fieldTypes
+      type: object
+    OrgFormSchema:
+      allOf:
+      - $ref: '#/components/schemas/FormSchema'
+      - type: object
+        properties:
+          summary:
+            $ref: '#/components/schemas/OrgFormSchemaSummary'
+        required:
+        - summary
     CreateEnrollmentRequest:
       properties:
         answers:
@@ -437,7 +489,7 @@ components:
     CourseDetailResponse:
       properties:
         data:
-          $ref: '#/components/schemas/Course'
+          $ref: '#/components/schemas/OrgCourse'
       type: object
       required:
       - data
@@ -445,7 +497,7 @@ components:
       properties:
         data:
           items:
-            $ref: '#/components/schemas/Course'
+            $ref: '#/components/schemas/OrgCourse'
           type: array
         page:
           $ref: '#/components/schemas/PageMeta'
@@ -1053,6 +1105,10 @@ components:
           properties:
             id:
               type: string
+            title:
+              type:
+              - string
+              - "null"
       type: object
       required:
       - id
@@ -1063,6 +1119,38 @@ components:
       - status
       - answers
       - submittedAt
+    OrgSubmissionWorkflow:
+      properties:
+        canReview:
+          type: boolean
+        isTerminal:
+          type: boolean
+      required:
+      - canReview
+      - isTerminal
+      type: object
+    OrgSubmission:
+      allOf:
+      - $ref: '#/components/schemas/Submission'
+      - type: object
+        properties:
+          course:
+            type: object
+            properties:
+              id:
+                type: string
+              title:
+                type:
+                - string
+                - "null"
+            required:
+            - id
+            - title
+          workflow:
+            $ref: '#/components/schemas/OrgSubmissionWorkflow'
+        required:
+        - course
+        - workflow
     FormField:
       properties:
         options:
@@ -1182,7 +1270,7 @@ components:
       properties:
         data:
           items:
-            $ref: '#/components/schemas/Submission'
+            $ref: '#/components/schemas/OrgSubmission'
           type: array
         page:
           $ref: '#/components/schemas/PageMeta'
@@ -1260,10 +1348,13 @@ components:
             version:
               type: integer
               minimum: 1
+            summary:
+              $ref: '#/components/schemas/OrgFormSchemaSummary'
           type: object
           required:
           - formId
           - version
+          - summary
       type: object
       required:
       - data
@@ -1277,7 +1368,7 @@ components:
     SubmissionDetailResponse:
       properties:
         data:
-          $ref: '#/components/schemas/Submission'
+          $ref: '#/components/schemas/OrgSubmission'
       type: object
       required:
       - data
@@ -1486,12 +1577,22 @@ components:
       in: query
       schema:
         $ref: '#/components/schemas/CourseStatus'
+    DeliveryModeFilter:
+      name: deliveryMode
+      in: query
+      schema:
+        $ref: '#/components/schemas/DeliveryMode'
     QFilter:
       name: q
       in: query
       schema:
         maxLength: 200
         type: string
+    PublicVisibleFilter:
+      name: publicVisible
+      in: query
+      schema:
+        type: boolean
     CourseId:
       name: courseId
       in: path
@@ -1825,8 +1926,8 @@ paths:
       - $ref: '#/components/parameters/StatusFilter'
       - $ref: '#/components/parameters/QFilter'
       - $ref: '#/components/parameters/PricingModeFilter'
-      - $ref: '#/components/parameters/Limit'
-      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/DeliveryModeFilter'
+      - $ref: '#/components/parameters/PublicVisibleFilter'
       summary: List tenant courses
       responses:
         default:

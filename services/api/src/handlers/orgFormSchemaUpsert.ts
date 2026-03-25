@@ -6,6 +6,7 @@ import { createCorrelationContext } from "../lib/correlation";
 import { upsertCourseFormSchema, type FormField } from "../lib/formSchemas";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { summarizeFormFields } from "../lib/orgViews";
 import { parseJsonBody } from "../lib/request";
 
 type UpsertSchemaBody = {
@@ -34,7 +35,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       details: { courseId, formId: data.formId, version: data.version, fieldCount: body.fields.length }
     });
 
-    return jsonResponse(200, { data }, correlation);
+    return jsonResponse(
+      200,
+      {
+        data: {
+          ...data,
+          summary: summarizeFormFields(body.fields)
+        }
+      },
+      correlation
+    );
   } catch (error) {
     return errorResponse(error, correlation);
   }

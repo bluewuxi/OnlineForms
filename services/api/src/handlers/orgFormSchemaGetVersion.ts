@@ -5,6 +5,7 @@ import { createCorrelationContext } from "../lib/correlation";
 import { getCourseFormSchemaVersion } from "../lib/formSchemas";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { toOrgFormSchemaView } from "../lib/orgViews";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
@@ -22,7 +23,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
 
     const data = await getCourseFormSchemaVersion(auth.tenantId, courseId, version);
-    return jsonResponse(200, { data }, correlation);
+    return jsonResponse(200, { data: toOrgFormSchemaView(data) }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }

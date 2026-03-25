@@ -23,6 +23,7 @@ test.afterEach(() => {
 });
 
 test("createPublicEnrollment uses a single transaction for idempotency and submission writes", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
   __coursesTestHooks.setPublicCourseDetailOverride(async () => ({
     id: "crs_001",
     title: "Intro to AI",
@@ -91,6 +92,7 @@ test("createPublicEnrollment uses a single transaction for idempotency and submi
 });
 
 test("createPublicEnrollment persists applicant identity derived from schema answers", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
   __coursesTestHooks.setPublicCourseDetailOverride(async () => ({
     id: "crs_001",
     title: "Intro to AI",
@@ -179,6 +181,7 @@ test("createPublicEnrollment persists applicant identity derived from schema ans
 });
 
 test("createPublicEnrollment replays prior success when transaction collides on the same idempotency key", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
   __coursesTestHooks.setPublicCourseDetailOverride(async () => ({
     id: "crs_001",
     title: "Intro to AI",
@@ -271,6 +274,7 @@ test("createPublicEnrollment replays prior success when transaction collides on 
 });
 
 test("createPublicEnrollment rejects reused idempotency key when the prior request hash differs", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
   __coursesTestHooks.setPublicCourseDetailOverride(async () => ({
     id: "crs_001",
     title: "Intro to AI",

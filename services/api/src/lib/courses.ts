@@ -116,6 +116,7 @@ let testPublicCourseDetailOverride:
   | null = null;
 let testGetCourseOverride: ((tenantId: string, courseId: string) => Promise<Course>) | null = null;
 let testListCoursesOverride: ((tenantId: string, input?: ListCoursesInput) => Promise<Course[]>) | null = null;
+let testResolveTenantIdByCodeOverride: ((tenantCode: string) => Promise<string>) | null = null;
 let testDdbSendOverride:
   | ((command: object) => Promise<unknown>)
   | null = null;
@@ -639,6 +640,9 @@ export async function setCourseStatus(
 }
 
 export async function resolveTenantIdByCode(tenantCode: string): Promise<string> {
+  if (testResolveTenantIdByCodeOverride) {
+    return testResolveTenantIdByCodeOverride(tenantCode);
+  }
   const normalizedCode = normalizeTenantCode(tenantCode);
   const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
@@ -777,6 +781,9 @@ export const __coursesTestHooks = {
   ): void {
     testPublicCourseDetailOverride = loader;
   },
+  setResolveTenantIdByCodeOverride(loader: ((tenantCode: string) => Promise<string>) | null): void {
+    testResolveTenantIdByCodeOverride = loader;
+  },
   setDdbSendOverride(loader: ((command: object) => Promise<unknown>) | null): void {
     testDdbSendOverride = loader;
   },
@@ -785,6 +792,7 @@ export const __coursesTestHooks = {
     testListCoursesOverride = null;
     testPublicCoursesListOverride = null;
     testPublicCourseDetailOverride = null;
+    testResolveTenantIdByCodeOverride = null;
     testDdbSendOverride = null;
   }
 };

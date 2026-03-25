@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { assertAssetBindable } from "./assets";
 import { ApiError } from "./errors";
+import { getCourseFormSchemaVersion, type FormField } from "./formSchemas";
 import { normalizeTenantCode } from "./tenantCodes";
 
 export type CourseStatus = "draft" | "published" | "archived";
@@ -115,6 +116,16 @@ let testPublicCourseDetailOverride:
   | null = null;
 let testGetCourseOverride: ((tenantId: string, courseId: string) => Promise<Course>) | null = null;
 let testListCoursesOverride: ((tenantId: string, input?: ListCoursesInput) => Promise<Course[]>) | null = null;
+let testDdbSendOverride:
+  | ((command: object) => Promise<unknown>)
+  | null = null;
+
+async function sendDdb<TResult>(command: object): Promise<TResult> {
+  if (testDdbSendOverride) {
+    return (await testDdbSendOverride(command)) as TResult;
+  }
+  return (await ddb.send(command as never)) as TResult;
+}
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -133,7 +144,7 @@ function tenantCodePk(tenantCode: string): string {
 }
 
 async function resolveTenantCodeById(tenantId: string): Promise<string> {
-  const out = await ddb.send(
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: "PROFILE" }
@@ -323,7 +334,7 @@ function buildPublicProjectionItem(course: Course, tenantCode: string): Record<s
 async function upsertPublicProjection(course: Course): Promise<void> {
   if (course.status !== "published" || !course.publicVisible) return;
   const tenantCode = await resolveTenantCodeById(course.tenantId);
-  await ddb.send(
+  await sendDdb(
     new PutCommand({
       TableName: tableName,
       Item: buildPublicProjectionItem(course, tenantCode)
@@ -332,7 +343,7 @@ async function upsertPublicProjection(course: Course): Promise<void> {
 }
 
 async function deletePublicProjection(tenantId: string, courseId: string): Promise<void> {
-  await ddb.send(
+  await sendDdb(
     new DeleteCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: coursePublicSk(courseId) }
@@ -356,6 +367,31 @@ function validateCreate(input: CreateCourseInput): void {
   if (!input.enrollmentCloseAt) {
     throw new ApiError(400, "VALIDATION_ERROR", "enrollmentCloseAt is required.");
   }
+}
+
+function normalizeFieldId(fieldId: string): string {
+  return fieldId.replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function hasRequiredApplicantIdentityField(fields: FormField[]): boolean {
+  const fullNameFieldIds = new Set(["fullname", "name", "applicantname"]);
+  const firstNameFieldIds = new Set(["firstname", "givenname"]);
+  const lastNameFieldIds = new Set(["lastname", "familyname", "surname"]);
+
+  return fields.some((field) => {
+    if (!field.required) {
+      return false;
+    }
+    if (field.type === "email") {
+      return true;
+    }
+    const normalizedFieldId = normalizeFieldId(field.fieldId);
+    return (
+      fullNameFieldIds.has(normalizedFieldId) ||
+      firstNameFieldIds.has(normalizedFieldId) ||
+      lastNameFieldIds.has(normalizedFieldId)
+    );
+  });
 }
 
 export async function createCourse(
@@ -399,7 +435,7 @@ export async function createCourse(
     updatedBy: userId
   };
 
-  await ddb.send(
+  await sendDdb(
     new PutCommand({
       TableName: tableName,
       Item: item,
@@ -414,7 +450,7 @@ export async function getCourse(tenantId: string, courseId: string): Promise<Cou
   if (testGetCourseOverride) {
     return testGetCourseOverride(tenantId, courseId);
   }
-  const out = await ddb.send(
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: courseSk(courseId) }
@@ -429,7 +465,7 @@ export async function listCourses(tenantId: string, input: ListCoursesInput = {}
   if (testListCoursesOverride) {
     return testListCoursesOverride(tenantId, input);
   }
-  const out = await ddb.send(
+  const out = await sendDdb<{ Items?: unknown[] }>(
     new QueryCommand({
       TableName: tableName,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
@@ -512,7 +548,7 @@ export async function updateCourse(
     updates.push(`${nk} = ${vk}`);
   }
 
-  const out = await ddb.send(
+  const out = await sendDdb<{ Attributes?: Record<string, unknown> }>(
     new UpdateCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: courseSk(courseId) },
@@ -552,12 +588,24 @@ export async function setCourseStatus(
     if (current.paymentEnabledFlag) {
       throw new ApiError(409, "CONFLICT", "paymentEnabledFlag must remain false in MVP.");
     }
+    const activeFormVersion = current.activeFormVersion;
+    if (!current.activeFormId || typeof activeFormVersion !== "number" || !Number.isInteger(activeFormVersion)) {
+      throw new ApiError(409, "CONFLICT", "Published courses require an active form schema.");
+    }
+    const activeSchema = await getCourseFormSchemaVersion(tenantId, courseId, activeFormVersion);
+    if (!hasRequiredApplicantIdentityField(activeSchema.fields)) {
+      throw new ApiError(
+        409,
+        "CONFLICT",
+        "Published courses require at least one required applicant identity field."
+      );
+    }
   }
 
   const nextStatus: CourseStatus = action === "publish" ? "published" : "archived";
   const nextPublicVisible = action === "publish";
 
-  const out = await ddb.send(
+  const out = await sendDdb<{ Attributes?: Record<string, unknown> }>(
     new UpdateCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: courseSk(courseId) },
@@ -592,7 +640,7 @@ export async function setCourseStatus(
 
 export async function resolveTenantIdByCode(tenantCode: string): Promise<string> {
   const normalizedCode = normalizeTenantCode(tenantCode);
-  const out = await ddb.send(
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
       TableName: tableName,
       Key: { PK: tenantCodePk(normalizedCode), SK: "MAP" }
@@ -624,7 +672,7 @@ export async function listPublicCourses(
   const normalizedTenantCode = normalizeTenantCode(tenantCode);
   await resolveTenantIdByCode(normalizedTenantCode);
   const limit = parsePublicListLimit(limitRaw);
-  const out = await ddb.send(
+  const out = await sendDdb<{ Items?: unknown[]; LastEvaluatedKey?: Record<string, unknown> }>(
     new QueryCommand({
       TableName: tableName,
       IndexName: "GSI2",
@@ -669,7 +717,7 @@ export async function getPublicCourseDetail(
   }
   const normalizedTenantCode = normalizeTenantCode(tenantCode);
   const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
-  const out = await ddb.send(
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: coursePublicSk(courseId) }
@@ -694,7 +742,7 @@ export async function reconcilePublicProjectionsForTenant(
 
   for (const course of courses) {
     if (course.status === "published" && course.publicVisible) {
-      await ddb.send(
+      await sendDdb(
         new PutCommand({
           TableName: tableName,
           Item: buildPublicProjectionItem(course, tenantCode)
@@ -729,10 +777,14 @@ export const __coursesTestHooks = {
   ): void {
     testPublicCourseDetailOverride = loader;
   },
+  setDdbSendOverride(loader: ((command: object) => Promise<unknown>) | null): void {
+    testDdbSendOverride = loader;
+  },
   reset(): void {
     testGetCourseOverride = null;
     testListCoursesOverride = null;
     testPublicCoursesListOverride = null;
     testPublicCourseDetailOverride = null;
+    testDdbSendOverride = null;
   }
 };

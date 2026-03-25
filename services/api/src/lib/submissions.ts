@@ -5,6 +5,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  TransactWriteCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { getPublicCourseDetail, resolveTenantIdByCode } from "./courses";
@@ -104,6 +105,16 @@ let testListOrgSubmissionsOverride:
 let testGetOrgSubmissionOverride:
   | ((tenantId: string, submissionId: string) => Promise<Submission>)
   | null = null;
+let testDdbSendOverride:
+  | ((command: object) => Promise<Record<string, unknown>>)
+  | null = null;
+
+async function sendDdb(command: object): Promise<Record<string, unknown>> {
+  if (testDdbSendOverride) {
+    return testDdbSendOverride(command);
+  }
+  return (await ddb.send(command as never)) as Record<string, unknown>;
+}
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -398,7 +409,7 @@ export async function listOrgSubmissions(
   const allItems: Record<string, unknown>[] = [];
   let lastKey: Record<string, unknown> | undefined = undefined;
   do {
-    const out = await ddb.send(
+    const out = await sendDdb(
       new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
@@ -431,7 +442,7 @@ export async function getOrgSubmission(tenantId: string, submissionId: string): 
   if (testGetOrgSubmissionOverride) {
     return testGetOrgSubmissionOverride(tenantId, submissionId);
   }
-  const out = await ddb.send(
+  const out = await sendDdb(
     new GetCommand({
       TableName: tableName,
       Key: {
@@ -467,7 +478,7 @@ export async function updateOrgSubmissionStatus(
 
   let out;
   try {
-    out = await ddb.send(
+    out = await sendDdb(
       new UpdateCommand({
         TableName: tableName,
         Key: {
@@ -560,29 +571,67 @@ export async function createPublicEnrollment(
       course: `/v1/public/${tenantCode.trim().toLowerCase()}/courses/${courseId}`
     }
   };
+  const submissionItem = {
+    PK: tenantPk(tenantId),
+    SK: submissionSk(submissionId),
+    entityType: "SUBMISSION",
+    tenantId,
+    tenantCode: tenantCode.trim().toLowerCase(),
+    submissionId,
+    courseId,
+    formId: schema.formId,
+    formVersion: schema.version,
+    status: "submitted",
+    applicant: {},
+    answers: input.answers,
+    meta: input.meta ?? null,
+    submittedAt: nowIso,
+    reviewedAt: null,
+    reviewedBy: null,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    GSI1PK: `TENANT#${tenantId}#SUBMISSIONS`,
+    GSI1SK: `SUBMITTED#${nowIso}#SUBMISSION#${submissionId}`,
+    GSI3PK: `TENANT#${tenantId}#COURSE#${courseId}#SUBMISSIONS`,
+    GSI3SK: `SUBMITTED#${nowIso}#SUBMISSION#${submissionId}`
+  };
+  const idempotencyItem = {
+    PK: tenantPk(tenantId),
+    SK: idempotencySk(idempotencyKey),
+    entityType: "IDEMPOTENCY",
+    tenantId,
+    idempotencyKey,
+    requestHash,
+    submissionId,
+    responseSnapshot: snapshot,
+    createdAt: nowIso,
+    ttlEpoch: Math.floor(now.getTime() / 1000) + 24 * 60 * 60
+  };
 
   try {
-    await ddb.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          PK: tenantPk(tenantId),
-          SK: idempotencySk(idempotencyKey),
-          entityType: "IDEMPOTENCY",
-          tenantId,
-          idempotencyKey,
-          requestHash,
-          submissionId,
-          responseSnapshot: snapshot,
-          createdAt: nowIso,
-          ttlEpoch: Math.floor(now.getTime() / 1000) + 24 * 60 * 60
-        },
-        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+    await sendDdb(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: tableName,
+              Item: idempotencyItem,
+              ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+            }
+          },
+          {
+            Put: {
+              TableName: tableName,
+              Item: submissionItem,
+              ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+            }
+          }
+        ]
       })
     );
   } catch (error) {
-    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
-      const existing = await ddb.send(
+    if ((error as { name?: string }).name === "TransactionCanceledException") {
+      const existing = await sendDdb(
         new GetCommand({
           TableName: tableName,
           Key: { PK: tenantPk(tenantId), SK: idempotencySk(idempotencyKey) }
@@ -599,36 +648,6 @@ export async function createPublicEnrollment(
     }
     throw error;
   }
-
-  await ddb.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: {
-        PK: tenantPk(tenantId),
-        SK: submissionSk(submissionId),
-        entityType: "SUBMISSION",
-        tenantId,
-        tenantCode: tenantCode.trim().toLowerCase(),
-        submissionId,
-        courseId,
-        formId: schema.formId,
-        formVersion: schema.version,
-        status: "submitted",
-        applicant: {},
-        answers: input.answers,
-        meta: input.meta ?? null,
-        submittedAt: nowIso,
-        reviewedAt: null,
-        reviewedBy: null,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        GSI1PK: `TENANT#${tenantId}#SUBMISSIONS`,
-        GSI1SK: `SUBMITTED#${nowIso}#SUBMISSION#${submissionId}`,
-        GSI3PK: `TENANT#${tenantId}#COURSE#${courseId}#SUBMISSIONS`,
-        GSI3SK: `SUBMITTED#${nowIso}#SUBMISSION#${submissionId}`
-      }
-    })
-  );
 
   return snapshot;
 }
@@ -656,9 +675,13 @@ export const __submissionsTestHooks = {
   ): void {
     testCreatePublicEnrollmentOverride = loader;
   },
+  setDdbSendOverride(loader: ((command: object) => Promise<Record<string, unknown>>) | null): void {
+    testDdbSendOverride = loader;
+  },
   reset(): void {
     testListOrgSubmissionsOverride = null;
     testGetOrgSubmissionOverride = null;
     testCreatePublicEnrollmentOverride = null;
+    testDdbSendOverride = null;
   }
 };

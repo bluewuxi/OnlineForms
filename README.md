@@ -11,7 +11,6 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `docs/specs/phase4-checklist.md`
 - `docs/specs/phase5-checklist.md`
 - `docs/specs/phase6-checklist.md`
-- `docs/specs/phase11-checklist.md`
 - `docs/specs/phase12-checklist.md`
 - `docs/guides/MVP_USER_GUIDE.md`
 - `docs/guides/AUTH_INCIDENT_RUNBOOK.md`

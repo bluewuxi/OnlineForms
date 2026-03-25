@@ -63,7 +63,7 @@ components:
           $ref: '#/components/schemas/PricingMode'
         publicVisible:
           type: boolean
-        formVersion:
+        activeFormVersion:
           type:
           - integer
           - "null"
@@ -85,7 +85,7 @@ components:
           type:
           - string
           - "null"
-        formId:
+        activeFormId:
           type:
           - string
           - "null"
@@ -355,6 +355,29 @@ components:
       required:
       - data
       - page
+    CreateInternalTenantRequest:
+      properties:
+        tenantCode:
+          pattern: ^[a-z0-9-]{3,50}$
+          type: string
+        displayName:
+          maxLength: 120
+          minLength: 1
+          type: string
+        description:
+          type:
+          - string
+          - "null"
+        isActive:
+          type: boolean
+        homePageContent:
+          type:
+          - string
+          - "null"
+      type: object
+      required:
+      - tenantCode
+      - displayName
     CreateTenantRequest:
       properties:
         status:
@@ -532,6 +555,347 @@ components:
       - role
       - label
       - requiresTenant
+    OrgMeResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+            tenantId:
+              type: string
+            role:
+              type: string
+          required:
+          - userId
+          - tenantId
+          - role
+      type: object
+      required:
+      - data
+    SessionContext:
+      properties:
+        tenantId:
+          type: string
+        status:
+          enum:
+          - active
+          - invited
+          - suspended
+          type: string
+        roles:
+          items:
+            type: string
+          type: array
+      type: object
+      required:
+      - tenantId
+      - status
+      - roles
+    SessionContextsResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+            tokenRole:
+              type: string
+            canAccessInternalPortal:
+              type: boolean
+            contexts:
+              items:
+                $ref: '#/components/schemas/SessionContext'
+              type: array
+          required:
+          - userId
+          - tokenRole
+          - canAccessInternalPortal
+          - contexts
+      type: object
+      required:
+      - data
+    SessionContextValidateRequest:
+      properties:
+        tenantId:
+          type:
+          - string
+          - "null"
+        role:
+          type: string
+      type: object
+      required:
+      - role
+    SessionContextValidateResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+            tenantId:
+              type:
+              - string
+              - "null"
+            role:
+              type: string
+          required:
+          - userId
+          - tenantId
+          - role
+      type: object
+      required:
+      - data
+    AuditEvent:
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        actorUserId:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        correlationId:
+          type: string
+        requestId:
+          type: string
+        details:
+          additionalProperties: true
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+      type: object
+      required:
+      - id
+      - tenantId
+      - actorUserId
+      - action
+      - resourceType
+      - resourceId
+      - correlationId
+      - requestId
+      - details
+      - createdAt
+    AuditListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
+    TenantBrandingUpdateRequest:
+      properties:
+        logoAssetId:
+          type:
+          - string
+          - "null"
+      type: object
+    TenantBrandingResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            tenantId:
+              type: string
+            logoAssetId:
+              type:
+              - string
+              - "null"
+            updatedAt:
+              format: date-time
+              type: string
+          required:
+          - tenantId
+          - logoAssetId
+          - updatedAt
+      type: object
+      required:
+      - data
+    CreateTenantInviteRequest:
+      properties:
+        email:
+          type: string
+        role:
+          enum:
+          - org_admin
+          - org_editor
+          type: string
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+      type: object
+      required:
+      - email
+      - role
+    TenantInvite:
+      properties:
+        inviteId:
+          type: string
+        tenantId:
+          type: string
+        email:
+          type: string
+        role:
+          enum:
+          - org_admin
+          - org_editor
+          type: string
+        status:
+          enum:
+          - pending
+          - accepted
+          type: string
+        expiresAt:
+          format: date-time
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+        acceptedAt:
+          format: date-time
+          type:
+          - string
+          - "null"
+        acceptedBy:
+          type:
+          - string
+          - "null"
+      type: object
+      required:
+      - inviteId
+      - tenantId
+      - email
+      - role
+      - status
+      - expiresAt
+      - createdAt
+      - updatedAt
+      - createdBy
+      - updatedBy
+      - acceptedAt
+      - acceptedBy
+    TenantInviteResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/TenantInvite'
+      type: object
+      required:
+      - data
+    TenantInviteAcceptResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            tenantId:
+              type: string
+            userId:
+              type: string
+            role:
+              enum:
+              - org_admin
+              - org_editor
+              type: string
+            activatedAt:
+              format: date-time
+              type: string
+          required:
+          - tenantId
+          - userId
+          - role
+          - activatedAt
+      type: object
+      required:
+      - data
+    InternalAccessUser:
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        email:
+          type:
+          - string
+          - "null"
+        enabled:
+          type: boolean
+        status:
+          type: string
+      type: object
+      required:
+      - userId
+      - username
+      - email
+      - enabled
+      - status
+    InternalAccessUserPageResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/InternalAccessUser'
+          type: array
+        page:
+          $ref: '#/components/schemas/PageMeta'
+      type: object
+      required:
+      - data
+      - page
+    InternalAccessUserDetailResponse:
+      properties:
+        data:
+          allOf:
+          - $ref: '#/components/schemas/InternalAccessUser'
+          - type: object
+            properties:
+              memberships:
+                items:
+                  $ref: '#/components/schemas/SessionContext'
+                type: array
+            required:
+            - memberships
+      type: object
+      required:
+      - data
+    CreateInternalAccessUserRequest:
+      properties:
+        email:
+          type: string
+      type: object
+      required:
+      - email
+    RemoveInternalAccessUserResponse:
+      properties:
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+            removed:
+              type: boolean
+          required:
+          - userId
+          - removed
+      type: object
+      required:
+      - data
     Tenant:
       properties:
         id:
@@ -600,6 +964,11 @@ components:
         createdAt:
           format: date-time
           type: string
+        updatedAt:
+          format: date-time
+          type:
+          - string
+          - "null"
         id:
           type: string
         submittedAt:
@@ -612,6 +981,22 @@ components:
           - "null"
         status:
           $ref: '#/components/schemas/SubmissionStatus'
+        applicantSummary:
+          type: object
+          properties:
+            email:
+              type:
+              - string
+              - "null"
+            name:
+              type:
+              - string
+              - "null"
+        course:
+          type: object
+          properties:
+            id:
+              type: string
       type: object
       required:
       - id
@@ -975,6 +1360,18 @@ components:
       schema:
         type: string
       required: true
+    UserId:
+      name: userId
+      in: path
+      schema:
+        type: string
+      required: true
+    InviteId:
+      name: inviteId
+      in: path
+      schema:
+        type: string
+      required: true
     TenantCode:
       name: tenantCode
       in: path
@@ -1046,6 +1443,33 @@ components:
       in: query
       schema:
         $ref: '#/components/schemas/PricingMode'
+    AuditActionFilter:
+      name: action
+      in: query
+      schema:
+        type: string
+    ResourceTypeFilter:
+      name: resourceType
+      in: query
+      schema:
+        type: string
+    CreatedFrom:
+      name: createdFrom
+      in: query
+      schema:
+        format: date-time
+        type: string
+    CreatedTo:
+      name: createdTo
+      in: query
+      schema:
+        format: date-time
+        type: string
+    SessionContextStatusFilter:
+      name: status
+      in: query
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       scheme: bearer
@@ -1062,6 +1486,150 @@ servers:
 - url: https://api.onlineforms.com
   description: Production example
 paths:
+  /v1/org/me:
+    get:
+      summary: Get authenticated org session
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMeResponse'
+          description: Authenticated org session
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+  /v1/org/audit:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/AuditActionFilter'
+      - $ref: '#/components/parameters/ResourceTypeFilter'
+      - $ref: '#/components/parameters/CreatedFrom'
+      - $ref: '#/components/parameters/CreatedTo'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      summary: List tenant audit events
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditListResponse'
+          description: Audit event list
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Submissions
+  /v1/org/branding:
+    patch:
+      summary: Update tenant branding
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantBrandingUpdateRequest'
+        required: true
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantBrandingResponse'
+          description: Updated tenant branding
+  /v1/org/tenants/{tenantId}/invites:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/TenantId'
+      summary: Create tenant invite
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantInviteRequest'
+        required: true
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantInviteResponse'
+          description: Tenant invite created
+  /v1/org/tenants/{tenantId}/invites/{inviteId}/accept:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/InviteId'
+      summary: Accept tenant invite
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantInviteAcceptResponse'
+          description: Tenant invite accepted
+  /v1/org/session-contexts:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/SessionContextStatusFilter'
+      summary: List available tenant-role contexts for current user
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionContextsResponse'
+          description: Session contexts
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+  /v1/org/session-context:
+    post:
+      summary: Validate selected tenant-role context
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionContextValidateRequest'
+        required: true
+      tags:
+      - Org Courses
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionContextValidateResponse'
+          description: Validated session context
   /v1/public/{tenantCode}/courses/{courseId}:
     get:
       parameters:
@@ -1539,7 +2107,55 @@ paths:
       - bearerAuth: []
       tags:
       - Platform Tenants
+    post:
+      summary: Create tenant profile for internal management
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInternalTenantRequest'
+        required: true
+      tags:
+      - Platform Tenants
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InternalTenantProfile'
+                required:
+                - data
+          description: Created
   /v1/internal/tenants/{tenantId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/TenantId'
+      summary: Get tenant profile for internal management
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InternalTenantProfile'
+                required:
+                - data
+          description: Internal tenant profile
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
     patch:
       parameters:
       - $ref: '#/components/parameters/TenantId'
@@ -1568,6 +2184,86 @@ paths:
                 required:
                 - data
           description: Updated
+  /v1/internal/users:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      summary: List users with internal portal access
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalAccessUserPageResponse'
+          description: Internal access users
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
+    post:
+      summary: Grant internal access by email
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInternalAccessUserRequest'
+        required: true
+      tags:
+      - Platform Tenants
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InternalAccessUser'
+                required:
+                - data
+          description: Internal access granted
+  /v1/internal/users/{userId}:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/UserId'
+      summary: Get internal user detail
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalAccessUserDetailResponse'
+          description: Internal user detail
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
+    delete:
+      parameters:
+      - $ref: '#/components/parameters/UserId'
+      summary: Remove internal access for user
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveInternalAccessUserResponse'
+          description: Internal access removed
+      security:
+      - bearerAuth: []
+      tags:
+      - Platform Tenants
   /v1/public/tenants:
     get:
       parameters:

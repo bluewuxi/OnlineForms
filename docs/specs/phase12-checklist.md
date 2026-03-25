@@ -14,7 +14,7 @@ Phase 12 is intended for backend contract and support changes required to ship t
 
 ## Tasks
 
-- [ ] P12-01 Frontend contract audit and API doc alignment
+- [x] P12-01 Frontend contract audit and API doc alignment
   Issue: https://github.com/bluewuxi/OnlineForms/issues/64
   Scope:
   - Audit existing API payloads against Phase 11 UI needs

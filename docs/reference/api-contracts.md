@@ -9,6 +9,27 @@
 - Content type: `application/json; charset=utf-8`
 - Time format: ISO 8601 UTC (example: `2026-03-09T02:31:22Z`)
 
+### 1.1 Frontend Contract Audit Status (2026-03-25)
+
+This document now reflects the implemented backend shape used by the upcoming UI work.
+
+Important baseline notes from the audit:
+
+- `GET /v1/org/courses` currently returns the full course rows without server-side filtering; query filters documented for future UI support should be treated as backlog until implemented.
+- Course records use `activeFormId` and `activeFormVersion` in the backend model, not `formId` and `formVersion`.
+- Submission records include UI-friendly summary fields:
+  - `applicantSummary`
+  - `course`
+- Internal user management routes are under `/v1/internal/users`.
+- Internal tenant management routes are under `/v1/internal/tenants`.
+- Session bootstrap and context-selection routes are active:
+  - `GET /v1/org/session-contexts`
+  - `POST /v1/org/session-context`
+- Additional org support routes are active and frontend-relevant:
+  - `GET /v1/org/me`
+  - `GET /v1/org/audit`
+  - `PATCH /v1/org/branding`
+
 ---
 
 ## 2. Architecture and Routing
@@ -157,12 +178,10 @@ Auth token lifecycle details (`error.details[*].issue`) for `UNAUTHORIZED`:
 {
   "id": "crs_01JABC...",
   "tenantId": "ten_01JABC...",
-  "tenantCode": "acme-school",
   "title": "Intro to AI",
   "shortDescription": "4-week foundation course",
   "fullDescription": "Detailed syllabus...",
   "imageAssetId": "ast_01JABC...",
-  "brandingRef": "default",
   "startDate": "2026-04-01",
   "endDate": "2026-04-28",
   "enrollmentOpenAt": "2026-03-10T00:00:00Z",
@@ -174,8 +193,8 @@ Auth token lifecycle details (`error.details[*].issue`) for `UNAUTHORIZED`:
   "publicVisible": false,
   "pricingMode": "free",
   "paymentEnabledFlag": false,
-  "formId": "frm_01JABC...",
-  "formVersion": 3,
+  "activeFormId": "frm_01JABC...",
+  "activeFormVersion": 3,
   "createdAt": "2026-03-09T01:00:00Z",
   "updatedAt": "2026-03-09T01:10:00Z",
   "createdBy": "usr_01J...",
@@ -259,7 +278,15 @@ Form schema rules:
   "submittedAt": "2026-03-09T01:30:00Z",
   "reviewedAt": null,
   "reviewedBy": null,
-  "createdAt": "2026-03-09T01:30:00Z"
+  "createdAt": "2026-03-09T01:30:00Z",
+  "updatedAt": "2026-03-09T01:30:00Z",
+  "applicantSummary": {
+    "email": "alice@example.com",
+    "name": "Alice"
+  },
+  "course": {
+    "id": "crs_01JABC..."
+  }
 }
 ```
 
@@ -325,11 +352,10 @@ Response `201`:
 
 List tenant courses.
 
-Filters:
+Current implementation note:
 
-- `status`
-- `q` (title contains)
-- `pricingMode`
+- Returns all tenant courses for the authenticated tenant.
+- Server-side `status`, `q`, and `pricingMode` filters are planned for later frontend-support work and should not yet be assumed by the UI.
 
 Response `200`:
 
@@ -528,6 +554,85 @@ Server behavior:
 
 ---
 
+## 6.7 Org Session Bootstrap and Support
+
+### `GET /v1/org/me`
+
+Returns the authenticated org-session identity currently resolved by auth middleware.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_01J...",
+    "tenantId": "ten_01J...",
+    "role": "org_admin"
+  }
+}
+```
+
+### `GET /v1/org/audit`
+
+List audit events for the active tenant.
+
+Filters:
+
+- `action`
+- `resourceType`
+- `createdFrom`
+- `createdTo`
+- `limit`
+- `cursor`
+
+Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "id": "aud_01JABC...",
+      "tenantId": "ten_01JABC...",
+      "actorUserId": "usr_01J...",
+      "action": "course.publish",
+      "resourceType": "course",
+      "resourceId": "crs_01JABC...",
+      "correlationId": "corr_01JABC...",
+      "requestId": "req_01JABC...",
+      "details": {},
+      "createdAt": "2026-03-09T01:30:00Z"
+    }
+  ],
+  "page": { "limit": 20, "nextCursor": null }
+}
+```
+
+### `PATCH /v1/org/branding`
+
+Update tenant branding used by public and org pages.
+
+Request body:
+
+```json
+{
+  "logoAssetId": "ast_01JABC..."
+}
+```
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "tenantId": "ten_01JABC...",
+    "logoAssetId": "ast_01JABC...",
+    "updatedAt": "2026-03-09T01:30:00Z"
+  }
+}
+```
+
+---
+
 ## 6.6 Session Context APIs
 
 ### `GET /v1/org/session-contexts`
@@ -567,6 +672,18 @@ Request body:
 {
   "tenantId": "ten_01J...",
   "role": "org_admin"
+}
+```
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_01J...",
+    "tenantId": "ten_01J...",
+    "role": "org_admin"
+  }
 }
 ```
 
@@ -805,35 +922,6 @@ Validation expectations:
 - `tenantCode` must be globally unique.
 - `displayName` required, length-limited.
 
-### `GET /v1/internal/access-users`
-
-List users with internal portal access capability (`internal_admin` via Cognito group/claim mapping).
-
-Query:
-
-- `limit` (optional, default `50`, max `200`)
-- `cursor` (optional pagination cursor)
-
-Response:
-
-```json
-{
-  "data": [
-    {
-      "userId": "usr_internal_1",
-      "username": "internal-user-1",
-      "email": "internal-1@example.com",
-      "enabled": true,
-      "status": "CONFIRMED"
-    }
-  ],
-  "page": {
-    "limit": 50,
-    "nextCursor": null
-  }
-}
-```
-
 ### `GET /v1/internal/users`
 
 List internal users for users drawer page.
@@ -885,6 +973,20 @@ Error contracts:
 - `404 NOT_FOUND` when user does not exist in Cognito user pool.
 - `409 CONFLICT` when user already has internal access.
 
+Response `201`:
+
+```json
+{
+  "data": {
+    "userId": "usr_internal_1",
+    "username": "internal-user-1",
+    "email": "internal-1@example.com",
+    "enabled": true,
+    "status": "CONFIRMED"
+  }
+}
+```
+
 ### `DELETE /v1/internal/users/{userId}`
 
 Remove internal access for a user (remove from internal group capability).
@@ -893,6 +995,17 @@ Error contracts:
 
 - `404 NOT_FOUND` when user is not present in user pool.
 - `409 CONFLICT` when user does not currently have internal access.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_internal_1",
+    "removed": true
+  }
+}
+```
 
 ### `PATCH /v1/internal/tenants/{tenantId}`
 

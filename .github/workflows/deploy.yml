@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - 'docs/**'
 
 permissions:
   id-token: write

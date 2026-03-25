@@ -4,8 +4,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
-  PutCommand,
-  UpdateCommand
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ApiError } from "./errors";
 import { getCourse } from "./courses";
@@ -80,6 +79,16 @@ let testGetLatestCourseFormSchemaOverride:
 let testGetCourseFormSchemaVersionOverride:
   | ((tenantId: string, courseId: string, version: number) => Promise<FormSchema>)
   | null = null;
+let testDdbSendOverride:
+  | ((command: object) => Promise<unknown>)
+  | null = null;
+
+async function sendDdb<TResult>(command: object): Promise<TResult> {
+  if (testDdbSendOverride) {
+    return (await testDdbSendOverride(command)) as TResult;
+  }
+  return (await ddb.send(command as never)) as TResult;
+}
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -146,7 +155,7 @@ function fromItem(item: FormSchemaItem): FormSchema {
 }
 
 async function getLatestItem(tenantId: string, courseId: string): Promise<FormSchemaItem | null> {
-  const out = await ddb.send(
+  const out = await sendDdb<{ Items?: unknown[] }>(
     new QueryCommand({
       TableName: tableName,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
@@ -193,33 +202,38 @@ export async function upsertCourseFormSchema(
     updatedBy: userId
   };
 
-  await ddb.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: item,
-      ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
-    })
-  );
-
-  await ddb.send(
-    new UpdateCommand({
-      TableName: tableName,
-      Key: { PK: tenantPk(tenantId), SK: courseSk(courseId) },
-      ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
-      UpdateExpression:
-        "SET #activeFormId = :formId, #activeFormVersion = :version, #updatedAt = :updatedAt, #updatedBy = :updatedBy",
-      ExpressionAttributeNames: {
-        "#activeFormId": "activeFormId",
-        "#activeFormVersion": "activeFormVersion",
-        "#updatedAt": "updatedAt",
-        "#updatedBy": "updatedBy"
-      },
-      ExpressionAttributeValues: {
-        ":formId": formId,
-        ":version": nextVersion,
-        ":updatedAt": now,
-        ":updatedBy": userId
-      }
+  await sendDdb(
+    new TransactWriteCommand({
+      TransactItems: [
+        {
+          Put: {
+            TableName: tableName,
+            Item: item,
+            ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+          }
+        },
+        {
+          Update: {
+            TableName: tableName,
+            Key: { PK: tenantPk(tenantId), SK: courseSk(courseId) },
+            ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+            UpdateExpression:
+              "SET #activeFormId = :formId, #activeFormVersion = :version, #updatedAt = :updatedAt, #updatedBy = :updatedBy",
+            ExpressionAttributeNames: {
+              "#activeFormId": "activeFormId",
+              "#activeFormVersion": "activeFormVersion",
+              "#updatedAt": "updatedAt",
+              "#updatedBy": "updatedBy"
+            },
+            ExpressionAttributeValues: {
+              ":formId": formId,
+              ":version": nextVersion,
+              ":updatedAt": now,
+              ":updatedBy": userId
+            }
+          }
+        }
+      ]
     })
   );
 
@@ -249,7 +263,7 @@ export async function getCourseFormSchemaVersion(
   }
   await getCourse(tenantId, courseId);
 
-  const out = await ddb.send(
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
     new GetCommand({
       TableName: tableName,
       Key: { PK: tenantPk(tenantId), SK: formVersionSk(courseId, version) }
@@ -271,8 +285,12 @@ export const __formSchemasTestHooks = {
   ): void {
     testGetCourseFormSchemaVersionOverride = loader;
   },
+  setDdbSendOverride(loader: ((command: object) => Promise<unknown>) | null): void {
+    testDdbSendOverride = loader;
+  },
   reset(): void {
     testGetLatestCourseFormSchemaOverride = null;
     testGetCourseFormSchemaVersionOverride = null;
+    testDdbSendOverride = null;
   }
 };

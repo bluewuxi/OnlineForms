@@ -154,21 +154,6 @@ function encodeCursor(lastEvaluatedKey: Record<string, unknown> | undefined): st
   return Buffer.from(JSON.stringify(lastEvaluatedKey), "utf-8").toString("base64");
 }
 
-function decodeOffsetCursor(cursor: string | undefined): number {
-  if (!cursor) return 0;
-  const decoded = decodeCursor(cursor);
-  const offset = decoded.offset;
-  if (typeof offset !== "number" || !Number.isInteger(offset) || offset < 0) {
-    throw new ApiError(400, "VALIDATION_ERROR", "cursor is invalid.");
-  }
-  return offset;
-}
-
-function encodeOffsetCursor(offset: number | null): string | null {
-  if (offset === null) return null;
-  return Buffer.from(JSON.stringify({ offset }), "utf-8").toString("base64");
-}
-
 function submissionFromItem(item: Record<string, unknown>): Submission {
   const applicant = (item.applicant as Record<string, unknown>) ?? {};
   const emailValue = applicant.email;
@@ -420,7 +405,6 @@ export async function listOrgSubmissions(
     return testListOrgSubmissionsOverride(tenantId, input);
   }
   const limit = parseLimit(input.limit);
-  const offset = decodeOffsetCursor(input.cursor);
   const submittedFrom = input.submittedFrom ? parseIsoDateTime(input.submittedFrom, "submittedFrom") : undefined;
   const submittedTo = input.submittedTo ? parseIsoDateTime(input.submittedTo, "submittedTo") : undefined;
 
@@ -428,17 +412,9 @@ export async function listOrgSubmissions(
     throw new ApiError(400, "VALIDATION_ERROR", "submittedFrom must be before or equal to submittedTo.");
   }
 
-  const exprValues: Record<string, unknown> = {
-    ":pk": tenantPk(tenantId),
-    ":sk": "SUBMISSION#"
-  };
+  const exprValues: Record<string, unknown> = {};
   const filters: string[] = [];
   const exprNames: Record<string, string> = {};
-
-  if (input.courseId) {
-    exprValues[":courseId"] = input.courseId;
-    filters.push("courseId = :courseId");
-  }
   if (input.status) {
     exprNames["#status"] = "status";
     exprValues[":status"] = input.status;
@@ -453,34 +429,38 @@ export async function listOrgSubmissions(
     filters.push("submittedAt <= :submittedTo");
   }
 
-  const allItems: Record<string, unknown>[] = [];
-  let lastKey: Record<string, unknown> | undefined = undefined;
+  const indexName = input.courseId ? "GSI3" : "GSI1";
+  const partitionKeyName = input.courseId ? "GSI3PK" : "GSI1PK";
+  exprValues[":pk"] = input.courseId
+    ? `TENANT#${tenantId}#COURSE#${input.courseId}#SUBMISSIONS`
+    : `TENANT#${tenantId}#SUBMISSIONS`;
+
+  const pageItems: Record<string, unknown>[] = [];
+  let lastKey = input.cursor ? decodeCursor(input.cursor) : undefined;
   do {
+    const remaining = limit - pageItems.length;
     const out = await sendDdb(
       new QueryCommand({
         TableName: tableName,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        IndexName: indexName,
+        KeyConditionExpression: `${partitionKeyName} = :pk`,
         FilterExpression: filters.length > 0 ? filters.join(" AND ") : undefined,
         ExpressionAttributeNames: Object.keys(exprNames).length > 0 ? exprNames : undefined,
         ExpressionAttributeValues: exprValues,
-        ExclusiveStartKey: lastKey
+        ExclusiveStartKey: lastKey,
+        ScanIndexForward: false,
+        Limit: remaining
       })
     );
-    allItems.push(...((out.Items ?? []) as Record<string, unknown>[]));
+    pageItems.push(...((out.Items ?? []) as Record<string, unknown>[]));
     lastKey = out.LastEvaluatedKey as Record<string, unknown> | undefined;
-  } while (lastKey);
+  } while (lastKey && pageItems.length < limit);
 
-  const sorted = allItems
-    .map((item) => submissionFromItem(item))
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt) || b.id.localeCompare(a.id));
-
-  const pageData = sorted.slice(offset, offset + limit);
-  const nextOffset = offset + pageData.length < sorted.length ? offset + pageData.length : null;
   return {
-    data: pageData,
+    data: pageItems.map((item) => submissionFromItem(item)),
     page: {
       limit,
-      nextCursor: encodeOffsetCursor(nextOffset)
+      nextCursor: encodeCursor(lastKey)
     }
   };
 }

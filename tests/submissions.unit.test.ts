@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { __coursesTestHooks } from "../services/api/src/lib/courses";
 import { __formSchemasTestHooks } from "../services/api/src/lib/formSchemas";
 import { ApiError } from "../services/api/src/lib/errors";
 import {
   __submissionsTestHooks,
   createPublicEnrollment,
-  getOrgSubmission
+  getOrgSubmission,
+  listOrgSubmissions
 } from "../services/api/src/lib/submissions";
 
 function asApiError(error: unknown): ApiError {
@@ -421,4 +422,88 @@ test("getOrgSubmission uses applicant.name when a full-name field was persisted"
   const result = await getOrgSubmission("ten_001", "sub_002");
   assert.equal(result.applicantSummary?.email, "alice@example.com");
   assert.equal(result.applicantSummary?.name, "Alice Learner");
+});
+
+test("listOrgSubmissions uses GSI1 with key-based cursor for tenant-wide listing", async () => {
+  let seenIndexName: string | undefined;
+  let seenExclusiveStartKey: Record<string, unknown> | undefined;
+  const nextKey = {
+    GSI1PK: "TENANT#ten_001#SUBMISSIONS",
+    GSI1SK: "SUBMITTED#2026-03-24T00:00:00.000Z#SUBMISSION#sub_002",
+    PK: "TENANT#ten_001",
+    SK: "SUBMISSION#sub_002"
+  };
+
+  __submissionsTestHooks.setDdbSendOverride(async (command) => {
+    if (command instanceof QueryCommand) {
+      seenIndexName = command.input.IndexName;
+      seenExclusiveStartKey = command.input.ExclusiveStartKey as Record<string, unknown> | undefined;
+      return {
+        Items: [
+          {
+            submissionId: "sub_001",
+            tenantId: "ten_001",
+            tenantCode: "std-school",
+            courseId: "crs_001",
+            formId: "frm_001",
+            formVersion: 1,
+            status: "submitted",
+            applicant: { email: "alice@example.com" },
+            answers: {},
+            submittedAt: "2026-03-25T00:00:00.000Z",
+            reviewedAt: null,
+            reviewedBy: null,
+            createdAt: "2026-03-25T00:00:00.000Z",
+            updatedAt: "2026-03-25T00:00:00.000Z"
+          }
+        ],
+        LastEvaluatedKey: nextKey
+      };
+    }
+    throw new Error(`Unexpected command: ${(command as { constructor?: { name?: string } }).constructor?.name}`);
+  });
+
+  const result = await listOrgSubmissions("ten_001", { limit: 1 });
+  assert.equal(seenIndexName, "GSI1");
+  assert.equal(seenExclusiveStartKey, undefined);
+  assert.equal(result.data.length, 1);
+  assert.equal(result.page.limit, 1);
+  assert.equal(
+    result.page.nextCursor,
+    Buffer.from(JSON.stringify(nextKey), "utf-8").toString("base64")
+  );
+});
+
+test("listOrgSubmissions uses GSI3 when filtering by courseId", async () => {
+  let seenIndexName: string | undefined;
+  let seenPartitionKey: unknown;
+  const cursor = Buffer.from(
+    JSON.stringify({
+      GSI3PK: "TENANT#ten_001#COURSE#crs_001#SUBMISSIONS",
+      GSI3SK: "SUBMITTED#2026-03-24T00:00:00.000Z#SUBMISSION#sub_002"
+    }),
+    "utf-8"
+  ).toString("base64");
+
+  __submissionsTestHooks.setDdbSendOverride(async (command) => {
+    if (command instanceof QueryCommand) {
+      seenIndexName = command.input.IndexName;
+      seenPartitionKey = command.input.ExpressionAttributeValues?.[":pk"];
+      return {
+        Items: [],
+        LastEvaluatedKey: undefined
+      };
+    }
+    throw new Error(`Unexpected command: ${(command as { constructor?: { name?: string } }).constructor?.name}`);
+  });
+
+  const result = await listOrgSubmissions("ten_001", {
+    courseId: "crs_001",
+    limit: 20,
+    cursor
+  });
+  assert.equal(seenIndexName, "GSI3");
+  assert.equal(seenPartitionKey, "TENANT#ten_001#COURSE#crs_001#SUBMISSIONS");
+  assert.equal(result.page.nextCursor, null);
+  assert.deepEqual(result.data, []);
 });

@@ -280,7 +280,11 @@ async function loadUserByIdentifier(userId: string): Promise<CognitoUserRecord> 
 
 async function countPrivilegedUsers(): Promise<number> {
   const users = await listInternalAccessUsersFromCognito(200);
-  return users.data.filter((user) => user.internalRoles.some((role) => supportedInternalRoles.includes(role))).length;
+  return users.data.filter(
+    (user) =>
+      user.enabled &&
+      user.internalRoles.some((role) => supportedInternalRoles.includes(role)),
+  ).length;
 }
 
 async function assertMutationSafety(

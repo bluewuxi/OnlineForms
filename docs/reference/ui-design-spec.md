@@ -81,11 +81,11 @@ Intent:
 Visual character:
 - sharper app shell than the organization portal
 - stronger contrast in navigation and detail panes
-- list-first pages with a right-side drawer or inspector
+- list-first pages with a right-side workspace, inspector, or detail panel
 
 Rules:
 - Use top navigation only for major areas.
-- Favor in-place detail drawers over full page jumps.
+- Favor in-place detail workspaces or inspectors over full page jumps.
 - Optimize for scanning, filtering, and editing records quickly.
 - Show administrative status and validation states clearly.
 
@@ -302,9 +302,9 @@ Avoid:
 ### Internal Tenants And Users
 
 - Strong search and filters.
-- Stable table/list layout.
-- Drawer-based detail and edit behavior.
+- Stable list-first layout.
 - Preserve list context during updates.
+- Tenant management can stay drawer-oriented, but internal-user management may use a fuller selected-user workspace when actions and audit context need more room.
 
 ## Anti-Patterns
 

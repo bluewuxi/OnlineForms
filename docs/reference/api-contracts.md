@@ -1105,7 +1105,7 @@ Validation expectations:
 
 ### `GET /v1/internal/users`
 
-List internal users for users drawer page.
+List internal users for the internal access-control console directory.
 
 Query:
 
@@ -1114,7 +1114,7 @@ Query:
 
 ### `GET /v1/internal/users/{userId}`
 
-Get internal user detail payload for drawer display, including tenant memberships and allowed roles.
+Get internal user detail payload for the selected-user workspace, including read-only tenant memberships and internal roles.
 
 Response payload shape:
 
@@ -1124,8 +1124,10 @@ Response payload shape:
     "userId": "usr_internal_1",
     "username": "internal-user-1",
     "email": "internal-1@example.com",
+    "preferredName": "Internal Operator",
     "enabled": true,
     "status": "CONFIRMED",
+    "internalRoles": ["internal_admin"],
     "memberships": [
       {
         "tenantId": "001",
@@ -1139,20 +1141,20 @@ Response payload shape:
 
 ### `POST /v1/internal/users`
 
-Grant internal access by email.
+Create a new internal user with full initial setup.
 
 Request body:
 
 ```json
 {
-  "email": "operator@example.com"
+  "email": "operator@example.com",
+  "preferredName": "Operator Example",
+  "password": "TempPassword1",
+  "temporaryPassword": true,
+  "internalRoles": ["internal_admin"],
+  "enabled": true
 }
 ```
-
-Error contracts:
-
-- `404 NOT_FOUND` when user does not exist in Cognito user pool.
-- `409 CONFLICT` when user already has internal access.
 
 Response `201`:
 
@@ -1162,20 +1164,23 @@ Response `201`:
     "userId": "usr_internal_1",
     "username": "internal-user-1",
     "email": "internal-1@example.com",
+    "preferredName": "Operator Example",
     "enabled": true,
-    "status": "CONFIRMED"
+    "status": "FORCE_CHANGE_PASSWORD",
+    "internalRoles": ["internal_admin"]
   }
 }
 ```
 
-### `DELETE /v1/internal/users/{userId}`
+Validation / behavior notes:
 
-Remove internal access for a user (remove from internal group capability).
+- `temporaryPassword=false` is allowed on create.
+- UI day one may only expose `internal_admin`, but backend contract remains extensible.
+- Creation writes internal-user activity records for user creation and initial access state.
 
-Error contracts:
+### `POST /v1/internal/users/{userId}/activate`
 
-- `404 NOT_FOUND` when user is not present in user pool.
-- `409 CONFLICT` when user does not currently have internal access.
+Re-enable an internal user account.
 
 Response `200`:
 
@@ -1183,7 +1188,134 @@ Response `200`:
 {
   "data": {
     "userId": "usr_internal_1",
-    "removed": true
+    "username": "internal-user-1",
+    "email": "internal-1@example.com",
+    "preferredName": "Operator Example",
+    "enabled": true,
+    "status": "CONFIRMED",
+    "internalRoles": ["internal_admin"]
+  }
+}
+```
+
+### `POST /v1/internal/users/{userId}/deactivate`
+
+Disable an internal user account.
+
+Response shape matches the activate route.
+
+### `POST /v1/internal/users/{userId}/roles/add`
+
+Add one internal role explicitly.
+
+Request body:
+
+```json
+{
+  "role": "internal_admin"
+}
+```
+
+Supported v1 backend values:
+
+- `internal_admin`
+- `platform_admin`
+
+Response shape matches the detail summary fields and includes the updated `internalRoles`.
+
+### `POST /v1/internal/users/{userId}/roles/remove`
+
+Remove one internal role explicitly.
+
+Request body:
+
+```json
+{
+  "role": "internal_admin"
+}
+```
+
+Guardrail notes:
+
+- backend must prevent self-lockout and removal of the last high-privilege operator
+- UI should treat blocked removals as operator-readable failures, not generic permission errors
+
+### `POST /v1/internal/users/{userId}/password-reset`
+
+Reset an internal user's password using temporary-password semantics.
+
+Request body:
+
+```json
+{
+  "password": "TempPassword1"
+}
+```
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_internal_1",
+    "passwordReset": true,
+    "temporaryPassword": true
+  }
+}
+```
+
+Behavior notes:
+
+- reset always requires the target user to change password on next login
+- confirmation is handled in the frontend UI, not in the API contract
+
+### `GET /v1/internal/users/{userId}/activity`
+
+Return recent internal-user activity for the selected-user timeline.
+
+Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "id": "act_01JABC",
+      "userId": "usr_internal_1",
+      "actorUserId": "usr_internal_9",
+      "eventType": "internal_user.role_added",
+      "summary": "Role internal_admin was added to internal-1@example.com.",
+      "details": {
+        "role": "internal_admin"
+      },
+      "createdAt": "2026-03-26T01:02:03.000Z"
+    }
+  ],
+  "page": { "limit": 20, "nextCursor": null },
+  "sourceStatus": "ok"
+}
+```
+
+Timeline event types currently include:
+
+- `internal_user.created`
+- `internal_user.role_added`
+- `internal_user.role_removed`
+- `internal_user.activated`
+- `internal_user.deactivated`
+- `internal_user.password_reset`
+- `internal_user.login`
+- `internal_user.logout`
+
+### `POST /v1/internal/users/activity/logout`
+
+Write an explicit logout activity event for the current internal user session.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "loggedOut": true
   }
 }
 ```

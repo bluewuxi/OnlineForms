@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { handler } from "../services/api/src/handlers/orgSessionContextValidate";
 import { __authContextsTestHooks } from "../services/api/src/lib/authContexts";
+import { __internalUserActivityTestHooks } from "../services/api/src/lib/internalUserActivity";
 
 function asStructuredResult(
   result: Awaited<ReturnType<typeof handler>>
@@ -50,7 +51,10 @@ function makeEvent(body: unknown, headers?: Record<string, string>): APIGatewayP
 
 test("orgSessionContextValidate allows internal_admin without tenantId", async () => {
   const oldMode = process.env.AUTH_MODE;
+  const oldActivityTable = process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE;
   process.env.AUTH_MODE = "mock";
+  process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = "onlineforms-internal-activity";
+  __internalUserActivityTestHooks.setWriteOverride(async () => {});
   try {
     const result = asStructuredResult(
       await handler(
@@ -80,12 +84,17 @@ test("orgSessionContextValidate allows internal_admin without tenantId", async (
     assert.deepEqual(body.data.shell, { portal: "internal", tenantScoped: false });
   } finally {
     process.env.AUTH_MODE = oldMode;
+    process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = oldActivityTable;
+    __internalUserActivityTestHooks.reset();
   }
 });
 
 test("orgSessionContextValidate rejects org role without tenantId", async () => {
   const oldMode = process.env.AUTH_MODE;
+  const oldActivityTable = process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE;
   process.env.AUTH_MODE = "mock";
+  process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = "onlineforms-internal-activity";
+  __internalUserActivityTestHooks.setWriteOverride(async () => {});
   try {
     const result = asStructuredResult(
       await handler(
@@ -106,12 +115,17 @@ test("orgSessionContextValidate rejects org role without tenantId", async () => 
     assert.equal(body.error.details?.[0]?.issue, "tenant_required");
   } finally {
     process.env.AUTH_MODE = oldMode;
+    process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = oldActivityTable;
+    __internalUserActivityTestHooks.reset();
   }
 });
 
 test("orgSessionContextValidate validates tenant membership when tenantId is provided", async () => {
   const oldMode = process.env.AUTH_MODE;
+  const oldActivityTable = process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE;
   process.env.AUTH_MODE = "mock";
+  process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = "onlineforms-internal-activity";
+  __internalUserActivityTestHooks.setWriteOverride(async () => {});
   __authContextsTestHooks.setContextLoaderOverride(async () => [
     { tenantId: "ten_1", status: "active", roles: ["org_admin"] }
   ]);
@@ -135,12 +149,17 @@ test("orgSessionContextValidate validates tenant membership when tenantId is pro
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
+    process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = oldActivityTable;
+    __internalUserActivityTestHooks.reset();
   }
 });
 
 test("orgSessionContextValidate allows internal_admin with tenantId without membership lookup", async () => {
   const oldMode = process.env.AUTH_MODE;
+  const oldActivityTable = process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE;
   process.env.AUTH_MODE = "mock";
+  process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = "onlineforms-internal-activity";
+  __internalUserActivityTestHooks.setWriteOverride(async () => {});
   __authContextsTestHooks.setContextLoaderOverride(async () => []);
 
   try {
@@ -170,12 +189,17 @@ test("orgSessionContextValidate allows internal_admin with tenantId without memb
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
+    process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = oldActivityTable;
+    __internalUserActivityTestHooks.reset();
   }
 });
 
 test("orgSessionContextValidate returns invalid_context detail for unauthorized tenant-role selection", async () => {
   const oldMode = process.env.AUTH_MODE;
+  const oldActivityTable = process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE;
   process.env.AUTH_MODE = "mock";
+  process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = "onlineforms-internal-activity";
+  __internalUserActivityTestHooks.setWriteOverride(async () => {});
   __authContextsTestHooks.setContextLoaderOverride(async () => [
     { tenantId: "ten_1", status: "active", roles: ["org_editor"] }
   ]);
@@ -199,5 +223,7 @@ test("orgSessionContextValidate returns invalid_context detail for unauthorized 
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
+    process.env.ONLINEFORMS_INTERNAL_ACTIVITY_TABLE = oldActivityTable;
+    __internalUserActivityTestHooks.reset();
   }
 });

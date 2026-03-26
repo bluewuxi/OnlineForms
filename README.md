@@ -29,6 +29,28 @@ Backend scaffold for Phase 1 of OnlineForms MVP.
 - `services/` Lambda handlers and API code
 - `shared/` shared utilities (correlation, guards, contracts)
 
+## Current Internal Control-Plane Scope
+
+The internal portal now includes a real internal-user management surface instead of the earlier grant/revoke-only directory.
+
+Backend support in this repo now covers:
+
+- canonical internal-user route family under `/v1/internal/users`
+- create internal user with initial password, temporary-password option, initial roles, and enabled state
+- activate / deactivate internal user
+- explicit add-role / remove-role mutations
+- password reset with temporary-password semantics
+- per-user internal activity timeline
+- explicit logout activity write path
+- internal login activity write during session-context validation
+- dedicated DynamoDB-backed internal activity store provisioned from SAM
+
+See also:
+
+- `docs/reference/api-contracts.md`
+- `docs/reference/auth-context-rollout.md`
+- `docs/reference/auth-claims-strategy.md`
+
 ## Implemented in P1-01
 
 - Health endpoint: `GET /v1/health`

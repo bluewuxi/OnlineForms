@@ -113,6 +113,7 @@ Globals:
         COGNITO_INTERNAL_GROUP_NAME: !Ref CognitoInternalGroupName
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
         ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
+        ONLINEFORMS_INTERNAL_ACTIVITY_TABLE: !Ref OnlineFormsInternalActivityTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
 
 Resources:
@@ -230,6 +231,22 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+
+  OnlineFormsInternalActivityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OnlineFormsInternalActivity
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
 
   OnlineFormsUserPool:
     Type: AWS::Cognito::UserPool
@@ -393,6 +410,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
       Events:
         OrgSessionContextValidateRoute:
           Type: HttpApi
@@ -813,30 +832,6 @@ Resources:
             Path: /internal/tenants/{tenantId}
             Method: PATCH
 
-  InternalAccessUsersListFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../deploy/lambda.zip
-      Handler: dist/services/api/src/handlers/internalAccessUsersList.handler
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:ListUsersInGroup
-                - cognito-idp:ListUsers
-                - cognito-idp:AdminGetUser
-                - cognito-idp:AdminListGroupsForUser
-                - cognito-idp:AdminAddUserToGroup
-                - cognito-idp:AdminRemoveUserFromGroup
-              Resource: "*"
-      Events:
-        InternalAccessUsersListRoute:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref OnlineFormsHttpApi
-            Path: /internal/access-users
-            Method: GET
-
   InternalUsersListFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -847,6 +842,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:ListUsersInGroup
+                - cognito-idp:AdminListGroupsForUser
               Resource: "*"
       Events:
         InternalUsersListRoute:
@@ -866,6 +862,8 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminListGroupsForUser
               Resource: "*"
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
@@ -886,10 +884,16 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
-                - cognito-idp:ListUsers
-                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminSetUserPassword
+                - cognito-idp:AdminDisableUser
                 - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminListGroupsForUser
               Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
       Events:
         InternalUsersCreateRoute:
           Type: HttpApi
@@ -898,26 +902,158 @@ Resources:
             Path: /internal/users
             Method: POST
 
-  InternalUsersDeleteFunction:
+  InternalUsersActivateFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../deploy/lambda.zip
-      Handler: dist/services/api/src/handlers/internalUsersDelete.handler
+      Handler: dist/services/api/src/handlers/internalUsersActivate.handler
       Policies:
         - Statement:
             - Effect: Allow
               Action:
                 - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminEnableUser
                 - cognito-idp:AdminListGroupsForUser
-                - cognito-idp:AdminRemoveUserFromGroup
               Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
       Events:
-        InternalUsersDeleteRoute:
+        InternalUsersActivateRoute:
           Type: HttpApi
           Properties:
             ApiId: !Ref OnlineFormsHttpApi
-            Path: /internal/users/{userId}
-            Method: DELETE
+            Path: /internal/users/{userId}/activate
+            Method: POST
+
+  InternalUsersDeactivateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersDeactivate.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:ListUsersInGroup
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminDisableUser
+              Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersDeactivateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}/deactivate
+            Method: POST
+
+  InternalUsersRoleAddFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersRoleAdd.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminAddUserToGroup
+              Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersRoleAddRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}/roles/add
+            Method: POST
+
+  InternalUsersRoleRemoveFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersRoleRemove.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:ListUsersInGroup
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminRemoveUserFromGroup
+              Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersRoleRemoveRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}/roles/remove
+            Method: POST
+
+  InternalUsersPasswordResetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersPasswordReset.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminSetUserPassword
+              Resource: "*"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersPasswordResetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}/password-reset
+            Method: POST
+
+  InternalUsersActivityListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersActivityList.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersActivityListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/{userId}/activity
+            Method: GET
+
+  InternalUsersLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalUsersLogout.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsInternalActivityTable
+      Events:
+        InternalUsersLogoutRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/users/activity/logout
+            Method: POST
 
   PaymentsStubFunction:
     Type: AWS::Serverless::Function

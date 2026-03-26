@@ -1,48 +1,61 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest } from "../lib/auth";
-import { emitInternalAccessGrantMetric, logAuthAudit } from "../lib/authObservability";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
-import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
-import { addInternalAccessUserByEmail } from "../lib/internalAccessUsers";
+import { createInternalUser, type InternalRole } from "../lib/internalAccessUsers";
+import { writeInternalUserActivity } from "../lib/internalUserActivity";
 import { parseJsonBody } from "../lib/request";
 
 type CreateInternalUserBody = {
   email?: unknown;
+  preferredName?: unknown;
+  password?: unknown;
+  temporaryPassword?: unknown;
+  internalRoles?: unknown;
+  enabled?: unknown;
 };
+
+function parseRoles(input: unknown): InternalRole[] {
+  if (!Array.isArray(input)) {
+    return ["internal_admin"];
+  }
+  return input
+    .filter((value): value is InternalRole => value === "internal_admin" || value === "platform_admin");
+}
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
   try {
     const auth = await authenticateRequest(event.headers, {
       requireMembership: false,
-      allowMissingTenantContext: true
+      allowMissingTenantContext: true,
     });
     authorizeOrgAction(auth, "INTERNAL_USER_WRITE");
 
     const body = parseJsonBody<CreateInternalUserBody>(event);
-    const email = typeof body.email === "string" ? body.email : "";
-    if (!email.trim()) {
-      throw new ApiError(400, "VALIDATION_ERROR", "email is required.");
-    }
-
-    const data = await addInternalAccessUserByEmail(email);
-    emitInternalAccessGrantMetric();
-    logAuthAudit("auth_internal_access_granted", {
-      actorUserId: auth.userId,
-      targetUserId: data.userId,
-      targetEmail: data.email
+    const created = await createInternalUser({
+      email: typeof body.email === "string" ? body.email : "",
+      preferredName: typeof body.preferredName === "string" ? body.preferredName : null,
+      password: typeof body.password === "string" ? body.password : "",
+      temporaryPassword: body.temporaryPassword === true,
+      internalRoles: parseRoles(body.internalRoles),
+      enabled: typeof body.enabled === "boolean" ? body.enabled : true,
     });
-    return jsonResponse(201, { data }, correlation);
+
+    await writeInternalUserActivity({
+      userId: created.userId,
+      actorUserId: auth.userId,
+      eventType: "internal_user.created",
+      summary: `Internal user ${created.email ?? created.username} was created.`,
+      details: {
+        internalRoles: created.internalRoles,
+        enabled: created.enabled,
+      },
+    });
+
+    return jsonResponse(201, { data: created }, correlation);
   } catch (error) {
-    if (error instanceof ApiError && (error.statusCode === 404 || error.statusCode === 409)) {
-      logAuthAudit("auth_internal_access_mutation_failed", {
-        action: "grant",
-        reason: error.message,
-        code: error.code
-      });
-    }
     return errorResponse(error, correlation);
   }
 };

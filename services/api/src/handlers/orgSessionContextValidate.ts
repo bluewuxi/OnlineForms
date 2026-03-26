@@ -11,6 +11,7 @@ import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { buildSessionBootstrapResponseData } from "../lib/sessionBootstrap";
 import { assertTenantRoleAllowed, listUserTenantContexts } from "../lib/authContexts";
+import { writeInternalUserActivity } from "../lib/internalUserActivity";
 
 type ContextPayload = {
   tenantId?: unknown;
@@ -79,6 +80,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tenantId,
       role
     });
+    if (role === "internal_admin" || role === "platform_admin") {
+      await writeInternalUserActivity({
+        userId: auth.userId,
+        actorUserId: auth.userId,
+        eventType: "internal_user.login",
+        summary: "Internal user signed in to the management console.",
+        details: {
+          role,
+        },
+      });
+    }
 
     return jsonResponse(
       200,

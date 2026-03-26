@@ -8,3 +8,4 @@ health_zip/
 
 deploy/lambda.zip
 deploy/package/
+.gstack/

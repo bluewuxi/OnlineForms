@@ -1,6 +1,11 @@
 # OnlineForms
 
-Backend scaffold for Phase 1 of OnlineForms MVP.
+Backend scaffold for OnlineForms MVP.
+See OnlineForms-Frontend Repository for frontend repository
+
+OnlineForms is a multi-tenant SaaS application for education and training providers to publish courses, collect online enrollments through configurable forms, review submissions, and manage operations across public, tenant, and internal admin portals.
+
+It was built as an AI-first engineering project to demonstrate how production-style software can be created through structured human + AI collaboration. The entire codebase was generated with Codex through an iterative workflow of requirement shaping, design and engineering review, implementation, bug fixing, code review, shipping, deployment verification, and documentation updates. The work was informed by prior real production experience, so the project reflects practical SaaS architecture, admin workflows, authentication patterns, and CI/CD practices rather than a toy prototype.
 
 ## Documentation
 

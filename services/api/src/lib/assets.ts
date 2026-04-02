@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ApiError } from "./errors";
 
@@ -58,6 +58,9 @@ let testCreateUploadTicketOverride:
 let testResolveAssetPublicUrlOverride:
   | ((tenantId: string, assetId: string | null) => Promise<string | null>)
   | null = null;
+let testResolveStoredAssetUrlOverride:
+  | ((item: Record<string, unknown>) => Promise<string>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -81,6 +84,24 @@ function fromItem(item: Record<string, unknown>): Asset {
     updatedAt: item.updatedAt as string,
     publicUrl: item.publicUrl as string
   };
+}
+
+async function resolveStoredAssetUrl(item: Record<string, unknown>): Promise<string> {
+  if (testResolveStoredAssetUrlOverride) {
+    return testResolveStoredAssetUrlOverride(item);
+  }
+
+  const bucket = process.env.ONLINEFORMS_ASSETS_BUCKET;
+  const storageKey = item.storageKey as string | undefined;
+  if (bucket && storageKey) {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: storageKey
+    });
+    return getSignedUrl(s3, command, { expiresIn: 3600 });
+  }
+
+  return (item.publicUrl as string) ?? "";
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -194,7 +215,11 @@ export async function getOrgAsset(tenantId: string, assetId: string): Promise<As
   if (!out.Item) {
     throw new ApiError(404, "NOT_FOUND", "Asset not found.");
   }
-  return fromItem(out.Item as Record<string, unknown>);
+  const item = out.Item as Record<string, unknown>;
+  return {
+    ...fromItem(item),
+    publicUrl: await resolveStoredAssetUrl(item)
+  };
 }
 
 export async function resolveAssetPublicUrl(
@@ -205,8 +230,21 @@ export async function resolveAssetPublicUrl(
     return testResolveAssetPublicUrlOverride(tenantId, assetId);
   }
   if (!assetId) return null;
-  const asset = await getOrgAsset(tenantId, assetId);
-  return asset.publicUrl;
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: {
+        PK: tenantPk(tenantId),
+        SK: assetSk(assetId)
+      }
+    })
+  );
+
+  if (!out.Item) {
+    throw new ApiError(404, "NOT_FOUND", "Asset not found.");
+  }
+
+  return resolveStoredAssetUrl(out.Item as Record<string, unknown>);
 }
 
 export async function assertAssetBindable(
@@ -239,8 +277,14 @@ export const __assetsTestHooks = {
   ): void {
     testResolveAssetPublicUrlOverride = loader;
   },
+  setResolveStoredAssetUrlOverride(
+    loader: ((item: Record<string, unknown>) => Promise<string>) | null
+  ): void {
+    testResolveStoredAssetUrlOverride = loader;
+  },
   reset(): void {
     testCreateUploadTicketOverride = null;
     testResolveAssetPublicUrlOverride = null;
+    testResolveStoredAssetUrlOverride = null;
   }
 };

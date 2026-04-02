@@ -6,6 +6,7 @@ import { handler as publicTenantHomeHandler } from "../services/api/src/handlers
 import { handler as publicCoursesListHandler } from "../services/api/src/handlers/publicCoursesList";
 import { handler as publicCourseDetailHandler } from "../services/api/src/handlers/publicCoursesGet";
 import { handler as publicEnrollmentsCreateHandler } from "../services/api/src/handlers/publicEnrollmentsCreate";
+import { __assetsTestHooks } from "../services/api/src/lib/assets";
 import { __tenantsTestHooks } from "../services/api/src/lib/tenants";
 import { __coursesTestHooks } from "../services/api/src/lib/courses";
 import { __submissionsTestHooks } from "../services/api/src/lib/submissions";
@@ -41,6 +42,7 @@ function baseContext(path: string, method: string, requestId: string) {
 }
 
 test.afterEach(() => {
+  __assetsTestHooks.reset();
   __tenantsTestHooks.reset();
   __coursesTestHooks.reset();
   __submissionsTestHooks.reset();
@@ -221,6 +223,118 @@ test("public course detail includes form availability and capacity", async () =>
   assert.equal(body.data.formAvailable, true);
   assert.equal(body.data.capacity, 120);
   assert.equal(body.data.locationText, "Central campus");
+});
+
+test("public course list resolves signed image URLs from projection imageAssetId", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
+  __coursesTestHooks.setDdbSendOverride(async (command) => {
+    if ("input" in (command as { input?: object }) && (command as { input?: { IndexName?: string } }).input?.IndexName === "GSI2") {
+      return {
+        Items: [
+          {
+            projectionVersion: 1,
+            entityType: "COURSE_PUBLIC",
+            status: "published",
+            publicVisible: true,
+            tenantId: "ten_001",
+            tenantCode: "std-school",
+            courseId: "crs_001",
+            title: "Intro to AI",
+            shortDescription: "Foundations course",
+            fullDescription: "Detailed syllabus",
+            imageAssetId: "ast_course_1",
+            imageUrl: "asset://ast_course_1",
+            startDate: "2026-04-01",
+            endDate: "2026-04-28",
+            enrollmentOpenAt: "2026-03-10T00:00:00Z",
+            enrollmentCloseAt: "2026-03-31T23:59:59Z",
+            deliveryMode: "online",
+            pricingMode: "free",
+            locationText: null
+          }
+        ],
+        LastEvaluatedKey: undefined
+      };
+    }
+    throw new Error("Unexpected DDB command.");
+  });
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://signed.example.com/${assetId}` : null
+  );
+
+  const event = {
+    version: "2.0",
+    routeKey: "GET /public/{tenantCode}/courses",
+    rawPath: "/public/std-school/courses",
+    rawQueryString: "",
+    headers: {},
+    pathParameters: { tenantCode: "std-school" },
+    requestContext: baseContext("/public/std-school/courses", "GET", "req_public_courses_signed_image"),
+    isBase64Encoded: false
+  } as APIGatewayProxyEventV2;
+
+  const result = asStructuredResult(await publicCoursesListHandler(event, {} as never, () => undefined));
+  assert.equal(result.statusCode, 200);
+  const body = JSON.parse(result.body as string) as {
+    data: Array<{ imageUrl: string | null }>;
+  };
+  assert.equal(body.data[0]?.imageUrl, "https://signed.example.com/ast_course_1");
+});
+
+test("public course detail resolves signed image URLs from legacy stored imageUrl", async () => {
+  __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
+  __coursesTestHooks.setDdbSendOverride(async (command) => {
+    if ("input" in (command as { input?: object }) && (command as { input?: { Key?: { SK?: string } } }).input?.Key?.SK === "COURSE_PUBLIC#crs_legacy") {
+      return {
+        Item: {
+          projectionVersion: 1,
+          entityType: "COURSE_PUBLIC",
+          status: "published",
+          publicVisible: true,
+          tenantId: "ten_001",
+          tenantCode: "std-school",
+          courseId: "crs_legacy",
+          title: "Legacy Course",
+          shortDescription: "Legacy projection",
+          fullDescription: "Detailed syllabus",
+          imageUrl:
+            "https://onlineforms-onlineformsassetsbucket-0ezpk4jxnvxa.s3.ap-southeast-2.amazonaws.com/tenants/ten_001/assets/ast_legacy001-cover.svg",
+          startDate: "2026-04-01",
+          endDate: "2026-04-28",
+          enrollmentOpenAt: "2026-03-10T00:00:00Z",
+          enrollmentCloseAt: "2026-03-31T23:59:59Z",
+          deliveryMode: "online",
+          pricingMode: "free",
+          locationText: null,
+          activeFormId: "frm_1",
+          activeFormVersion: 1
+        }
+      };
+    }
+    throw new Error("Unexpected DDB command.");
+  });
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://signed.example.com/${assetId}` : null
+  );
+
+  const event = {
+    version: "2.0",
+    routeKey: "GET /public/{tenantCode}/courses/{courseId}",
+    rawPath: "/public/std-school/courses/crs_legacy",
+    rawQueryString: "",
+    headers: {},
+    pathParameters: { tenantCode: "std-school", courseId: "crs_legacy" },
+    requestContext: baseContext("/public/std-school/courses/crs_legacy", "GET", "req_public_course_detail_signed_image"),
+    isBase64Encoded: false
+  } as APIGatewayProxyEventV2;
+
+  const result = asStructuredResult(await publicCourseDetailHandler(event, {} as never, () => undefined));
+  assert.equal(result.statusCode, 200);
+  const body = JSON.parse(result.body as string) as {
+    data: { imageUrl: string | null; formAvailable: boolean };
+  };
+  assert.equal(body.data.imageUrl, "https://signed.example.com/ast_legacy001");
+  assert.equal(body.data.formAvailable, true);
 });
 
 test("public enrollment success includes course context and links", async () => {

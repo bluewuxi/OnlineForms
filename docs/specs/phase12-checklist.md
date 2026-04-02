@@ -66,6 +66,15 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Keep asset ids as the canonical references while returning final usable URLs to the frontend
   - Update tests and contract docs/checklists for the resolved asset URL behavior
 
+- [x] P12-08 Private asset delivery via signed read URLs
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/78
+  Scope:
+  - Keep the asset bucket private; do not rely on public S3 object access
+  - Return usable signed GET URLs for tenant branding and public course imagery
+  - Ensure org asset reads also return previewable signed URLs for management flows
+  - Preserve asset ids as canonical references while making read payloads browser-usable
+  - Update tests and contract docs/checklists for signed asset delivery
+
 ## Status Legend
 
 - `[ ]` Not started

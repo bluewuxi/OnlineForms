@@ -246,7 +246,24 @@ function courseFromItem(item: Record<string, unknown>): Course {
   };
 }
 
-function publicCourseFromItem(item: Record<string, unknown>): PublicCourse {
+async function resolvePublicCourseImageUrl(item: Record<string, unknown>): Promise<string | null> {
+  const tenantId = item.tenantId as string | undefined;
+  const explicitAssetId = item.imageAssetId as string | null | undefined;
+  const legacyImageUrl = (item.imageUrl as string | null) ?? null;
+  const fallbackAssetId =
+    typeof legacyImageUrl === "string"
+      ? legacyImageUrl.match(/(ast_[a-zA-Z0-9]+)/)?.[1] ?? null
+      : null;
+  const imageAssetId = explicitAssetId ?? fallbackAssetId;
+
+  if (!tenantId || !imageAssetId) {
+    return legacyImageUrl;
+  }
+
+  return resolveAssetPublicUrl(tenantId, imageAssetId);
+}
+
+async function publicCourseFromItem(item: Record<string, unknown>): Promise<PublicCourse> {
   const tenantCode = item.tenantCode as string;
   const courseId = item.courseId as string;
   const enrollmentOpenAt = item.enrollmentOpenAt as string;
@@ -256,7 +273,7 @@ function publicCourseFromItem(item: Record<string, unknown>): PublicCourse {
     id: courseId,
     title: item.title as string,
     shortDescription: item.shortDescription as string,
-    imageUrl: (item.imageUrl as string | null) ?? null,
+    imageUrl: await resolvePublicCourseImageUrl(item),
     startDate: item.startDate as string,
     endDate: item.endDate as string,
     deliveryMode: item.deliveryMode as DeliveryMode,
@@ -287,9 +304,9 @@ function isValidPublicProjection(item: Record<string, unknown>, tenantCode: stri
   return true;
 }
 
-function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourseDetail {
+async function publicCourseDetailFromItem(item: Record<string, unknown>): Promise<PublicCourseDetail> {
   return {
-    ...publicCourseFromItem(item),
+    ...(await publicCourseFromItem(item)),
     fullDescription: item.fullDescription as string,
     capacity: (item.capacity as number | null) ?? null,
     formAvailable: Boolean(item.activeFormId) && Number.isInteger(item.activeFormVersion)
@@ -308,7 +325,8 @@ async function buildPublicProjectionItem(course: Course, tenantCode: string): Pr
     title: course.title,
     shortDescription: course.shortDescription,
     fullDescription: course.fullDescription,
-    imageUrl: await resolveAssetPublicUrl(course.tenantId, course.imageAssetId),
+    imageAssetId: course.imageAssetId,
+    imageUrl: course.imageAssetId ? `asset://${course.imageAssetId}` : null,
     startDate: course.startDate,
     endDate: course.endDate,
     enrollmentOpenAt: course.enrollmentOpenAt,
@@ -699,7 +717,7 @@ export async function listPublicCourses(
     : rows;
 
   return {
-    data: filtered.map(publicCourseFromItem),
+    data: await Promise.all(filtered.map(publicCourseFromItem)),
     page: {
       limit,
       nextCursor: encodePublicListCursor(out.LastEvaluatedKey as Record<string, unknown> | undefined)

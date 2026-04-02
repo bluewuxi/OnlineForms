@@ -306,7 +306,7 @@ Submission `status` enum:
     "Content-Type": "image/png"
   },
   "expiresAt": "2026-03-09T02:00:00Z",
-  "publicUrl": "https://cdn.onlineforms.com/assets/ast_01JABC..."
+  "publicUrl": "https://signed-read-url.example.com/ast_01JABC..."
 }
 ```
 
@@ -604,7 +604,7 @@ Current response additions for frontend flows:
 - `asset.fileName`
 - `asset.contentType`
 - `asset.sizeBytes`
-- `asset.publicUrl`
+- `asset.publicUrl` (resolved browser-usable read URL; may be signed/expiring)
 
 Validation:
 

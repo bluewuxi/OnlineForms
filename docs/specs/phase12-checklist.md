@@ -75,6 +75,14 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Preserve asset ids as canonical references while making read payloads browser-usable
   - Update tests and contract docs/checklists for signed asset delivery
 
+- [x] P12-09 Grant S3 read access to asset URL resolvers
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/79
+  Scope:
+  - Add `S3ReadPolicy` for the private asset bucket to every function that resolves branding or course asset URLs
+  - Keep the bucket private and continue using signed read URLs
+  - Cover public tenant-home, public catalog, org branding, and org asset preview paths
+  - Avoid frontend changes for this infrastructure-only fix
+
 ## Status Legend
 
 - `[ ]` Not started

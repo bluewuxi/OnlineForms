@@ -716,6 +716,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         OrgAssetsGetRoute:
           Type: HttpApi
@@ -734,6 +736,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         OrgTenantBrandingUpdateRoute:
           Type: HttpApi
@@ -752,6 +756,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         OrgTenantBrandingGetRoute:
           Type: HttpApi
@@ -1113,6 +1119,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         PublicCoursesListRoute:
           Type: HttpApi
@@ -1131,6 +1139,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         PublicCoursesGetRoute:
           Type: HttpApi
@@ -1147,6 +1157,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         PublicTenantHomeGetRoute:
           Type: HttpApi
@@ -1194,6 +1206,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsMainTable
+        - S3ReadPolicy:
+            BucketName: !Ref OnlineFormsAssetsBucket
       Events:
         PublicTenantsListRoute:
           Type: HttpApi
@@ -1389,4 +1403,3 @@ Outputs:
     Condition: UseManagedCognito
     Description: Internal portal Cognito group name
     Value: !Ref CognitoInternalGroupName
-

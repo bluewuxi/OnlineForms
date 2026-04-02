@@ -742,6 +742,24 @@ Resources:
             Path: /org/branding
             Method: PATCH
 
+  OrgTenantBrandingGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantBrandingGet.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantBrandingGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/branding
+            Method: GET
+
   OrgAuditListFunction:
     Type: AWS::Serverless::Function
     Properties:

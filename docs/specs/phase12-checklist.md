@@ -50,6 +50,14 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Add focused telemetry/error semantics for high-value frontend workflows
   - Update docs/tests/smoke coverage for frontend-facing API behavior
 
+- [x] P12-06 Org branding tenant-description support
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/76
+  Scope:
+  - Add an org-scoped branding read contract for the authenticated tenant
+  - Extend org branding updates so tenant admins can edit their current tenant's public description content
+  - Keep org-portal branding strictly same-tenant; no cross-tenant mutation path
+  - Update tests and backend contract docs/checklists for the richer branding payload
+
 ## Status Legend
 
 - `[ ]` Not started

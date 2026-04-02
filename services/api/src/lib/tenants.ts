@@ -87,8 +87,12 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
 let testPublicTenantDirectoryOverride: ((limit: number) => Promise<PublicTenantDirectoryItem[]>) | null = null;
 let testPublicTenantHomeOverride: ((tenantCode: string) => Promise<PublicTenantHome>) | null = null;
+let testGetTenantProfileOverride: ((tenantId: string) => Promise<TenantProfile>) | null = null;
 let testUpdateTenantBrandingOverride:
   | ((tenantId: string, logoAssetId: string | null) => Promise<TenantBranding>)
+  | null = null;
+let testUpdateTenantProfileOverride:
+  | ((tenantId: string, input: UpdateTenantProfileInput) => Promise<TenantProfile>)
   | null = null;
 
 function tenantPk(tenantId: string): string {
@@ -304,6 +308,9 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
 }
 
 export async function getTenantProfile(tenantId: string): Promise<TenantProfile> {
+  if (testGetTenantProfileOverride) {
+    return testGetTenantProfileOverride(tenantId);
+  }
   const out = await ddb.send(
     new GetCommand({
       TableName: tableName,
@@ -470,6 +477,9 @@ export async function updateTenantProfile(
   tenantId: string,
   input: UpdateTenantProfileInput
 ): Promise<TenantProfile> {
+  if (testUpdateTenantProfileOverride) {
+    return testUpdateTenantProfileOverride(tenantId, input);
+  }
   const patch = normalizeTenantProfilePatch(input);
   if (Object.keys(patch).length === 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "At least one tenant profile field must be provided.");
@@ -604,14 +614,24 @@ export const __tenantsTestHooks = {
   setPublicTenantHomeOverride(loader: ((tenantCode: string) => Promise<PublicTenantHome>) | null): void {
     testPublicTenantHomeOverride = loader;
   },
+  setGetTenantProfileOverride(loader: ((tenantId: string) => Promise<TenantProfile>) | null): void {
+    testGetTenantProfileOverride = loader;
+  },
   setUpdateTenantBrandingOverride(
     loader: ((tenantId: string, logoAssetId: string | null) => Promise<TenantBranding>) | null
   ): void {
     testUpdateTenantBrandingOverride = loader;
   },
+  setUpdateTenantProfileOverride(
+    loader: ((tenantId: string, input: UpdateTenantProfileInput) => Promise<TenantProfile>) | null
+  ): void {
+    testUpdateTenantProfileOverride = loader;
+  },
   reset(): void {
     testPublicTenantDirectoryOverride = null;
     testPublicTenantHomeOverride = null;
+    testGetTenantProfileOverride = null;
     testUpdateTenantBrandingOverride = null;
+    testUpdateTenantProfileOverride = null;
   }
 };

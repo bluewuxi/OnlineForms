@@ -7,6 +7,7 @@ import { handler as publicCoursesListHandler } from "../services/api/src/handler
 import { handler as publicCourseDetailHandler } from "../services/api/src/handlers/publicCoursesGet";
 import { handler as publicEnrollmentsCreateHandler } from "../services/api/src/handlers/publicEnrollmentsCreate";
 import { __assetsTestHooks } from "../services/api/src/lib/assets";
+import { __formSchemasTestHooks } from "../services/api/src/lib/formSchemas";
 import { __tenantsTestHooks } from "../services/api/src/lib/tenants";
 import { __coursesTestHooks } from "../services/api/src/lib/courses";
 import { __submissionsTestHooks } from "../services/api/src/lib/submissions";
@@ -43,6 +44,7 @@ function baseContext(path: string, method: string, requestId: string) {
 
 test.afterEach(() => {
   __assetsTestHooks.reset();
+  __formSchemasTestHooks.reset();
   __tenantsTestHooks.reset();
   __coursesTestHooks.reset();
   __submissionsTestHooks.reset();
@@ -201,7 +203,20 @@ test("public course detail includes form availability and capacity", async () =>
     },
     fullDescription: "Detailed syllabus",
     capacity: 120,
-    formAvailable: true
+    formAvailable: true,
+    formVersion: 1,
+    formSchema: {
+      version: 1,
+      fields: [
+        {
+          fieldId: "firstname",
+          type: "short_text",
+          label: "First name",
+          required: true,
+          displayOrder: 1
+        }
+      ]
+    }
   }));
 
   const event = {
@@ -218,11 +233,20 @@ test("public course detail includes form availability and capacity", async () =>
   const result = asStructuredResult(await publicCourseDetailHandler(event, {} as never, () => undefined));
   assert.equal(result.statusCode, 200);
   const body = JSON.parse(result.body as string) as {
-    data: { formAvailable: boolean; capacity: number | null; locationText: string | null };
+    data: {
+      formAvailable: boolean;
+      capacity: number | null;
+      locationText: string | null;
+      formVersion: number | null;
+      formSchema: { version: number; fields: Array<{ fieldId: string }> } | null;
+    };
   };
   assert.equal(body.data.formAvailable, true);
   assert.equal(body.data.capacity, 120);
   assert.equal(body.data.locationText, "Central campus");
+  assert.equal(body.data.formVersion, 1);
+  assert.equal(body.data.formSchema?.version, 1);
+  assert.equal(body.data.formSchema?.fields[0]?.fieldId, "firstname");
 });
 
 test("public course list resolves signed image URLs from projection imageAssetId", async () => {
@@ -283,6 +307,24 @@ test("public course list resolves signed image URLs from projection imageAssetId
 
 test("public course detail resolves signed image URLs from legacy stored imageUrl", async () => {
   __coursesTestHooks.setResolveTenantIdByCodeOverride(async () => "ten_001");
+  __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
+    formId: "frm_1",
+    version: 1,
+    tenantId: "ten_001",
+    courseId: "crs_legacy",
+    status: "active",
+    fields: [
+      {
+        fieldId: "firstname",
+        type: "short_text",
+        label: "First name",
+        required: true,
+        displayOrder: 1
+      }
+    ],
+    createdAt: "2026-03-10T00:00:00Z",
+    updatedAt: "2026-03-10T00:00:00Z"
+  }));
   __coursesTestHooks.setDdbSendOverride(async (command) => {
     if ("input" in (command as { input?: object }) && (command as { input?: { Key?: { SK?: string } } }).input?.Key?.SK === "COURSE_PUBLIC#crs_legacy") {
       return {
@@ -331,10 +373,17 @@ test("public course detail resolves signed image URLs from legacy stored imageUr
   const result = asStructuredResult(await publicCourseDetailHandler(event, {} as never, () => undefined));
   assert.equal(result.statusCode, 200);
   const body = JSON.parse(result.body as string) as {
-    data: { imageUrl: string | null; formAvailable: boolean };
+    data: {
+      imageUrl: string | null;
+      formAvailable: boolean;
+      formVersion: number | null;
+      formSchema: { version: number; fields: Array<{ fieldId: string }> } | null;
+    };
   };
   assert.equal(body.data.imageUrl, "https://signed.example.com/ast_legacy001");
   assert.equal(body.data.formAvailable, true);
+  assert.equal(body.data.formVersion, 1);
+  assert.equal(body.data.formSchema?.fields[0]?.fieldId, "firstname");
 });
 
 test("public enrollment success includes course context and links", async () => {

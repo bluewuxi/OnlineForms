@@ -83,6 +83,13 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Cover public tenant-home, public catalog, org branding, and org asset preview paths
   - Avoid frontend changes for this infrastructure-only fix
 
+- [x] P12-10 Public course detail form schema payload
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/80
+  Scope:
+  - Return the active form version and form schema in public course detail payloads when a published course has an active form
+  - Preserve existing `formAvailable` semantics for courses with and without active forms
+  - Keep the payload safe for direct public enrollment rendering without an extra request
+
 ## Status Legend
 
 - `[ ]` Not started

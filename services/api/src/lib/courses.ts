@@ -102,6 +102,11 @@ export type PublicCourseDetail = PublicCourse & {
   fullDescription: string;
   capacity: number | null;
   formAvailable: boolean;
+  formVersion: number | null;
+  formSchema: {
+    version: number;
+    fields: FormField[];
+  } | null;
 };
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -305,11 +310,30 @@ function isValidPublicProjection(item: Record<string, unknown>, tenantCode: stri
 }
 
 async function publicCourseDetailFromItem(item: Record<string, unknown>): Promise<PublicCourseDetail> {
+  const activeFormVersion = Number.isInteger(item.activeFormVersion) ? (item.activeFormVersion as number) : null;
+  let formSchema: { version: number; fields: FormField[] } | null = null;
+
+  if (typeof item.tenantId === "string" && typeof item.courseId === "string" && activeFormVersion) {
+    try {
+      const schema = await getCourseFormSchemaVersion(item.tenantId, item.courseId, activeFormVersion);
+      formSchema = {
+        version: schema.version,
+        fields: schema.fields
+      };
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.statusCode !== 404) {
+        throw error;
+      }
+    }
+  }
+
   return {
     ...(await publicCourseFromItem(item)),
     fullDescription: item.fullDescription as string,
     capacity: (item.capacity as number | null) ?? null,
-    formAvailable: Boolean(item.activeFormId) && Number.isInteger(item.activeFormVersion)
+    formAvailable: Boolean(item.activeFormId) && activeFormVersion !== null && formSchema !== null,
+    formVersion: formSchema?.version ?? activeFormVersion,
+    formSchema
   };
 }
 

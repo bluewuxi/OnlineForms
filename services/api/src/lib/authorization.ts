@@ -5,6 +5,7 @@ import { emitRoleDeniedMetric, emitTenantMismatchMetric, logAuthAudit } from "./
 export type OrgPolicyAction =
   | "ORG_ME_READ"
   | "ORG_TENANT_CHECK"
+  | "ORG_TENANT_SETTINGS_READ"
   | "ORG_COURSE_READ"
   | "ORG_COURSE_WRITE"
   | "ORG_FORM_READ"
@@ -29,6 +30,7 @@ type Policy = {
 const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_ME_READ: { roles: ["org_admin", "org_editor", "platform_admin", "internal_admin"], allowPlatformBypass: true },
   ORG_TENANT_CHECK: { roles: ["org_admin", "org_editor", "platform_admin"], allowPlatformBypass: true },
+  ORG_TENANT_SETTINGS_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_COURSE_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_COURSE_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
   ORG_FORM_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },

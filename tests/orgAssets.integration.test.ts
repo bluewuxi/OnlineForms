@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { handler as getAssetHandler } from "../services/api/src/handlers/orgAssetsGet";
 import { handler as uploadTicketHandler } from "../services/api/src/handlers/orgAssetsUploadTicketCreate";
+import { handler as brandingGetHandler } from "../services/api/src/handlers/orgTenantBrandingGet";
 import { handler as brandingHandler } from "../services/api/src/handlers/orgTenantBrandingUpdate";
 import { __assetsTestHooks } from "../services/api/src/lib/assets";
 import { __tenantsTestHooks } from "../services/api/src/lib/tenants";
@@ -110,6 +111,52 @@ test("orgTenantBrandingUpdate returns 400 on missing body", async () => {
   }
 });
 
+test("orgTenantBrandingGet returns current branding and tenant description", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  __tenantsTestHooks.setGetTenantProfileOverride(async () => ({
+    tenantId: "ten_1",
+    tenantCode: "acme-training",
+    displayName: "Acme Training",
+    description: "<p>Acme tenant description</p>",
+    isActive: true,
+    homePageContent: "<p>Welcome</p>",
+    branding: {
+      logoAssetId: "ast_logo_1"
+    },
+    createdAt: "2026-03-20T01:00:00Z",
+    updatedAt: "2026-03-25T01:00:00Z"
+  }));
+
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "GET /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      headers: {
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "GET", "req_branding_get_ok"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingGetHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: { description: string | null; logoAssetId: string | null; displayName: string };
+    };
+    assert.equal(body.data.displayName, "Acme Training");
+    assert.equal(body.data.description, "<p>Acme tenant description</p>");
+    assert.equal(body.data.logoAssetId, "ast_logo_1");
+  } finally {
+    __tenantsTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
 test("orgAssetsUploadTicketCreate returns asset metadata needed by the frontend", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
@@ -178,6 +225,19 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     logoUrl: "https://cdn.example.com/assets/ast_logo_1",
     updatedAt: "2026-03-25T01:00:00Z"
   }));
+  __tenantsTestHooks.setGetTenantProfileOverride(async () => ({
+    tenantId: "ten_1",
+    tenantCode: "acme-training",
+    displayName: "Acme Training",
+    description: "<p>Acme tenant description</p>",
+    isActive: true,
+    homePageContent: null,
+    branding: {
+      logoAssetId: "ast_logo_1"
+    },
+    createdAt: "2026-03-20T01:00:00Z",
+    updatedAt: "2026-03-25T01:00:00Z"
+  }));
 
   try {
     const event = {
@@ -201,10 +261,72 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
     assert.equal(result.statusCode, 200);
     const body = JSON.parse(result.body as string) as {
-      data: { logoAssetId: string | null; logoUrl: string | null };
+      data: { logoAssetId: string | null; logoUrl: string | null; description: string | null };
     };
     assert.equal(body.data.logoAssetId, "ast_logo_1");
-    assert.equal(body.data.logoUrl, "https://cdn.example.com/assets/ast_logo_1");
+    assert.equal(body.data.logoUrl, "https://cdn.onlineforms.com/assets/ast_logo_1");
+    assert.equal(body.data.description, "<p>Acme tenant description</p>");
+  } finally {
+    __tenantsTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantBrandingUpdate persists tenant description edits", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  __tenantsTestHooks.setUpdateTenantProfileOverride(async (tenantId, input) => ({
+    tenantId,
+    tenantCode: "acme-training",
+    displayName: "Acme Training",
+    description: input.description ?? null,
+    isActive: true,
+    homePageContent: null,
+    branding: {
+      logoAssetId: "ast_logo_1"
+    },
+    createdAt: "2026-03-20T01:00:00Z",
+    updatedAt: "2026-03-25T01:00:00Z"
+  }));
+  __tenantsTestHooks.setGetTenantProfileOverride(async () => ({
+    tenantId: "ten_1",
+    tenantCode: "acme-training",
+    displayName: "Acme Training",
+    description: "<p>Updated description</p>",
+    isActive: true,
+    homePageContent: null,
+    branding: {
+      logoAssetId: "ast_logo_1"
+    },
+    createdAt: "2026-03-20T01:00:00Z",
+    updatedAt: "2026-03-25T01:00:00Z"
+  }));
+
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({
+        description: "<p>Updated description</p>"
+      }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_desc_ok"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: { description: string | null };
+    };
+    assert.equal(body.data.description, "<p>Updated description</p>");
   } finally {
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;

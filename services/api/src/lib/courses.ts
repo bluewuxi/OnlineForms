@@ -8,7 +8,7 @@ import {
   QueryCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
-import { assertAssetBindable } from "./assets";
+import { assertAssetBindable, resolveAssetPublicUrl } from "./assets";
 import { ApiError } from "./errors";
 import { getCourseFormSchemaVersion, type FormField } from "./formSchemas";
 import { normalizeTenantCode } from "./tenantCodes";
@@ -163,11 +163,6 @@ async function resolveTenantCodeById(tenantId: string): Promise<string> {
   });
 }
 
-function imageUrlFromAssetId(imageAssetId: string | null): string | null {
-  if (!imageAssetId) return null;
-  return `https://cdn.onlineforms.com/assets/${imageAssetId}`;
-}
-
 function publicCourseLinks(tenantCode: string, courseId: string): { detail: string; enrollmentForm: string } {
   return {
     detail: `/v1/public/${tenantCode}/courses/${courseId}`,
@@ -301,7 +296,7 @@ function publicCourseDetailFromItem(item: Record<string, unknown>): PublicCourse
   };
 }
 
-function buildPublicProjectionItem(course: Course, tenantCode: string): Record<string, unknown> {
+async function buildPublicProjectionItem(course: Course, tenantCode: string): Promise<Record<string, unknown>> {
   return {
     PK: tenantPk(course.tenantId),
     SK: coursePublicSk(course.id),
@@ -313,7 +308,7 @@ function buildPublicProjectionItem(course: Course, tenantCode: string): Record<s
     title: course.title,
     shortDescription: course.shortDescription,
     fullDescription: course.fullDescription,
-    imageUrl: imageUrlFromAssetId(course.imageAssetId),
+    imageUrl: await resolveAssetPublicUrl(course.tenantId, course.imageAssetId),
     startDate: course.startDate,
     endDate: course.endDate,
     enrollmentOpenAt: course.enrollmentOpenAt,
@@ -338,7 +333,7 @@ async function upsertPublicProjection(course: Course): Promise<void> {
   await sendDdb(
     new PutCommand({
       TableName: tableName,
-      Item: buildPublicProjectionItem(course, tenantCode)
+      Item: await buildPublicProjectionItem(course, tenantCode)
     })
   );
 }
@@ -749,7 +744,7 @@ export async function reconcilePublicProjectionsForTenant(
       await sendDdb(
         new PutCommand({
           TableName: tableName,
-          Item: buildPublicProjectionItem(course, tenantCode)
+          Item: await buildPublicProjectionItem(course, tenantCode)
         })
       );
       upserted += 1;

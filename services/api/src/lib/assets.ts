@@ -55,6 +55,9 @@ const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
 let testCreateUploadTicketOverride:
   | ((tenantId: string, input: CreateUploadTicketInput) => Promise<UploadTicket>)
   | null = null;
+let testResolveAssetPublicUrlOverride:
+  | ((tenantId: string, assetId: string | null) => Promise<string | null>)
+  | null = null;
 
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
@@ -194,6 +197,18 @@ export async function getOrgAsset(tenantId: string, assetId: string): Promise<As
   return fromItem(out.Item as Record<string, unknown>);
 }
 
+export async function resolveAssetPublicUrl(
+  tenantId: string,
+  assetId: string | null
+): Promise<string | null> {
+  if (testResolveAssetPublicUrlOverride) {
+    return testResolveAssetPublicUrlOverride(tenantId, assetId);
+  }
+  if (!assetId) return null;
+  const asset = await getOrgAsset(tenantId, assetId);
+  return asset.publicUrl;
+}
+
 export async function assertAssetBindable(
   tenantId: string,
   assetId: string,
@@ -219,7 +234,13 @@ export const __assetsTestHooks = {
   ): void {
     testCreateUploadTicketOverride = loader;
   },
+  setResolveAssetPublicUrlOverride(
+    loader: ((tenantId: string, assetId: string | null) => Promise<string | null>) | null
+  ): void {
+    testResolveAssetPublicUrlOverride = loader;
+  },
   reset(): void {
     testCreateUploadTicketOverride = null;
+    testResolveAssetPublicUrlOverride = null;
   }
 };

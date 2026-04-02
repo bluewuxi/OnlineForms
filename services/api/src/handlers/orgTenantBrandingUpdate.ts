@@ -1,5 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest } from "../lib/auth";
+import { resolveAssetPublicUrl } from "../lib/assets";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
@@ -14,7 +15,7 @@ type UpdateTenantBrandingBody = {
   homePageContent?: string | null;
 };
 
-function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantProfile>>) {
+async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantProfile>>) {
   const logoAssetId = profile.branding.logoAssetId;
   return {
     tenantId: profile.tenantId,
@@ -22,7 +23,7 @@ function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantProfile>
     description: profile.description,
     homePageContent: profile.homePageContent,
     logoAssetId,
-    logoUrl: logoAssetId ? `https://cdn.onlineforms.com/assets/${logoAssetId}` : null,
+    logoUrl: await resolveAssetPublicUrl(profile.tenantId, logoAssetId),
     updatedAt: profile.updatedAt
   };
 }
@@ -70,7 +71,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           : {})
       });
     }
-    const data = toBrandingSettings(await getTenantProfile(auth.tenantId));
+    const data = await toBrandingSettings(await getTenantProfile(auth.tenantId));
     emitBrandingUpdateMetric();
     logFrontendAudit("frontend_branding_updated", {
       tenantId: auth.tenantId,
@@ -82,4 +83,3 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return errorResponse(error, correlation);
   }
 };
-

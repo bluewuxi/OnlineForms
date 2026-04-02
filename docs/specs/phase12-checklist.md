@@ -58,6 +58,14 @@ Phase 12 is intended for backend contract and support changes required to ship t
   - Keep org-portal branding strictly same-tenant; no cross-tenant mutation path
   - Update tests and backend contract docs/checklists for the richer branding payload
 
+- [x] P12-07 Asset metadata URL resolution for branding and public catalog payloads
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/77
+  Scope:
+  - Resolve tenant branding logo URLs from stored asset metadata rather than hard-coded URL patterns
+  - Resolve course image URLs from asset metadata in public payload builders and projection reconciliation
+  - Keep asset ids as the canonical references while returning final usable URLs to the frontend
+  - Update tests and contract docs/checklists for the resolved asset URL behavior
+
 ## Status Legend
 
 - `[ ]` Not started

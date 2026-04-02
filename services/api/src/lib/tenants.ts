@@ -7,7 +7,7 @@ import {
   TransactWriteCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
-import { assertAssetBindable } from "./assets";
+import { assertAssetBindable, resolveAssetPublicUrl } from "./assets";
 import { resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
 import { normalizeTenantCode } from "./tenantCodes";
@@ -109,11 +109,6 @@ function resolveIsActive(item: Record<string, unknown>): boolean {
   if (typeof item.isActive === "boolean") return item.isActive;
   if (typeof item.status === "string") return item.status.toLowerCase() === "active";
   return true;
-}
-
-function assetUrlFromAssetId(assetId: string | null): string | null {
-  if (!assetId) return null;
-  return `https://cdn.onlineforms.com/assets/${assetId}`;
 }
 
 function buildPublicTenantLinks(tenantCode: string): { home: string; courses: string } {
@@ -345,8 +340,8 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
   );
 
   const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
-  return rows
-    .map((item) => {
+  const items = await Promise.all(
+    rows.map(async (item) => {
       const tenantId = asString(item.tenantId);
       const tenantCode = asString(item.tenantCode);
       const displayName = asString(item.displayName);
@@ -366,11 +361,13 @@ export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenan
         isActive,
         branding: {
           logoAssetId,
-          logoUrl: assetUrlFromAssetId(logoAssetId)
+          logoUrl: await resolveAssetPublicUrl(tenantId, logoAssetId)
         },
         links: buildPublicTenantLinks(normalizedTenantCode)
       } as PublicTenantDirectoryItem;
     })
+  );
+  return items
     .filter((item): item is PublicTenantDirectoryItem => item !== null && item.isActive)
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
@@ -393,7 +390,7 @@ export async function getPublicTenantHomeByCode(tenantCode: string): Promise<Pub
     isActive: profile.isActive,
     branding: {
       logoAssetId: profile.branding.logoAssetId,
-      logoUrl: assetUrlFromAssetId(profile.branding.logoAssetId)
+      logoUrl: await resolveAssetPublicUrl(profile.tenantId, profile.branding.logoAssetId)
     },
     links: {
       home: `/v1/public/${profile.tenantCode}/tenant-home`,
@@ -468,7 +465,7 @@ export async function updateTenantBranding(
   return {
     tenantId,
     logoAssetId,
-    logoUrl: assetUrlFromAssetId(logoAssetId),
+    logoUrl: await resolveAssetPublicUrl(tenantId, logoAssetId),
     updatedAt: now
   };
 }

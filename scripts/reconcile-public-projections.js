@@ -49,7 +49,18 @@ async function listCourses(id) {
   return out.Items || [];
 }
 
-function buildProjection(course, tenantCode) {
+async function resolveAssetPublicUrl(tenantId, assetId) {
+  if (!assetId) return null;
+  const out = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: `ASSET#${assetId}` }
+    })
+  );
+  return out.Item?.publicUrl || null;
+}
+
+async function buildProjection(course, tenantCode) {
   return {
     PK: tenantPk(course.tenantId),
     SK: coursePublicSk(course.courseId),
@@ -61,7 +72,7 @@ function buildProjection(course, tenantCode) {
     title: course.title,
     shortDescription: course.shortDescription,
     fullDescription: course.fullDescription,
-    imageUrl: course.imageAssetId ? `https://cdn.onlineforms.com/assets/${course.imageAssetId}` : null,
+    imageUrl: await resolveAssetPublicUrl(course.tenantId, course.imageAssetId || null),
     startDate: course.startDate,
     endDate: course.endDate,
     enrollmentOpenAt: course.enrollmentOpenAt,
@@ -87,7 +98,7 @@ async function main() {
       await ddb.send(
         new PutCommand({
           TableName: tableName,
-          Item: buildProjection(course, tenantCode)
+          Item: await buildProjection(course, tenantCode)
         })
       );
       upserted += 1;

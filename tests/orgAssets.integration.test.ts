@@ -114,6 +114,9 @@ test("orgTenantBrandingUpdate returns 400 on missing body", async () => {
 test("orgTenantBrandingGet returns current branding and tenant description", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://assets.example.com/${assetId}` : null
+  );
   __tenantsTestHooks.setGetTenantProfileOverride(async () => ({
     tenantId: "ten_1",
     tenantCode: "acme-training",
@@ -146,12 +149,14 @@ test("orgTenantBrandingGet returns current branding and tenant description", asy
     const result = asStructuredResult(await brandingGetHandler(event, {} as never, () => undefined));
     assert.equal(result.statusCode, 200);
     const body = JSON.parse(result.body as string) as {
-      data: { description: string | null; logoAssetId: string | null; displayName: string };
+      data: { description: string | null; logoAssetId: string | null; logoUrl: string | null; displayName: string };
     };
     assert.equal(body.data.displayName, "Acme Training");
     assert.equal(body.data.description, "<p>Acme tenant description</p>");
     assert.equal(body.data.logoAssetId, "ast_logo_1");
+    assert.equal(body.data.logoUrl, "https://assets.example.com/ast_logo_1");
   } finally {
+    __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
   }
@@ -219,6 +224,9 @@ test("orgAssetsUploadTicketCreate returns asset metadata needed by the frontend"
 test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://assets.example.com/${assetId}` : null
+  );
   __tenantsTestHooks.setUpdateTenantBrandingOverride(async () => ({
     tenantId: "ten_1",
     logoAssetId: "ast_logo_1",
@@ -264,9 +272,10 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
       data: { logoAssetId: string | null; logoUrl: string | null; description: string | null };
     };
     assert.equal(body.data.logoAssetId, "ast_logo_1");
-    assert.equal(body.data.logoUrl, "https://cdn.onlineforms.com/assets/ast_logo_1");
+    assert.equal(body.data.logoUrl, "https://assets.example.com/ast_logo_1");
     assert.equal(body.data.description, "<p>Acme tenant description</p>");
   } finally {
+    __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
   }
@@ -275,6 +284,9 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
 test("orgTenantBrandingUpdate persists tenant description edits", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://assets.example.com/${assetId}` : null
+  );
   __tenantsTestHooks.setUpdateTenantProfileOverride(async (tenantId, input) => ({
     tenantId,
     tenantCode: "acme-training",
@@ -324,10 +336,12 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
     assert.equal(result.statusCode, 200);
     const body = JSON.parse(result.body as string) as {
-      data: { description: string | null };
+      data: { description: string | null; logoUrl: string | null };
     };
     assert.equal(body.data.description, "<p>Updated description</p>");
+    assert.equal(body.data.logoUrl, "https://assets.example.com/ast_logo_1");
   } finally {
+    __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
   }

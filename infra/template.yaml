@@ -80,6 +80,15 @@ Parameters:
       Comma-separated list of allowed CORS origins. Defaults to the production
       frontend URL plus the CloudFront distribution and local Vite dev server.
       Example for staging: "https://stage.form.kidrawer.com,http://localhost:5173"
+  TurnstileSecretKey:
+    Type: String
+    NoEcho: true
+    Default: "1x0000000000000000000000000000000AA"
+    Description: >
+      Cloudflare Turnstile secret key used to verify CAPTCHA tokens server-side.
+      The default value is Cloudflare's official test key (always passes verification
+      in test mode). Replace with the real secret key from the Cloudflare dashboard
+      for stage/prod deployments. Only used when TURNSTILE_ENABLED=true.
 
 Mappings:
   AuthModeByEnvironment:
@@ -133,7 +142,7 @@ Globals:
         ONLINEFORMS_RATE_LIMIT_TABLE: !Ref OnlineFormsRateLimitTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
         TURNSTILE_ENABLED: !FindInMap [TurnstileEnabledByEnvironment, !Ref DeploymentEnvironment, Enabled]
-        TURNSTILE_SECRET_KEY: "{{resolve:ssm:/onlineforms/turnstile/secret-key}}"
+        TURNSTILE_SECRET_KEY: !Ref TurnstileSecretKey
 
 Resources:
   OnlineFormsHttpApi:

@@ -1,4 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { writeAuditEvent } from "../lib/audit";
 import { authenticateRequest } from "../lib/auth";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
@@ -17,6 +18,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const body = parseJsonBody<CreateTenantProfileInput>(event);
     const data = await createTenantProfile(body);
+    await writeAuditEvent({
+      tenantId: data.tenantId,
+      actorUserId: auth.userId,
+      action: "tenant.create",
+      resourceType: "tenant",
+      resourceId: data.tenantId,
+      correlationId: correlation.correlationId,
+      requestId: correlation.requestId,
+      details: { tenantCode: data.tenantCode, displayName: data.displayName, isActive: data.isActive }
+    });
     return jsonResponse(201, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

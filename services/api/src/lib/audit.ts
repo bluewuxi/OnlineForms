@@ -4,16 +4,23 @@ import { DynamoDBDocumentClient, PutCommand, QueryCommand } from "@aws-sdk/lib-d
 import { ApiError } from "./errors";
 
 export type AuditAction =
+  | "course.create"
   | "course.publish"
   | "course.archive"
   | "form.upsert"
-  | "submission.status_update";
+  | "submission.create"
+  | "submission.status_update"
+  | "branding.update"
+  | "tenant.create"
+  | "tenant.update"
+  | "tenant.activate"
+  | "tenant.deactivate";
 
 export type AuditEventInput = {
   tenantId: string;
   actorUserId: string;
   action: AuditAction;
-  resourceType: "course" | "form" | "submission";
+  resourceType: "course" | "form" | "submission" | "branding" | "tenant";
   resourceId: string;
   correlationId: string;
   requestId: string;

@@ -1,4 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { writeAuditEvent } from "../lib/audit";
 import { verifyCaptcha } from "../lib/captcha";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
@@ -66,14 +67,30 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     // BS-01: Rate limiting: max 10 submissions per IP per hour (skipped in mock mode)
     await checkRateLimit(clientIp);
-    const data = await createPublicEnrollment(tenantCode, courseId, idempotencyKey, cleanBody);
+    const enrollmentResult = await createPublicEnrollment(tenantCode, courseId, idempotencyKey, cleanBody);
     emitPublicEnrollmentCreateMetric();
     logFrontendAudit("frontend_public_enrollment_created", {
       tenantCode,
       courseId,
-      submissionId: data.submissionId
+      submissionId: enrollmentResult.submissionId
     });
 
+    // BS-09: audit trail for public enrollment submissions
+    if (enrollmentResult._tenantId) {
+      await writeAuditEvent({
+        tenantId: enrollmentResult._tenantId,
+        actorUserId: "public",
+        action: "submission.create",
+        resourceType: "submission",
+        resourceId: enrollmentResult.submissionId,
+        correlationId: correlation.correlationId,
+        requestId: correlation.requestId,
+        details: { courseId, tenantCode, ip: clientIp }
+      });
+    }
+
+    // Strip internal field before returning to the client
+    const { _tenantId: _t, ...data } = enrollmentResult;
     return jsonResponse(201, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

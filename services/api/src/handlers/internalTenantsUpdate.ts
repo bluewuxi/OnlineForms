@@ -1,4 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { writeAuditEvent, type AuditAction } from "../lib/audit";
 import { authenticateRequest } from "../lib/auth";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
@@ -23,6 +24,23 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const body = parseJsonBody<UpdateTenantProfileInput>(event);
     const data = await updateTenantProfile(tenantId, body);
+
+    // Derive specific audit action for activate/deactivate vs. generic update
+    let auditAction: AuditAction = "tenant.update";
+    if (Object.prototype.hasOwnProperty.call(body, "isActive")) {
+      auditAction = (body as { isActive?: boolean }).isActive ? "tenant.activate" : "tenant.deactivate";
+    }
+    await writeAuditEvent({
+      tenantId,
+      actorUserId: auth.userId,
+      action: auditAction,
+      resourceType: "tenant",
+      resourceId: tenantId,
+      correlationId: correlation.correlationId,
+      requestId: correlation.requestId,
+      details: { isActive: data.isActive, displayName: data.displayName }
+    });
+
     return jsonResponse(200, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

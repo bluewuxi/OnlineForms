@@ -1,4 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { writeAuditEvent } from "../lib/audit";
 import { authenticateRequest } from "../lib/auth";
 import { resolveAssetPublicUrl } from "../lib/assets";
 import { authorizeOrgAction } from "../lib/authorization";
@@ -77,6 +78,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tenantId: auth.tenantId,
       userId: auth.userId,
       logoAssetId: data.logoAssetId
+    });
+    await writeAuditEvent({
+      tenantId: auth.tenantId,
+      actorUserId: auth.userId,
+      action: "branding.update",
+      resourceType: "branding",
+      resourceId: auth.tenantId,
+      correlationId: correlation.correlationId,
+      requestId: correlation.requestId,
+      details: { logoAssetId: data.logoAssetId }
     });
     return jsonResponse(200, { data }, correlation);
   } catch (error) {

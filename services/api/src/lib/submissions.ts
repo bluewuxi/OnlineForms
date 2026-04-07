@@ -82,6 +82,8 @@ export type EnrollmentCreateResult = {
     tenantHome: string;
     course: string;
   };
+  /** Internal use only — not exposed in the public API response. */
+  _tenantId?: string;
 };
 
 type IdempotencyRecord = {
@@ -642,7 +644,8 @@ export async function createPublicEnrollment(
     links: {
       tenantHome: `/v1/public/${tenantCode.trim().toLowerCase()}/tenant-home`,
       course: `/v1/public/${tenantCode.trim().toLowerCase()}/courses/${courseId}`
-    }
+    },
+    _tenantId: tenantId
   };
   const submissionItem = {
     PK: tenantPk(tenantId),

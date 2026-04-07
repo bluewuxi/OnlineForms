@@ -77,9 +77,16 @@ Parameters:
     Type: String
     Default: "https://form.kidrawer.com,https://d1y9ka302ibufy.cloudfront.net,http://localhost:5173"
     Description: >
-      Comma-separated list of allowed CORS origins. Defaults to the production
-      frontend URL plus the CloudFront distribution and local Vite dev server.
+      Comma-separated list of allowed CORS origins for public endpoints. Defaults to the
+      production frontend URL plus the CloudFront distribution and local Vite dev server.
       Example for staging: "https://stage.form.kidrawer.com,http://localhost:5173"
+  OrgCorsAllowedOrigins:
+    Type: String
+    Default: "https://form.kidrawer.com,https://d1y9ka302ibufy.cloudfront.net"
+    Description: >
+      Comma-separated list of allowed CORS origins for org and internal (authenticated)
+      endpoints. Intentionally excludes localhost — org portal is not served from a local
+      dev server in normal development flow. Override for local org-portal dev if needed.
   TurnstileSecretKey:
     Type: String
     NoEcho: true
@@ -151,6 +158,31 @@ Resources:
       StageName: v1
       CorsConfiguration:
         AllowOrigins: !Split [",", !Ref CorsAllowedOrigins]
+        AllowHeaders:
+          - content-type
+          - idempotency-key
+          - x-correlation-id
+          - x-user-id
+          - x-tenant-id
+          - x-role
+          - authorization
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - DELETE
+          - OPTIONS
+        MaxAge: 600
+
+  # BS-05: Separate API for org/internal routes so CORS is restricted to the org portal
+  # origin only — localhost and other public origins are excluded from authenticated routes.
+  OnlineFormsOrgHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: v1
+      CorsConfiguration:
+        AllowOrigins: !Split [",", !Ref OrgCorsAllowedOrigins]
         AllowHeaders:
           - content-type
           - idempotency-key
@@ -451,7 +483,7 @@ Resources:
         OrgMeRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/me
             Method: GET
 
@@ -467,7 +499,7 @@ Resources:
         OrgSessionContextsGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/session-contexts
             Method: GET
 
@@ -485,7 +517,7 @@ Resources:
         OrgSessionContextValidateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/session-context
             Method: POST
 
@@ -503,7 +535,7 @@ Resources:
         OrgTenantCheckRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/tenants/{tenantId}/check
             Method: GET
 
@@ -519,7 +551,7 @@ Resources:
         OrgTenantInviteCreateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/tenants/{tenantId}/invites
             Method: POST
 
@@ -535,7 +567,7 @@ Resources:
         OrgTenantInviteAcceptRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/tenants/{tenantId}/invites/{inviteId}/accept
             Method: POST
 
@@ -553,7 +585,7 @@ Resources:
         OrgCoursesCreateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses
             Method: POST
 
@@ -571,7 +603,7 @@ Resources:
         OrgCoursesListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses
             Method: GET
 
@@ -589,7 +621,7 @@ Resources:
         OrgCoursesGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}
             Method: GET
 
@@ -607,7 +639,7 @@ Resources:
         OrgCoursesUpdateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}
             Method: PATCH
 
@@ -625,7 +657,7 @@ Resources:
         OrgCoursesPublishRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}/publish
             Method: POST
 
@@ -643,7 +675,7 @@ Resources:
         OrgCoursesArchiveRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}/archive
             Method: POST
 
@@ -661,7 +693,7 @@ Resources:
         OrgFormSchemaUpsertRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}/form-schema
             Method: PUT
 
@@ -679,7 +711,7 @@ Resources:
         OrgFormSchemaGetLatestRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}/form-schema
             Method: GET
 
@@ -697,7 +729,7 @@ Resources:
         OrgFormSchemaGetVersionRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/courses/{courseId}/form-schema/versions/{version}
             Method: GET
 
@@ -715,7 +747,7 @@ Resources:
         OrgSubmissionsListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/submissions
             Method: GET
 
@@ -733,7 +765,7 @@ Resources:
         OrgSubmissionsGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/submissions/{submissionId}
             Method: GET
 
@@ -751,7 +783,7 @@ Resources:
         OrgSubmissionsUpdateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/submissions/{submissionId}
             Method: PATCH
 
@@ -771,7 +803,7 @@ Resources:
         OrgAssetsUploadTicketCreateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/assets/upload-ticket
             Method: POST
 
@@ -791,7 +823,7 @@ Resources:
         OrgAssetsGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/assets/{assetId}
             Method: GET
 
@@ -811,7 +843,7 @@ Resources:
         OrgTenantBrandingUpdateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/branding
             Method: PATCH
 
@@ -831,7 +863,7 @@ Resources:
         OrgTenantBrandingGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/branding
             Method: GET
 
@@ -849,7 +881,7 @@ Resources:
         OrgAuditListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /org/audit
             Method: GET
 
@@ -867,7 +899,7 @@ Resources:
         InternalTenantsListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/tenants
             Method: GET
 
@@ -885,7 +917,7 @@ Resources:
         InternalTenantsCreateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/tenants
             Method: POST
 
@@ -903,7 +935,7 @@ Resources:
         InternalTenantsGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/tenants/{tenantId}
             Method: GET
 
@@ -921,7 +953,7 @@ Resources:
         InternalTenantsUpdateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/tenants/{tenantId}
             Method: PATCH
 
@@ -941,7 +973,7 @@ Resources:
         InternalUsersListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users
             Method: GET
 
@@ -964,7 +996,7 @@ Resources:
         InternalUsersGetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}
             Method: GET
 
@@ -991,7 +1023,7 @@ Resources:
         InternalUsersCreateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users
             Method: POST
 
@@ -1015,7 +1047,7 @@ Resources:
         InternalUsersActivateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/activate
             Method: POST
 
@@ -1040,7 +1072,7 @@ Resources:
         InternalUsersDeactivateRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/deactivate
             Method: POST
 
@@ -1064,7 +1096,7 @@ Resources:
         InternalUsersRoleAddRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/roles/add
             Method: POST
 
@@ -1089,7 +1121,7 @@ Resources:
         InternalUsersRoleRemoveRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/roles/remove
             Method: POST
 
@@ -1112,7 +1144,7 @@ Resources:
         InternalUsersPasswordResetRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/password-reset
             Method: POST
 
@@ -1128,7 +1160,7 @@ Resources:
         InternalUsersActivityListRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/{userId}/activity
             Method: GET
 
@@ -1144,7 +1176,7 @@ Resources:
         InternalUsersLogoutRoute:
           Type: HttpApi
           Properties:
-            ApiId: !Ref OnlineFormsHttpApi
+            ApiId: !Ref OnlineFormsOrgHttpApi
             Path: /internal/users/activity/logout
             Method: POST
 
@@ -1448,8 +1480,11 @@ Resources:
 
 Outputs:
   ApiBaseUrl:
-    Description: HTTP API endpoint
+    Description: HTTP API endpoint (public routes)
     Value: !Sub "https://${OnlineFormsHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
+  OrgApiBaseUrl:
+    Description: HTTP API endpoint (org/internal authenticated routes — restricted CORS)
+    Value: !Sub "https://${OnlineFormsOrgHttpApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
   ApiCustomDomainUrl:
     Condition: UseApiCustomDomain
     Description: Custom API domain URL

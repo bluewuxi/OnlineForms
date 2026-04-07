@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { writeAuditEvent } from "../lib/audit";
 import { verifyCaptcha } from "../lib/captcha";
@@ -47,7 +48,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // BS-02: CAPTCHA verification runs first — fail fast on obvious bots
     await verifyCaptcha(body._captchaToken, clientIp);
 
-    // BS-03: Honeypot — silently discard bot submissions
+    // BS-03: Honeypot — silently discard bot submissions.
+    // Return 200 (not 201) with a plausible-looking payload so the response is
+    // indistinguishable from a real error-free path to automated scanners.
     if (body._hp === true) {
       console.log(
         JSON.stringify({
@@ -59,7 +62,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         })
       );
       emitHoneypotHitMetric();
-      return jsonResponse(201, { data: { status: "submitted" } }, correlation);
+      const fakeSubmissionId = `sub_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      return jsonResponse(200, { data: { submissionId: fakeSubmissionId, status: "submitted" } }, correlation);
     }
 
     // Strip control fields before any further processing or storage

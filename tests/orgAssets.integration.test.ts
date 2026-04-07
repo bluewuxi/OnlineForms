@@ -168,10 +168,14 @@ test("orgAssetsUploadTicketCreate returns asset metadata needed by the frontend"
   process.env.AUTH_MODE = "mock";
   __assetsTestHooks.setCreateUploadTicketOverride(async () => ({
     assetId: "ast_1",
-    uploadUrl: "https://upload.example.com/ast_1",
-    method: "PUT",
-    headers: {
-      "Content-Type": "image/png"
+    uploadUrl: "https://upload.example.com/",
+    method: "POST",
+    fields: {
+      "key": "tenants/ten_1/assets/ast_1-logo.png",
+      "Content-Type": "image/png",
+      "Content-Disposition": "attachment",
+      "Policy": "base64encodedpolicy",
+      "X-Amz-Signature": "fakesig"
     },
     expiresAt: "2026-03-25T01:00:00Z",
     publicUrl: "https://cdn.example.com/assets/ast_1",

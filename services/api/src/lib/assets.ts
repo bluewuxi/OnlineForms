@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { GetObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { ApiError } from "./errors";
 
 export type UploadPurpose = "course_image" | "org_logo";
@@ -18,8 +19,8 @@ export type CreateUploadTicketInput = {
 export type UploadTicket = {
   assetId: string;
   uploadUrl: string;
-  method: "PUT";
-  headers: Record<string, string>;
+  method: "POST";
+  fields: Record<string, string>;
   expiresAt: string;
   publicUrl: string;
   asset: {
@@ -143,18 +144,27 @@ export async function createUploadTicket(
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
-  const command = new PutObjectCommand({
+  // Presigned POST enforces conditions at S3 — content-length-range rejects oversized
+  // uploads server-side regardless of what the client declared in sizeBytes.
+  const { url: uploadUrl, fields } = await createPresignedPost(s3, {
     Bucket: bucket,
     Key: key,
-    ContentType: input.contentType,
-    // Force download rather than inline render — prevents stored XSS via SVG/HTML
-    ContentDisposition: "attachment",
-    Metadata: {
-      tenantid: tenantId,
-      purpose: input.purpose
-    }
+    Conditions: [
+      // Reject any upload outside 1 byte – 5 MB
+      ["content-length-range", 1, 5 * 1024 * 1024],
+      // Lock Content-Type and Content-Disposition to what was agreed at ticket time
+      ["eq", "$Content-Type", input.contentType],
+      ["eq", "$Content-Disposition", "attachment"]
+    ],
+    Fields: {
+      "Content-Type": input.contentType,
+      // Force download rather than inline render — prevents stored XSS via SVG/HTML
+      "Content-Disposition": "attachment",
+      "x-amz-meta-tenantid": tenantId,
+      "x-amz-meta-purpose": input.purpose
+    },
+    Expires: expiresInSeconds
   });
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 
   const region = process.env.AWS_REGION ?? "ap-southeast-2";
   const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
@@ -185,10 +195,8 @@ export async function createUploadTicket(
   return {
     assetId,
     uploadUrl,
-    method: "PUT",
-    headers: {
-      "Content-Type": input.contentType
-    },
+    method: "POST",
+    fields,
     expiresAt,
     publicUrl,
     asset: {

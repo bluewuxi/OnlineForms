@@ -22,14 +22,18 @@ export function errorResponse(
   correlation: CorrelationContext
 ): APIGatewayProxyStructuredResultV2 {
   if (error instanceof ApiError) {
+    const errorBody: Record<string, unknown> = {
+      code: error.code,
+      message: error.message,
+      details: error.details ?? []
+    };
+    if (error.retryAfter !== undefined) {
+      errorBody["retryAfter"] = error.retryAfter;
+    }
     return jsonResponse(
       error.statusCode,
       {
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details ?? []
-        },
+        error: errorBody,
         requestId: correlation.requestId,
         correlationId: correlation.correlationId
       },

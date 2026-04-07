@@ -114,6 +114,7 @@ Globals:
         ONLINEFORMS_TABLE: !Ref OnlineFormsMainTable
         ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
         ONLINEFORMS_INTERNAL_ACTIVITY_TABLE: !Ref OnlineFormsInternalActivityTable
+        ONLINEFORMS_RATE_LIMIT_TABLE: !Ref OnlineFormsRateLimitTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
 
 Resources:
@@ -247,6 +248,21 @@ Resources:
           KeyType: HASH
         - AttributeName: SK
           KeyType: RANGE
+
+  OnlineFormsRateLimitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OnlineFormsRateLimit
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
 
   OnlineFormsUserPool:
     Type: AWS::Cognito::UserPool
@@ -1190,6 +1206,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBReadPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsRateLimitTable
       Events:
         PublicEnrollmentsCreateRoute:
           Type: HttpApi

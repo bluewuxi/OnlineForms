@@ -3,6 +3,7 @@ import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
 import { emitPublicEnrollmentCreateMetric, logFrontendAudit } from "../lib/frontendObservability";
 import { errorResponse, jsonResponse } from "../lib/http";
+import { checkRateLimit } from "../lib/rateLimit";
 import { parseJsonBody } from "../lib/request";
 import { createPublicEnrollment, type CreateEnrollmentInput } from "../lib/submissions";
 
@@ -33,6 +34,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (!courseId) {
       throw new ApiError(400, "VALIDATION_ERROR", "Missing courseId path parameter.");
     }
+
+    // Derive client IP from X-Forwarded-For (API Gateway populates this)
+    const xForwardedFor = event.headers?.["x-forwarded-for"] ?? event.headers?.["X-Forwarded-For"] ?? "";
+    const clientIp = xForwardedFor.split(",")[0].trim() || "unknown";
+
+    // Rate limiting: max 10 submissions per IP per hour (skipped in mock mode)
+    await checkRateLimit(clientIp);
 
     const idempotencyKey = getRequiredHeader(event.headers, "Idempotency-Key");
     const body = parseJsonBody<CreateEnrollmentInput>(event);

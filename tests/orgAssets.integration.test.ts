@@ -5,6 +5,7 @@ import { handler as getAssetHandler } from "../services/api/src/handlers/orgAsse
 import { handler as uploadTicketHandler } from "../services/api/src/handlers/orgAssetsUploadTicketCreate";
 import { handler as brandingGetHandler } from "../services/api/src/handlers/orgTenantBrandingGet";
 import { handler as brandingHandler } from "../services/api/src/handlers/orgTenantBrandingUpdate";
+import { __auditTestHooks } from "../services/api/src/lib/audit";
 import { __assetsTestHooks } from "../services/api/src/lib/assets";
 import { __tenantsTestHooks } from "../services/api/src/lib/tenants";
 
@@ -224,6 +225,7 @@ test("orgAssetsUploadTicketCreate returns asset metadata needed by the frontend"
 test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
+  __auditTestHooks.suppressWrites();
   __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
     assetId ? `https://assets.example.com/${assetId}` : null
   );
@@ -275,6 +277,7 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     assert.equal(body.data.logoUrl, "https://assets.example.com/ast_logo_1");
     assert.equal(body.data.description, "<p>Acme tenant description</p>");
   } finally {
+    __auditTestHooks.reset();
     __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
@@ -284,6 +287,7 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
 test("orgTenantBrandingUpdate persists tenant description edits", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";
+  __auditTestHooks.suppressWrites();
   __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
     assetId ? `https://assets.example.com/${assetId}` : null
   );
@@ -341,6 +345,7 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     assert.equal(body.data.description, "<p>Updated description</p>");
     assert.equal(body.data.logoUrl, "https://assets.example.com/ast_logo_1");
   } finally {
+    __auditTestHooks.reset();
     __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;

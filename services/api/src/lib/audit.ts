@@ -57,6 +57,8 @@ export type ListAuditResult = {
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
 
+let testWriteAuditEventOverride: ((input: AuditEventInput) => Promise<void>) | null = null;
+
 function tenantPk(tenantId: string): string {
   return `TENANT#${tenantId}`;
 }
@@ -115,6 +117,9 @@ function fromItem(item: Record<string, unknown>): AuditEvent {
 }
 
 export async function writeAuditEvent(input: AuditEventInput): Promise<void> {
+  if (testWriteAuditEventOverride) {
+    return testWriteAuditEventOverride(input);
+  }
   const now = new Date().toISOString();
   const auditId = `aud_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   await ddb.send(
@@ -192,3 +197,16 @@ export async function listAuditEvents(tenantId: string, input: ListAuditInput): 
     }
   };
 }
+
+export const __auditTestHooks = {
+  setWriteAuditEventOverride(fn: ((input: AuditEventInput) => Promise<void>) | null): void {
+    testWriteAuditEventOverride = fn;
+  },
+  /** No-op override — silently discards audit writes in integration tests. */
+  suppressWrites(): void {
+    testWriteAuditEventOverride = async () => undefined;
+  },
+  reset(): void {
+    testWriteAuditEventOverride = null;
+  }
+};

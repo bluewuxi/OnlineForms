@@ -26,16 +26,17 @@ Implement tasks strictly in order. For each task:
 ## Tasks
 
 - [ ] BS-01 Enrollment submission rate limiting
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/81
   Scope:
   - Enforce a maximum of 10 enrollment submissions per IP address per hour on `POST /v1/public/{tenantCode}/courses/{courseId}/enrollments`
-  - Implementation using DynamoDB rate counter:
+  - Implementation using a dedicated DynamoDB table (`OnlineFormsRateLimit`):
+    - A separate table is used to keep `OnlineFormsMain` for business data only; system/operational data lives separately
+    - Provision `OnlineFormsRateLimit` in the SAM template with `BillingMode: PAY_PER_REQUEST` and TTL enabled on the `expiresAt` attribute
     - On each submission request, derive a rate-limit key: `RATELIMIT#${ip}#${Math.floor(Date.now() / 3600000)}` (bucketed by hour)
     - Use a DynamoDB `UpdateItem` with `ADD #count :one` and `ConditionExpression: #count < :limit` (atomic increment + conditional check in one operation)
-    - Set a TTL of 2 hours on the counter item so old records self-expire
+    - Set `expiresAt` TTL to 2 hours from the current hour boundary so old records self-expire
     - If the condition fails (count >= 10), return `429 Too Many Requests` with body `{ "code": "RATE_LIMITED", "message": "Too many submissions. Please try again later.", "retryAfter": <seconds until next hour bucket> }`
     - Use `X-Forwarded-For` header (API Gateway populates this) for the IP; take only the first IP in the chain to handle proxies
-    - The rate limit table can reuse `OnlineFormsMain` with a `RATELIMIT#` key prefix, or a separate lightweight table — document the decision
   - Add `AUTH_MODE=mock` bypass: skip rate limiting when running in mock mode so local development is unaffected
   Acceptance:
   - 11th submission from the same IP in the same hour returns `429`
@@ -45,7 +46,7 @@ Implement tasks strictly in order. For each task:
   - Unit test covers the counter increment and the limit breach path
 
 - [ ] BS-02 CAPTCHA token verification (Cloudflare Turnstile)
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/82
   Scope:
   - Before processing an enrollment submission, verify the Cloudflare Turnstile token sent by the frontend as `_captchaToken` in the request body
   - Implementation:
@@ -63,7 +64,7 @@ Implement tasks strictly in order. For each task:
   - Unit test mocks the Cloudflare verify call for both success and failure paths
 
 - [ ] BS-03 Honeypot field server-side rejection
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/83
   Scope:
   - The frontend sends a `_hp` boolean field in the enrollment payload when the honeypot input was filled (see frontend task FS-03)
   - If `body._hp === true`, log the attempt (include IP, tenantCode, courseId, timestamp) and return `200 OK` with a fake success response — do not write to DynamoDB, do not return an error (silently discard to avoid alerting the bot)
@@ -75,7 +76,7 @@ Implement tasks strictly in order. For each task:
   - `_hp` and `_captchaToken` are never stored in DynamoDB
 
 - [ ] BS-04 Enrollment submission input validation
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/84
   Scope:
   - Currently the enrollment Lambda writes answer values to DynamoDB with minimal validation. Add a validation layer before the write:
     - For each answer field, look up its definition in the stored form schema
@@ -91,7 +92,7 @@ Implement tasks strictly in order. For each task:
   - Unit tests cover required, maxLength, email format, and HTML strip cases
 
 - [ ] BS-05 CORS policy restriction
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/85
   Scope:
   - Current API Gateway CORS configuration allows all origins (`*`) for public endpoints. Restrict to known frontend origins:
     - Production: `https://form.kidrawer.com` (or whatever the production domain is)
@@ -107,7 +108,7 @@ Implement tasks strictly in order. For each task:
   - SAM template parameter controls the allowed origins list
 
 - [ ] BS-06 S3 upload policy hardening
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/86
   Scope:
   - The `POST /v1/org/assets/upload-ticket` endpoint issues S3 pre-signed URLs for asset uploads (tenant logos, branding images). Harden the upload policy:
     - Enforce an allowed MIME type list in the pre-signed URL conditions: `image/jpeg`, `image/png`, `image/webp`, `image/svg+xml` only
@@ -122,7 +123,7 @@ Implement tasks strictly in order. For each task:
   - Existing upload flow for permitted file types continues to work
 
 - [ ] BS-07 Tenant slug enumeration hardening
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/87
   Scope:
   - `GET /v1/public/{tenantCode}/courses` and `GET /v1/public/tenants/{tenantCode}` currently return different responses for inactive tenants vs. non-existent ones, allowing an attacker to enumerate valid tenant codes by comparing responses
   - Standardise the response: both inactive and non-existent tenants should return `404 Not Found` with an identical generic body: `{ "code": "NOT_FOUND", "message": "The requested resource was not found." }`
@@ -134,7 +135,7 @@ Implement tasks strictly in order. For each task:
   - Response time difference between the two cases is < 50ms
 
 - [ ] BS-08 API error response sanitisation
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/88
   Scope:
   - Audit all Lambda error handlers for stack traces, internal variable names, DynamoDB table names, or AWS account details leaking into API responses
   - Implement a centralised error serialiser that:
@@ -149,7 +150,7 @@ Implement tasks strictly in order. For each task:
   - Full error details are still logged to CloudWatch
 
 - [ ] BS-09 Audit trail completeness review
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/89
   Scope:
   - Review all write operations across org and internal Lambda handlers and verify each produces an audit trail entry
   - Minimum required audit events:
@@ -167,7 +168,7 @@ Implement tasks strictly in order. For each task:
   - Unit tests verify audit writes for at least the enrollment create and course publish paths
 
 - [ ] BS-10 Dependency vulnerability scanning
-  Issue: https://github.com/bluewuxi/OnlineForms/issues/TBD
+  Issue: https://github.com/bluewuxi/OnlineForms/issues/90
   Scope:
   - Add `npm audit --audit-level=high` to the CI/build pipeline so high/critical CVEs fail the build
   - Enable GitHub Dependabot for the `OnlineForms` repository:

@@ -17,7 +17,7 @@
     "reconcile:projections": "node scripts/reconcile-public-projections.js"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.1014.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1026.0",
     "@aws-sdk/client-dynamodb": "^3.883.0",
     "@aws-sdk/client-s3": "^3.883.0",
     "@aws-sdk/lib-dynamodb": "^3.883.0",

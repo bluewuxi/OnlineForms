@@ -25,7 +25,7 @@ Implement tasks strictly in order. For each task:
 
 ## Tasks
 
-- [ ] BS-01 Enrollment submission rate limiting
+- [x] BS-01 Enrollment submission rate limiting
   Issue: https://github.com/bluewuxi/OnlineForms/issues/81
   Scope:
   - Enforce a maximum of 10 enrollment submissions per IP address per hour on `POST /v1/public/{tenantCode}/courses/{courseId}/enrollments`
@@ -45,7 +45,7 @@ Implement tasks strictly in order. For each task:
   - Mock mode bypasses rate limiting
   - Unit test covers the counter increment and the limit breach path
 
-- [ ] BS-02 CAPTCHA token verification (Cloudflare Turnstile)
+- [x] BS-02 CAPTCHA token verification (Cloudflare Turnstile)
   Issue: https://github.com/bluewuxi/OnlineForms/issues/82
   Scope:
   - Before processing an enrollment submission, verify the Cloudflare Turnstile token sent by the frontend as `_captchaToken` in the request body
@@ -63,7 +63,7 @@ Implement tasks strictly in order. For each task:
   - Cloudflare API timeout does not block legitimate users
   - Unit test mocks the Cloudflare verify call for both success and failure paths
 
-- [ ] BS-03 Honeypot field server-side rejection
+- [x] BS-03 Honeypot field server-side rejection
   Issue: https://github.com/bluewuxi/OnlineForms/issues/83
   Scope:
   - The frontend sends a `_hp` boolean field in the enrollment payload when the honeypot input was filled (see frontend task FS-03)
@@ -75,7 +75,7 @@ Implement tasks strictly in order. For each task:
   - `HoneypotHit` CloudWatch metric is emitted on each flagged request
   - `_hp` and `_captchaToken` are never stored in DynamoDB
 
-- [ ] BS-04 Enrollment submission input validation
+- [x] BS-04 Enrollment submission input validation
   Issue: https://github.com/bluewuxi/OnlineForms/issues/84
   Scope:
   - Currently the enrollment Lambda writes answer values to DynamoDB with minimal validation. Add a validation layer before the write:
@@ -91,7 +91,7 @@ Implement tasks strictly in order. For each task:
   - Invalid select option returns `422`
   - Unit tests cover required, maxLength, email format, and HTML strip cases
 
-- [ ] BS-05 CORS policy restriction
+- [x] BS-05 CORS policy restriction
   Issue: https://github.com/bluewuxi/OnlineForms/issues/85
   Scope:
   - Current API Gateway CORS configuration allows all origins (`*`) for public endpoints. Restrict to known frontend origins:
@@ -107,7 +107,7 @@ Implement tasks strictly in order. For each task:
   - Local dev still works with `http://localhost:5173`
   - SAM template parameter controls the allowed origins list
 
-- [ ] BS-06 S3 upload policy hardening
+- [x] BS-06 S3 upload policy hardening
   Issue: https://github.com/bluewuxi/OnlineForms/issues/86
   Scope:
   - The `POST /v1/org/assets/upload-ticket` endpoint issues S3 pre-signed URLs for asset uploads (tenant logos, branding images). Harden the upload policy:
@@ -122,7 +122,7 @@ Implement tasks strictly in order. For each task:
   - Uploaded objects are not publicly accessible via direct S3 URL
   - Existing upload flow for permitted file types continues to work
 
-- [ ] BS-07 Tenant slug enumeration hardening
+- [x] BS-07 Tenant slug enumeration hardening
   Issue: https://github.com/bluewuxi/OnlineForms/issues/87
   Scope:
   - `GET /v1/public/{tenantCode}/courses` and `GET /v1/public/tenants/{tenantCode}` currently return different responses for inactive tenants vs. non-existent ones, allowing an attacker to enumerate valid tenant codes by comparing responses
@@ -134,7 +134,7 @@ Implement tasks strictly in order. For each task:
   - Inactive tenant returns `404` with the same `NOT_FOUND` code and identical body
   - Response time difference between the two cases is < 50ms
 
-- [ ] BS-08 API error response sanitisation
+- [x] BS-08 API error response sanitisation
   Issue: https://github.com/bluewuxi/OnlineForms/issues/88
   Scope:
   - Audit all Lambda error handlers for stack traces, internal variable names, DynamoDB table names, or AWS account details leaking into API responses
@@ -149,7 +149,7 @@ Implement tasks strictly in order. For each task:
   - Unhandled errors return `500` with the generic `INTERNAL_ERROR` code
   - Full error details are still logged to CloudWatch
 
-- [ ] BS-09 Audit trail completeness review
+- [x] BS-09 Audit trail completeness review
   Issue: https://github.com/bluewuxi/OnlineForms/issues/89
   Scope:
   - Review all write operations across org and internal Lambda handlers and verify each produces an audit trail entry
@@ -167,7 +167,7 @@ Implement tasks strictly in order. For each task:
   - `GET /v1/org/audit` returns entries for all event types in testing
   - Unit tests verify audit writes for at least the enrollment create and course publish paths
 
-- [ ] BS-10 Dependency vulnerability scanning
+- [x] BS-10 Dependency vulnerability scanning
   Issue: https://github.com/bluewuxi/OnlineForms/issues/90
   Scope:
   - Add `npm audit --audit-level=high` to the CI/build pipeline so high/critical CVEs fail the build

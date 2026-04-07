@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { getPublicCourseDetail, resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
-import { type FormField, getCourseFormSchemaVersion } from "./formSchemas";
+import { type FormField, type FormFieldType, getCourseFormSchemaVersion } from "./formSchemas";
 
 type EnrollmentMeta = {
   locale?: string | null;

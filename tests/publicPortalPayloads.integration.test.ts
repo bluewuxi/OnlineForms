@@ -7,9 +7,11 @@ import { handler as publicCoursesListHandler } from "../services/api/src/handler
 import { handler as publicCourseDetailHandler } from "../services/api/src/handlers/publicCoursesGet";
 import { handler as publicEnrollmentsCreateHandler } from "../services/api/src/handlers/publicEnrollmentsCreate";
 import { __assetsTestHooks } from "../services/api/src/lib/assets";
+import { __captchaTestHooks } from "../services/api/src/lib/captcha";
 import { __formSchemasTestHooks } from "../services/api/src/lib/formSchemas";
 import { __tenantsTestHooks } from "../services/api/src/lib/tenants";
 import { __coursesTestHooks } from "../services/api/src/lib/courses";
+import { __rateLimitTestHooks } from "../services/api/src/lib/rateLimit";
 import { __submissionsTestHooks } from "../services/api/src/lib/submissions";
 
 function asStructuredResult(
@@ -44,9 +46,11 @@ function baseContext(path: string, method: string, requestId: string) {
 
 test.afterEach(() => {
   __assetsTestHooks.reset();
+  __captchaTestHooks.reset();
   __formSchemasTestHooks.reset();
   __tenantsTestHooks.reset();
   __coursesTestHooks.reset();
+  __rateLimitTestHooks.reset();
   __submissionsTestHooks.reset();
 });
 
@@ -387,6 +391,10 @@ test("public course detail resolves signed image URLs from legacy stored imageUr
 });
 
 test("public enrollment success includes course context and links", async () => {
+  // Bypass security middleware that requires external services in integration tests
+  __captchaTestHooks.setVerifyOverride(async () => true);
+  __rateLimitTestHooks.setDdbSendOverride(async () => ({}));
+
   __submissionsTestHooks.setCreatePublicEnrollmentOverride(async () => ({
     submissionId: "sub_001",
     status: "submitted",

@@ -689,13 +689,16 @@ export async function resolveTenantIdByCode(tenantCode: string): Promise<string>
   );
 
   const item = out.Item as Record<string, unknown> | undefined;
-  if (!item || item.status === "suspended") {
-    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+  // BS-07: Treat non-existent and inactive tenants identically to prevent
+  // enumeration via different response bodies or timing differences.
+  // isActive absent in older MAP items → treated as true (backward compat).
+  if (!item || item.isActive === false) {
+    throw new ApiError(404, "NOT_FOUND", "The requested resource was not found.");
   }
 
   const tenantId = item.tenantId;
   if (typeof tenantId !== "string" || tenantId.length === 0) {
-    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+    throw new ApiError(404, "NOT_FOUND", "The requested resource was not found.");
   }
 
   return tenantId;

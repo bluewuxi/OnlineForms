@@ -380,7 +380,9 @@ export async function getPublicTenantHomeByCode(tenantCode: string): Promise<Pub
   const tenantId = await resolveTenantIdByCode(normalizedTenantCode);
   const profile = await getTenantProfile(tenantId);
   if (!profile.isActive) {
-    throw new ApiError(404, "NOT_FOUND", "Tenant not found.");
+    // BS-07: Use the same generic message as resolveTenantIdByCode so inactive
+    // and non-existent tenant codes return an identical response body.
+    throw new ApiError(404, "NOT_FOUND", "The requested resource was not found.");
   }
   return {
     tenantCode: profile.tenantCode,
@@ -539,7 +541,23 @@ export async function updateTenantProfile(
     throw new ApiError(404, "NOT_FOUND", "Tenant profile not found.");
   }
 
-  return toTenantProfile(tenantId, out.Attributes as Record<string, unknown>);
+  const updatedProfile = toTenantProfile(tenantId, out.Attributes as Record<string, unknown>);
+
+  // BS-07: Keep the MAP item's isActive in sync so resolveTenantIdByCode can check
+  // active status in a single DynamoDB read (prevents tenant code enumeration).
+  if (Object.prototype.hasOwnProperty.call(patch, "isActive")) {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: tableName,
+        Key: { PK: `TENANTCODE#${updatedProfile.tenantCode}`, SK: "MAP" },
+        UpdateExpression: "SET #isActive = :isActive",
+        ExpressionAttributeNames: { "#isActive": "isActive" },
+        ExpressionAttributeValues: { ":isActive": updatedProfile.isActive }
+      })
+    );
+  }
+
+  return updatedProfile;
 }
 
 export async function createTenantProfile(input: CreateTenantProfileInput): Promise<TenantProfile> {
@@ -568,7 +586,10 @@ export async function createTenantProfile(input: CreateTenantProfileInput): Prom
     PK: `TENANTCODE#${normalized.tenantCode}`,
     SK: "MAP",
     tenantCode: normalized.tenantCode,
-    tenantId
+    tenantId,
+    // Store isActive in the MAP item so resolveTenantIdByCode can check it in
+    // a single read without loading the PROFILE — prevents tenant code enumeration.
+    isActive: normalized.isActive
   };
 
   try {

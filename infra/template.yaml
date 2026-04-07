@@ -73,6 +73,13 @@ Parameters:
   ApiCustomDomainHostedZoneId:
     Type: String
     Default: ""
+  CorsAllowedOrigins:
+    Type: String
+    Default: "https://form.kidrawer.com,https://d1y9ka302ibufy.cloudfront.net,http://localhost:5173"
+    Description: >
+      Comma-separated list of allowed CORS origins. Defaults to the production
+      frontend URL plus the CloudFront distribution and local Vite dev server.
+      Example for staging: "https://stage.form.kidrawer.com,http://localhost:5173"
 
 Mappings:
   AuthModeByEnvironment:
@@ -134,10 +141,7 @@ Resources:
     Properties:
       StageName: v1
       CorsConfiguration:
-        AllowOrigins:
-          - https://form.kidrawer.com
-          - https://d1y9ka302ibufy.cloudfront.net
-          - http://localhost:5173
+        AllowOrigins: !Split [",", !Ref CorsAllowedOrigins]
         AllowHeaders:
           - content-type
           - idempotency-key
@@ -376,6 +380,35 @@ Resources:
         IgnorePublicAcls: true
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
+
+  OnlineFormsAssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OnlineFormsAssetsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Deny any GetObject request that does not use a pre-signed (query-string) URL.
+          # This prevents direct S3 URL access while allowing pre-signed GET URLs to work.
+          - Sid: DenyNonPresignedGetObject
+            Effect: Deny
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${OnlineFormsAssetsBucket}/*"
+            Condition:
+              StringNotEquals:
+                s3:authType: REST-QUERY-STRING
+          # Enforce HTTPS for all requests to the bucket.
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${OnlineFormsAssetsBucket}"
+              - !Sub "arn:aws:s3:::${OnlineFormsAssetsBucket}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
 
   HealthFunction:
     Type: AWS::Serverless::Function

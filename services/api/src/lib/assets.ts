@@ -6,7 +6,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ApiError } from "./errors";
 
 export type UploadPurpose = "course_image" | "org_logo";
-export type UploadContentType = "image/png" | "image/jpeg" | "image/webp";
+export type UploadContentType = "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
 
 export type CreateUploadTicketInput = {
   purpose: UploadPurpose;
@@ -112,8 +112,8 @@ function validateInput(input: CreateUploadTicketInput): void {
   if (!["course_image", "org_logo"].includes(input.purpose)) {
     throw new ApiError(400, "VALIDATION_ERROR", "purpose must be one of course_image or org_logo.");
   }
-  if (!["image/png", "image/jpeg", "image/webp"].includes(input.contentType)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "contentType must be one of image/png, image/jpeg, image/webp.");
+  if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(input.contentType)) {
+    throw new ApiError(400, "VALIDATION_ERROR", "contentType must be one of image/png, image/jpeg, image/webp, image/svg+xml.");
   }
   if (!input.fileName?.trim()) {
     throw new ApiError(400, "VALIDATION_ERROR", "fileName is required.");
@@ -147,6 +147,8 @@ export async function createUploadTicket(
     Bucket: bucket,
     Key: key,
     ContentType: input.contentType,
+    // Force download rather than inline render — prevents stored XSS via SVG/HTML
+    ContentDisposition: "attachment",
     Metadata: {
       tenantid: tenantId,
       purpose: input.purpose

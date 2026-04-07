@@ -84,6 +84,15 @@ Mappings:
       Mode: cognito
     prod:
       Mode: cognito
+  TurnstileEnabledByEnvironment:
+    local:
+      Enabled: "false"
+    test:
+      Enabled: "false"
+    stage:
+      Enabled: "true"
+    prod:
+      Enabled: "true"
 
 Conditions:
   UseManagedCognito: !Equals [!Ref ManagedCognitoEnabled, "true"]
@@ -116,6 +125,8 @@ Globals:
         ONLINEFORMS_INTERNAL_ACTIVITY_TABLE: !Ref OnlineFormsInternalActivityTable
         ONLINEFORMS_RATE_LIMIT_TABLE: !Ref OnlineFormsRateLimitTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
+        TURNSTILE_ENABLED: !FindInMap [TurnstileEnabledByEnvironment, !Ref DeploymentEnvironment, Enabled]
+        TURNSTILE_SECRET_KEY: "{{resolve:ssm:/onlineforms/turnstile/secret-key}}"
 
 Resources:
   OnlineFormsHttpApi:

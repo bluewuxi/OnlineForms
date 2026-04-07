@@ -1,7 +1,8 @@
 type FrontendMetricName =
   | "AssetUploadTicketCreateCount"
   | "BrandingUpdateCount"
-  | "PublicEnrollmentCreateCount";
+  | "PublicEnrollmentCreateCount"
+  | "HoneypotHit";
 
 type FrontendAuditEvent =
   | "frontend_asset_upload_ticket_created"
@@ -39,6 +40,10 @@ export function emitBrandingUpdateMetric(): void {
 
 export function emitPublicEnrollmentCreateMetric(): void {
   emitMetric("PublicEnrollmentCreateCount", 1);
+}
+
+export function emitHoneypotHitMetric(): void {
+  emitMetric("HoneypotHit", 1);
 }
 
 export function logFrontendAudit(event: FrontendAuditEvent, details: Record<string, unknown>): void {

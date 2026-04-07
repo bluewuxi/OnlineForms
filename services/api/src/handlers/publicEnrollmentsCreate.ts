@@ -1,7 +1,8 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { verifyCaptcha } from "../lib/captcha";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
-import { emitPublicEnrollmentCreateMetric, logFrontendAudit } from "../lib/frontendObservability";
+import { emitHoneypotHitMetric, emitPublicEnrollmentCreateMetric, logFrontendAudit } from "../lib/frontendObservability";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { checkRateLimit } from "../lib/rateLimit";
 import { parseJsonBody } from "../lib/request";
@@ -39,12 +40,33 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const xForwardedFor = event.headers?.["x-forwarded-for"] ?? event.headers?.["X-Forwarded-For"] ?? "";
     const clientIp = xForwardedFor.split(",")[0].trim() || "unknown";
 
-    // Rate limiting: max 10 submissions per IP per hour (skipped in mock mode)
-    await checkRateLimit(clientIp);
-
     const idempotencyKey = getRequiredHeader(event.headers, "Idempotency-Key");
-    const body = parseJsonBody<CreateEnrollmentInput>(event);
-    const data = await createPublicEnrollment(tenantCode, courseId, idempotencyKey, body);
+    const body = parseJsonBody<CreateEnrollmentInput & { _captchaToken?: string; _hp?: boolean }>(event);
+
+    // BS-02: CAPTCHA verification runs first — fail fast on obvious bots
+    await verifyCaptcha(body._captchaToken, clientIp);
+
+    // BS-03: Honeypot — silently discard bot submissions
+    if (body._hp === true) {
+      console.log(
+        JSON.stringify({
+          type: "honeypot_hit",
+          ip: clientIp,
+          tenantCode,
+          courseId,
+          timestamp: new Date().toISOString()
+        })
+      );
+      emitHoneypotHitMetric();
+      return jsonResponse(201, { data: { status: "submitted" } }, correlation);
+    }
+
+    // Strip control fields before any further processing or storage
+    const { _captchaToken: _c, _hp: _h, ...cleanBody } = body;
+
+    // BS-01: Rate limiting: max 10 submissions per IP per hour (skipped in mock mode)
+    await checkRateLimit(clientIp);
+    const data = await createPublicEnrollment(tenantCode, courseId, idempotencyKey, cleanBody);
     emitPublicEnrollmentCreateMetric();
     logFrontendAudit("frontend_public_enrollment_created", {
       tenantCode,

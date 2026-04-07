@@ -30,6 +30,9 @@ export function errorResponse(
     if (error.retryAfter !== undefined) {
       errorBody["retryAfter"] = error.retryAfter;
     }
+    if (error.fields !== undefined) {
+      errorBody["fields"] = error.fields;
+    }
     return jsonResponse(
       error.statusCode,
       {

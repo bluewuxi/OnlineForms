@@ -276,15 +276,52 @@ function extractApplicantIdentity(
   return applicant;
 }
 
+/** Default maxLength caps applied even when not specified in the form schema. */
+const DEFAULT_MAX_LENGTH: Partial<Record<FormFieldType, number>> = {
+  short_text: 500,
+  long_text: 5000,
+  email: 254
+};
+
+/**
+ * Strips all HTML tags from a string value before storage.
+ * Does not attempt to sanitise — removes tags entirely.
+ */
+export function stripHtmlTags(value: string): string {
+  return value.replace(/<[^>]*>/g, "");
+}
+
+/**
+ * Strips HTML tags from all free-text string answers in an answers map.
+ * Returns a new answers object — does not mutate the original.
+ */
+export function sanitizeAnswers(
+  fields: FormField[],
+  answers: Record<string, unknown>
+): Record<string, unknown> {
+  const textFieldIds = new Set(
+    fields
+      .filter((f) => f.type === "short_text" || f.type === "long_text")
+      .map((f) => f.fieldId)
+  );
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(answers)) {
+    sanitized[key] = textFieldIds.has(key) && typeof value === "string"
+      ? stripHtmlTags(value)
+      : value;
+  }
+  return sanitized;
+}
+
 function validateText(field: FormField, value: string, issues: Array<{ field?: string; issue: string }>): void {
   const minLength = field.validation?.minLength;
-  const maxLength = field.validation?.maxLength;
+  const effectiveMaxLength = field.validation?.maxLength ?? DEFAULT_MAX_LENGTH[field.type];
   const pattern = field.validation?.pattern;
   if (typeof minLength === "number" && value.length < minLength) {
     issues.push({ field: field.fieldId, issue: `minLength:${minLength}` });
   }
-  if (typeof maxLength === "number" && value.length > maxLength) {
-    issues.push({ field: field.fieldId, issue: `maxLength:${maxLength}` });
+  if (typeof effectiveMaxLength === "number" && value.length > effectiveMaxLength) {
+    issues.push({ field: field.fieldId, issue: `maxLength:${effectiveMaxLength}` });
   }
   if (typeof pattern === "string" && pattern.length > 0) {
     try {
@@ -570,16 +607,25 @@ export async function createPublicEnrollment(
   }
 
   const schema = await getCourseFormSchemaVersion(tenantId, courseId, input.formVersion);
-  const issues = validateAnswersAgainstSchema(schema.fields, input.answers);
+
+  // BS-04: strip HTML tags from free-text answers before validation or storage
+  const sanitizedAnswers = sanitizeAnswers(schema.fields, input.answers);
+
+  const issues = validateAnswersAgainstSchema(schema.fields, sanitizedAnswers);
   if (issues.length > 0) {
-    throw new ApiError(400, "VALIDATION_ERROR", "One or more answers are invalid.", issues);
+    // 422 Unprocessable Entity: structurally valid payload but fails business rules
+    const fields = issues.map((issue) => ({
+      fieldId: issue.field ?? "unknown",
+      error: issue.issue
+    }));
+    throw new ApiError(422, "VALIDATION_ERROR", "One or more answers are invalid.", issues, undefined, fields);
   }
 
   const requestHash = hashRequest({
     tenantCode: tenantCode.trim().toLowerCase(),
     courseId,
     formVersion: input.formVersion,
-    answers: input.answers,
+    answers: sanitizedAnswers,
     meta: input.meta ?? null
   });
 
@@ -609,8 +655,8 @@ export async function createPublicEnrollment(
     formId: schema.formId,
     formVersion: schema.version,
     status: "submitted",
-    applicant: extractApplicantIdentity(schema.fields, input.answers),
-    answers: input.answers,
+    applicant: extractApplicantIdentity(schema.fields, sanitizedAnswers),
+    answers: sanitizedAnswers,
     meta: input.meta ?? null,
     submittedAt: nowIso,
     reviewedAt: null,

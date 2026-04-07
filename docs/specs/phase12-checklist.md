@@ -12,6 +12,9 @@ Implement tasks strictly in order. For each task:
 
 Phase 12 is intended for backend contract and support changes required to ship the Phase 11 UI cleanly.
 
+Verification note:
+- Verified on 2026-04-08 that follow-up tasks `P12-06` through `P12-10` are implemented in backend code, covered by tests, and reflected in contract docs before closing GitHub issues `#76` through `#80`.
+
 ## Tasks
 
 - [x] P12-01 Frontend contract audit and API doc alignment

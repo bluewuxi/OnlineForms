@@ -900,6 +900,14 @@ components:
           type:
           - string
           - "null"
+        description:
+          type:
+          - string
+          - "null"
+        homePageContent:
+          type:
+          - string
+          - "null"
       type: object
     TenantBrandingResponse:
       properties:
@@ -908,6 +916,16 @@ components:
           properties:
             tenantId:
               type: string
+            displayName:
+              type: string
+            description:
+              type:
+              - string
+              - "null"
+            homePageContent:
+              type:
+              - string
+              - "null"
             logoAssetId:
               type:
               - string
@@ -922,6 +940,7 @@ components:
               type: string
           required:
           - tenantId
+          - displayName
           - logoAssetId
           - logoUrl
           - updatedAt
@@ -1815,6 +1834,21 @@ paths:
       tags:
       - Org Submissions
   /v1/org/branding:
+    get:
+      summary: Get tenant branding
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantBrandingResponse'
+          description: Tenant branding
     patch:
       summary: Update tenant branding
       security:

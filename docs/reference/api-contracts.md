@@ -27,6 +27,7 @@ Important baseline notes from the audit:
 - Additional org support routes are active and frontend-relevant:
   - `GET /v1/org/me`
   - `GET /v1/org/audit`
+  - `GET /v1/org/branding`
   - `PATCH /v1/org/branding`
 
 ---
@@ -709,6 +710,26 @@ Response `200`:
 }
 ```
 
+### `GET /v1/org/branding`
+
+Returns the authenticated tenant's current branding and public profile content for org-portal settings pages.
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "tenantId": "ten_01JABC...",
+    "displayName": "Standard School",
+    "description": "Public tenant landing content.",
+    "homePageContent": "Welcome to Standard School.",
+    "logoAssetId": "ast_01JABC...",
+    "logoUrl": "https://assets.example.com/ast_01JABC...?X-Amz-Signature=example",
+    "updatedAt": "2026-03-09T01:30:00Z"
+  }
+}
+```
+
 ### `PATCH /v1/org/branding`
 
 Update tenant branding used by public and org pages.
@@ -717,7 +738,9 @@ Request body:
 
 ```json
 {
-  "logoAssetId": "ast_01JABC..."
+  "logoAssetId": "ast_01JABC...",
+  "description": "Public tenant landing content.",
+  "homePageContent": "Welcome to Standard School."
 }
 ```
 
@@ -727,8 +750,11 @@ Response `200`:
 {
   "data": {
     "tenantId": "ten_01JABC...",
+    "displayName": "Standard School",
+    "description": "Public tenant landing content.",
+    "homePageContent": "Welcome to Standard School.",
     "logoAssetId": "ast_01JABC...",
-    "logoUrl": "https://cdn.onlineforms.com/assets/ast_01JABC...",
+    "logoUrl": "https://assets.example.com/ast_01JABC...?X-Amz-Signature=example",
     "updatedAt": "2026-03-09T01:30:00Z"
   }
 }
@@ -836,7 +862,7 @@ Response `200`:
       "isActive": true,
       "branding": {
         "logoAssetId": "ast_logo_001",
-        "logoUrl": "https://cdn.onlineforms.com/assets/ast_logo_001"
+        "logoUrl": "https://assets.example.com/ast_logo_001?X-Amz-Signature=example"
       },
       "links": {
         "home": "/v1/public/std-school/tenant-home",
@@ -910,7 +936,7 @@ Response `200`:
       "id": "crs_01JABC...",
       "title": "Intro to AI",
       "shortDescription": "4-week foundation course",
-      "imageUrl": "https://cdn.onlineforms.com/assets/ast_01JABC...",
+      "imageUrl": "https://assets.example.com/ast_01JABC...?X-Amz-Signature=example",
       "startDate": "2026-04-01",
       "endDate": "2026-04-28",
       "deliveryMode": "online",
@@ -943,7 +969,7 @@ Response `200`:
     "title": "Intro to AI",
     "shortDescription": "4-week foundation course",
     "fullDescription": "Detailed syllabus...",
-    "imageUrl": "https://cdn.onlineforms.com/assets/ast_01JABC...",
+    "imageUrl": "https://assets.example.com/ast_01JABC...?X-Amz-Signature=example",
     "startDate": "2026-04-01",
     "endDate": "2026-04-28",
     "deliveryMode": "online",
@@ -955,6 +981,19 @@ Response `200`:
     "enrollmentOpenNow": true,
     "enrollmentStatus": "open",
     "formAvailable": true,
+    "formVersion": 3,
+    "formSchema": {
+      "version": 3,
+      "fields": [
+        {
+          "fieldId": "first_name",
+          "type": "short_text",
+          "label": "First name",
+          "required": true,
+          "displayOrder": 1
+        }
+      ]
+    },
     "links": {
       "detail": "/v1/public/std-school/courses/crs_01JABC...",
       "enrollmentForm": "/v1/public/std-school/courses/crs_01JABC.../form"

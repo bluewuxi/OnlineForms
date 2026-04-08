@@ -21,7 +21,7 @@ function parseRoles(input: unknown): InternalRole[] {
     return ["internal_admin"];
   }
   return input
-    .filter((value): value is InternalRole => value === "internal_admin" || value === "platform_admin");
+    .filter((value): value is InternalRole => value === "internal_admin" || value === "platform_support");
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {

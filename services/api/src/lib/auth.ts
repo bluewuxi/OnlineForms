@@ -16,7 +16,7 @@ import {
   authUserPk
 } from "../../../../shared/src/authTable";
 
-export type AuthRole = "org_admin" | "org_editor" | "platform_admin" | "internal_admin";
+export type AuthRole = "org_viewer" | "org_editor" | "org_admin" | "platform_support" | "internal_admin";
 
 export type AuthContext = {
   userId: string;
@@ -50,7 +50,7 @@ type MembershipRecord = {
 };
 type TokenVerifier = { verify: (token: string) => Promise<Record<string, unknown>> };
 
-const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "platform_admin", "internal_admin"]);
+const allowedRoles = new Set<AuthRole>(["org_viewer", "org_editor", "org_admin", "platform_support", "internal_admin"]);
 const allowedAuthModes = new Set<AuthMode>(["mock", "cognito"]);
 const restrictedMockEnvironments = new Set<RuntimeEnv>(["stage", "prod"]);
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -275,7 +275,7 @@ async function getMembership(userId: string, tenantId: string): Promise<Membersh
 }
 
 async function assertTenantMembership(role: AuthRole, userId: string, tenantId: string): Promise<void> {
-  if (role === "platform_admin" || role === "internal_admin") return;
+  if (role === "platform_support" || role === "internal_admin") return;
   const membershipLoader = testMembershipLoaderOverride ?? getMembership;
   const membership = await membershipLoader(userId, tenantId);
   if (!membership || membership.status !== "active") {
@@ -493,7 +493,7 @@ export async function authenticateRequest(
   const requestedRole = requestedRoleRaw ? toRole(requestedRoleRaw) : undefined;
   if (
     requestedRole &&
-    (requestedRole === "platform_admin" || requestedRole === "internal_admin") &&
+    (requestedRole === "platform_support" || requestedRole === "internal_admin") &&
     !hasRoleCapabilityInPayload(payload, requestedRole)
   ) {
     throw new ApiError(
@@ -540,7 +540,7 @@ export function requireAnyRole(auth: AuthContext, roles: AuthRole[]): void {
 }
 
 export function assertTenantAccess(auth: AuthContext, resourceTenantId: string): void {
-  if (auth.role === "platform_admin") return;
+  if (auth.role === "platform_support") return;
   if (auth.tenantId !== resourceTenantId) {
     throw new ApiError(403, "FORBIDDEN", "Cross-tenant access is denied.");
   }

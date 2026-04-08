@@ -98,6 +98,47 @@ test("orgTenantInviteAccept returns 400 when inviteId path is missing", async ()
   }
 });
 
+test("orgTenantInviteCreate returns 400 when role is invalid for invite", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await createInviteHandler(
+        makeEvent("/org/tenants/ten_1/invites", { tenantId: "ten_1" }, {
+          email: "viewer@example.com",
+          role: "platform_support"
+        }),
+        {} as never,
+        () => undefined
+      )
+    );
+    assert.equal(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantInviteCreate accepts org_viewer role", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const result = asStructuredResult(
+      await createInviteHandler(
+        makeEvent("/org/tenants/ten_1/invites", { tenantId: "ten_1" }, {
+          email: "viewer@example.com",
+          role: "org_viewer"
+        }),
+        {} as never,
+        () => undefined
+      )
+    );
+    // DynamoDB is not available in unit test — expect 500 from missing table, not 400 validation error
+    assert.notEqual(result.statusCode, 400);
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
 test("orgTenantInviteAccept returns 403 when authenticated email is missing", async () => {
   const oldMode = process.env.AUTH_MODE;
   process.env.AUTH_MODE = "mock";

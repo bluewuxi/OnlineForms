@@ -8,12 +8,13 @@ import { ApiError } from "./errors";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const authTableName = process.env.ONLINEFORMS_AUTH_TABLE ?? AUTH_TABLE_NAME_DEFAULT;
-export type SessionContextRole = "org_admin" | "org_editor" | "platform_admin" | "internal_admin";
+export type SessionContextRole = "org_viewer" | "org_editor" | "org_admin" | "platform_support" | "internal_admin";
 export type SessionContextStatus = "active" | "invited" | "suspended";
 const supportedRoles = new Set<SessionContextRole>([
-  "org_admin",
+  "org_viewer",
   "org_editor",
-  "platform_admin",
+  "org_admin",
+  "platform_support",
   "internal_admin"
 ]);
 const supportedStatuses = new Set<SessionContextStatus>(["active", "invited", "suspended"]);

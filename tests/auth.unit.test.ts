@@ -628,7 +628,7 @@ test("hasTokenRoleCapability checks all claim sources including cognito groups",
   } as Record<string, unknown>;
 
   assert.equal(hasTokenRoleCapability(claims, "internal_admin"), true);
-  assert.equal(hasTokenRoleCapability(claims, "platform_admin"), false);
+  assert.equal(hasTokenRoleCapability(claims, "platform_support"), false);
 });
 
 test("requireAnyRole rejects non-allowed role", () => {
@@ -651,7 +651,7 @@ test("requireAnyRole rejects non-allowed role", () => {
   );
 });
 
-test("assertTenantAccess denies cross-tenant for org role and allows platform_admin", () => {
+test("assertTenantAccess denies cross-tenant for org role and allows platform_support", () => {
   const orgAuth: AuthContext = {
     userId: "usr_1",
     tenantId: "ten_1",
@@ -663,7 +663,7 @@ test("assertTenantAccess denies cross-tenant for org role and allows platform_ad
   const platformAuth: AuthContext = {
     userId: "usr_2",
     tenantId: "ten_2",
-    role: "platform_admin",
+    role: "platform_support",
     email: null,
     emailVerified: false,
     claims: {}

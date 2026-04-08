@@ -18,7 +18,7 @@ type ContextPayload = {
   role?: unknown;
 };
 
-const allowedRoles = new Set<AuthRole>(["org_admin", "org_editor", "internal_admin", "platform_admin"]);
+const allowedRoles = new Set<AuthRole>(["org_viewer", "org_editor", "org_admin", "internal_admin", "platform_support"]);
 
 function parsePayload(body: string | undefined): { tenantId?: string; role: AuthRole } {
   if (!body) {
@@ -80,7 +80,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tenantId,
       role
     });
-    if (role === "internal_admin" || role === "platform_admin") {
+    if (role === "internal_admin" || role === "platform_support") {
       await writeInternalUserActivity({
         userId: auth.userId,
         actorUserId: auth.userId,

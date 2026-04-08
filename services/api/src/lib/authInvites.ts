@@ -22,13 +22,13 @@ import { ApiError } from "./errors";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const authTableName = process.env.ONLINEFORMS_AUTH_TABLE ?? AUTH_TABLE_NAME_DEFAULT;
-const allowedInviteRoles = new Set<AuthRole>(["org_admin", "org_editor"]);
+const allowedInviteRoles = new Set<AuthRole>(["org_admin", "org_editor", "org_viewer"]);
 
 export type TenantInvite = {
   inviteId: string;
   tenantId: string;
   email: string;
-  role: "org_admin" | "org_editor";
+  role: "org_admin" | "org_editor" | "org_viewer";
   status: "pending" | "accepted";
   expiresAt: string;
   createdAt: string;
@@ -41,7 +41,7 @@ export type TenantInvite = {
 
 export type CreateTenantInviteInput = {
   email: string;
-  role: "org_admin" | "org_editor";
+  role: "org_admin" | "org_editor" | "org_viewer";
   expiresInDays?: number;
 };
 
@@ -53,11 +53,11 @@ function normalizeEmail(email: string): string {
   return normalized;
 }
 
-function toRole(role: string): "org_admin" | "org_editor" {
+function toRole(role: string): "org_admin" | "org_editor" | "org_viewer" {
   if (!allowedInviteRoles.has(role as AuthRole)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "role must be org_admin or org_editor.");
+    throw new ApiError(400, "VALIDATION_ERROR", "role must be org_admin, org_editor, or org_viewer.");
   }
-  return role as "org_admin" | "org_editor";
+  return role as "org_admin" | "org_editor" | "org_viewer";
 }
 
 function expiresAtFromDays(expiresInDays?: number): string {
@@ -74,7 +74,7 @@ function inviteFromItem(item: Record<string, unknown>): TenantInvite {
     inviteId: item.inviteId as string,
     tenantId: item.tenantId as string,
     email: item.email as string,
-    role: item.role as "org_admin" | "org_editor",
+    role: item.role as "org_admin" | "org_editor" | "org_viewer",
     status: item.status as "pending" | "accepted",
     expiresAt: item.expiresAt as string,
     createdAt: item.createdAt as string,
@@ -131,7 +131,7 @@ export async function acceptTenantInvite(
   inviteId: string,
   acceptedByUserId: string,
   acceptedByEmail: string
-): Promise<{ tenantId: string; userId: string; role: "org_admin" | "org_editor"; activatedAt: string }> {
+): Promise<{ tenantId: string; userId: string; role: "org_admin" | "org_editor" | "org_viewer"; activatedAt: string }> {
   const inviteKey = {
     PK: authTenantPk(tenantId),
     SK: authTenantInviteSk(inviteId)
@@ -249,7 +249,7 @@ export async function acceptTenantInvite(
   return {
     tenantId,
     userId: acceptedByUserId,
-    role: role as "org_admin" | "org_editor",
+    role: role as "org_admin" | "org_editor" | "org_viewer",
     activatedAt: now
   };
 }

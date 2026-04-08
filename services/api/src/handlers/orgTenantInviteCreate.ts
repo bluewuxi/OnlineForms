@@ -9,7 +9,7 @@ import { parseJsonBody } from "../lib/request";
 
 type CreateInviteBody = {
   email: string;
-  role: "org_admin" | "org_editor";
+  role: "org_admin" | "org_editor" | "org_viewer";
   expiresInDays?: number;
 };
 

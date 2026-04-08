@@ -1,6 +1,6 @@
 import { ApiError } from "./errors";
 import type { AuthContext, AuthRole } from "./auth";
-import { emitRoleDeniedMetric, emitTenantMismatchMetric, logAuthAudit } from "./authObservability";
+import { emitPlatformSupportBypassMetric, emitRoleDeniedMetric, emitTenantMismatchMetric, logAuthAudit } from "./authObservability";
 
 export type OrgPolicyAction =
   | "ORG_ME_READ"
@@ -28,24 +28,28 @@ type Policy = {
 };
 
 const orgPolicies: Record<OrgPolicyAction, Policy> = {
-  ORG_ME_READ: { roles: ["org_admin", "org_editor", "platform_admin", "internal_admin"], allowPlatformBypass: true },
-  ORG_TENANT_CHECK: { roles: ["org_admin", "org_editor", "platform_admin"], allowPlatformBypass: true },
-  ORG_TENANT_SETTINGS_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_COURSE_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_COURSE_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_FORM_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_FORM_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_SUBMISSION_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_SUBMISSION_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_ASSET_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_ASSET_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_AUDIT_READ: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
-  ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin", "org_editor"], allowPlatformBypass: false },
+  // All three org roles + platform_support (read bypass) can read everything
+  ORG_ME_READ:              { roles: ["org_viewer", "org_editor", "org_admin", "platform_support", "internal_admin"], allowPlatformBypass: true },
+  ORG_TENANT_CHECK:         { roles: ["org_viewer", "org_editor", "org_admin", "platform_support"], allowPlatformBypass: true },
+  ORG_TENANT_SETTINGS_READ: { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_COURSE_READ:          { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_FORM_READ:            { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_SUBMISSION_READ:      { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_ASSET_READ:           { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_AUDIT_READ:           { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  // Editors can write content; platform_support cannot write
+  ORG_COURSE_WRITE:         { roles: ["org_editor", "org_admin"], allowPlatformBypass: false },
+  ORG_FORM_WRITE:           { roles: ["org_editor", "org_admin"], allowPlatformBypass: false },
+  ORG_ASSET_WRITE:          { roles: ["org_editor", "org_admin"], allowPlatformBypass: false },
+  // Admin-only operations (BR-03)
+  ORG_SUBMISSION_WRITE:     { roles: ["org_admin"], allowPlatformBypass: false },
+  ORG_TENANT_SETTINGS_WRITE:{ roles: ["org_admin"], allowPlatformBypass: false },
   ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false },
-  INTERNAL_TENANT_READ: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
-  INTERNAL_TENANT_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
-  INTERNAL_USER_READ: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true },
-  INTERNAL_USER_WRITE: { roles: ["internal_admin", "platform_admin"], allowPlatformBypass: true }
+  // Internal operations — write restricted to internal_admin only (BR-04)
+  INTERNAL_TENANT_READ:     { roles: ["internal_admin", "platform_support"], allowPlatformBypass: true },
+  INTERNAL_TENANT_WRITE:    { roles: ["internal_admin"], allowPlatformBypass: false },
+  INTERNAL_USER_READ:       { roles: ["internal_admin", "platform_support"], allowPlatformBypass: true },
+  INTERNAL_USER_WRITE:      { roles: ["internal_admin"], allowPlatformBypass: false },
 };
 
 export function authorizeOrgAction(
@@ -60,26 +64,38 @@ export function authorizeOrgAction(
     throw new ApiError(403, "FORBIDDEN", "Role not allowed for this operation.");
   }
 
-  if (auth.role === "platform_admin" && !policy.allowPlatformBypass) {
-    emitRoleDeniedMetric();
-    logAuthAudit("auth_role_denied", {
+  // platform_support bypass: allowed only on read actions marked allowPlatformBypass.
+  if (auth.role === "platform_support") {
+    if (!policy.allowPlatformBypass) {
+      emitRoleDeniedMetric();
+      logAuthAudit("auth_role_denied", {
+        action,
+        role: auth.role,
+        tenantId: auth.tenantId,
+        reason: "platform_bypass_not_allowed"
+      });
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "platform_support is not allowed to bypass tenant scope for this endpoint."
+      );
+    }
+    // BR-05: emit metric + audit event every time the bypass is exercised so
+    // support activity is visible in the audit trail and can be alarmed on.
+    emitPlatformSupportBypassMetric();
+    logAuthAudit("auth_platform_support_bypass", {
       action,
-      role: auth.role,
-      tenantId: auth.tenantId,
-      reason: "platform_bypass_not_allowed"
+      userId: auth.userId,
+      tenantId: resourceTenantId
     });
-    throw new ApiError(
-      403,
-      "FORBIDDEN",
-      "platform_admin is not allowed to bypass tenant scope for this endpoint."
-    );
+    return;
   }
 
   if (action.startsWith("INTERNAL_")) {
     return;
   }
 
-  if (auth.role !== "platform_admin" && auth.tenantId !== resourceTenantId) {
+  if (auth.tenantId !== resourceTenantId) {
     emitTenantMismatchMetric();
     logAuthAudit("auth_tenant_mismatch", {
       action,

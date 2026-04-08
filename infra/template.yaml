@@ -399,11 +399,18 @@ Resources:
       GroupName: org_editor
       UserPoolId: !Ref OnlineFormsUserPool
 
-  OnlineFormsPlatformAdminGroup:
+  OnlineFormsOrgViewerGroup:
     Type: AWS::Cognito::UserPoolGroup
     Condition: UseManagedCognito
     Properties:
-      GroupName: platform_admin
+      GroupName: org_viewer
+      UserPoolId: !Ref OnlineFormsUserPool
+
+  OnlineFormsPlatformSupportGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: UseManagedCognito
+    Properties:
+      GroupName: platform_support
       UserPoolId: !Ref OnlineFormsUserPool
 
   OnlineFormsInternalAdminGroup:

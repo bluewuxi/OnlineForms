@@ -16,7 +16,7 @@ import {
 import { listUserTenantContexts, type UserTenantContext } from "./authContexts";
 import { ApiError } from "./errors";
 
-export type InternalRole = "internal_admin" | "platform_admin";
+export type InternalRole = "internal_admin" | "platform_support";
 
 export type InternalAccessUser = {
   userId: string;
@@ -73,8 +73,8 @@ const cognito = new CognitoIdentityProviderClient({});
 const userPoolId = process.env.COGNITO_USER_POOL_ID?.trim();
 const internalGroupName = process.env.COGNITO_INTERNAL_GROUP_NAME?.trim() || "internal_admin";
 const roleToGroupName: Record<InternalRole, string> = {
-  internal_admin: internalGroupName,
-  platform_admin: "platform_admin",
+  internal_admin:   internalGroupName,
+  platform_support: "platform_support",
 };
 const supportedInternalRoles = Object.keys(roleToGroupName) as InternalRole[];
 

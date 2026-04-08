@@ -235,7 +235,7 @@ test("internalUsersRoleAdd mutates explicit role", async () => {
   __internalAccessUsersTestHooks.setUserOpsOverride({
     addRole: async (): Promise<InternalAccessUser> => ({
       ...baseUser,
-      internalRoles: ["internal_admin", "platform_admin"],
+      internalRoles: ["internal_admin", "platform_support"],
     }),
   });
   const result = asStructuredResult(
@@ -243,7 +243,7 @@ test("internalUsersRoleAdd mutates explicit role", async () => {
       makeEvent("POST", "/internal/users/{userId}/roles/add", {
         headers: internalHeaders,
         pathParameters: { userId: baseUser.userId },
-        body: JSON.stringify({ role: "platform_admin" }),
+        body: JSON.stringify({ role: "platform_support" }),
       }),
       {} as never,
       () => undefined,

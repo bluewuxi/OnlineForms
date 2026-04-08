@@ -13,7 +13,7 @@ type RoleMutationBody = {
 };
 
 function parseRole(input: unknown): InternalRole {
-  if (input === "internal_admin" || input === "platform_admin") {
+  if (input === "internal_admin" || input === "platform_support") {
     return input;
   }
   throw new ApiError(400, "VALIDATION_ERROR", "role is invalid.", [{ field: "role", issue: "invalid_role" }]);

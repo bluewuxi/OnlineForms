@@ -6,6 +6,49 @@ redesign that supersedes the original flat two-role model.
 
 ---
 
+## Quick Reference — Role Access Cheat Sheet
+
+### Role inventory
+
+| Role               | Type          | Tenant required | Portal   | Provisioned via        |
+|--------------------|---------------|:---------------:|----------|------------------------|
+| `org_viewer`       | Org-level     | Yes             | Org      | Org invite             |
+| `org_editor`       | Org-level     | Yes             | Org      | Org invite             |
+| `org_admin`        | Org-level     | Yes             | Org      | Org invite             |
+| `platform_support` | Platform-level| Yes             | Org      | Internal user mgmt API |
+| `internal_admin`   | Platform-level| No              | Internal | Internal user mgmt API |
+
+### Org permission matrix
+
+| Action                                    | `org_viewer` | `org_editor` | `org_admin` | `platform_support` |
+|-------------------------------------------|:---:|:---:|:---:|:---:|
+| Read profile / tenant check               | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
+| Read courses, forms, submissions, assets  | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
+| Read tenant settings / branding           | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
+| Read audit log                            | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
+| Write courses / form schemas / assets     | ✗   | ✓   | ✓   | ✗ |
+| Update submission status                  | ✗   | ✗   | ✓   | ✗ |
+| Write tenant settings / branding          | ✗   | ✗   | ✓   | ✗ |
+| Create member invites                     | ✗   | ✗   | ✓   | ✗ |
+
+### Platform / internal permission matrix
+
+| Action                    | `platform_support` | `internal_admin` |
+|---------------------------|:------------------:|:----------------:|
+| Internal tenant read      | ✓ (with audit)     | ✓                |
+| Internal tenant write     | ✗                  | ✓                |
+| Internal user read        | ✓ (with audit)     | ✓                |
+| Internal user write       | ✗                  | ✓                |
+
+### Valid invite roles
+
+Only these roles can be specified in an org invite (`POST /v1/org/invites`):
+`org_viewer` · `org_editor` · `org_admin`
+
+`platform_support` and `internal_admin` are provisioned exclusively via the internal user management API.
+
+---
+
 ## 1. Security Hardening Phase Summary (BS-01 – BS-10)
 
 The security hardening phase (see `docs/specs/PHASE_SECURITY_BACKEND.md`) addressed

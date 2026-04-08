@@ -430,6 +430,9 @@ On create idempotency record:
 
 ## 9. Security and Tenant Isolation Rules
 
+> For actual tenant IDs, user IDs, table ARNs, and Cognito details in the live environment,
+> see [environment-data.md](./environment-data.md).
+
 - All org/API lambda handlers must derive `tenantId` from JWT claim, never from client body/query.
 - Every `GetItem`, `Query`, `UpdateItem`, and `DeleteItem` for org flows must include `PK` anchored to `TENANT#{tenantId}` or a tenant-prefixed GSI key.
 - Any mismatch between resource tenant and caller tenant returns `403`.

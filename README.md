@@ -24,7 +24,9 @@ It was built as an AI-first engineering project to demonstrate how production-st
 - `docs/guides/PHASE6_COGNITO_REFRESH_RUNBOOK.md`
 - `docs/guides/PHASE6_AUTH_ROLELIST_MIGRATION.md`
 - `docs/reference/api-contracts.md`
-- `docs/reference/dynamodb-schema.md`
+- `docs/reference/dynamodb-schema.md` — table design, key conventions, entity shapes, access patterns
+- `docs/reference/environment-data.md` — **live environment data**: table ARNs, tenant IDs, user IDs, Cognito pool, courses
+- `docs/reference/role-design.md` — **role system**: rationale, redesign (BR-01–BR-06), permission matrices, access cheat sheet
 - `docs/reference/auth-claims-strategy.md`
 - `docs/reference/ui-design-spec.md`
 

@@ -14,6 +14,7 @@
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
     "seed:sample": "node scripts/seed-sample-data.js",
     "migrate:tenant-profiles": "node scripts/migrate-tenant-profiles.js",
+    "migrate:role-rename": "node scripts/migrate-role-rename.js",
     "reconcile:projections": "node scripts/reconcile-public-projections.js"
   },
   "dependencies": {

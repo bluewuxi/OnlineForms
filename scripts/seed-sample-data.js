@@ -4,6 +4,7 @@ const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { normalizeTenantCodeOrThrow } = require("./tenant-code-guards");
 
 const tableName = process.env.ONLINEFORMS_TABLE || "OnlineFormsMain";
+const authTableName = process.env.ONLINEFORMS_AUTH_TABLE || "OnlineFormsAuth";
 const tenantId = process.env.SEED_TENANT_ID || "001";
 const tenantCode = normalizeTenantCodeOrThrow(process.env.SEED_TENANT_CODE || "std-school", "SEED_TENANT_CODE");
 const displayName = process.env.SEED_DISPLAY_NAME || "Demo School";
@@ -28,20 +29,34 @@ const now = new Date().toISOString();
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
+// Seed user IDs — stable across re-runs so records are idempotently overwritten
+const SEED_USERS = [
+  { userId: "usr_admin_001",   role: "org_admin",        name: "Seed Admin",   email: "admin@seed.local" },
+  { userId: "usr_editor_001",  role: "org_editor",       name: "Seed Editor",  email: "editor@seed.local" },
+  { userId: "usr_viewer_001",  role: "org_viewer",       name: "Seed Viewer",  email: "viewer@seed.local" },
+  { userId: "usr_support_001", role: "platform_support", name: "Seed Support", email: "support@seed.local" },
+];
+
 function tenantPk(id) {
   return `TENANT#${id}`;
 }
 
-async function put(item) {
+async function put(item, table) {
   await ddb.send(
     new PutCommand({
-      TableName: tableName,
+      TableName: table || tableName,
       Item: item
     })
   );
 }
 
+function authUserPk(userId)          { return `USER#${userId}`; }
+function authTenantPk(id)            { return `TENANT#${id}`; }
+function membershipByTenantGsiPk(id) { return `TENANT#${id}#MEMBERS`; }
+function membershipByTenantGsiSk(role, userId) { return `ROLE#${role}#USER#${userId}`; }
+
 async function main() {
+  // ── OnlineFormsMain: business data ─────────────────────────────────────────
   await put({
     PK: tenantPk(tenantId),
     SK: "PROFILE",
@@ -167,8 +182,77 @@ async function main() {
     updatedBy: "seed-script"
   });
 
+  // ── OnlineFormsAuth: user profiles and tenant memberships ──────────────────
+  // Seed one user per role so every role can be exercised locally without
+  // going through Cognito. platform_support gets a profile only (no tenant
+  // membership — it bypasses the membership check via the auth layer).
+  for (const user of SEED_USERS) {
+    const isOrgRole = ["org_admin", "org_editor", "org_viewer"].includes(user.role);
+
+    // User profile item
+    await put(
+      {
+        PK: authUserPk(user.userId),
+        SK: "PROFILE",
+        entityType: "AUTH_USER_PROFILE",
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        createdAt: now,
+        updatedAt: now,
+      },
+      authTableName
+    );
+
+    if (isOrgRole) {
+      // User-edge membership: USER#{userId} / MEMBERSHIP#{tenantId}
+      await put(
+        {
+          PK: authUserPk(user.userId),
+          SK: `MEMBERSHIP#${tenantId}`,
+          entityType: "AUTH_MEMBERSHIP",
+          userId: user.userId,
+          tenantId,
+          role: user.role,
+          allowedRoles: [user.role],
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+          activatedAt: now,
+          activatedBy: "seed-script",
+        },
+        authTableName
+      );
+
+      // Tenant-edge member: TENANT#{tenantId} / MEMBER#{userId}
+      // GSI1 keys embed the role so the member list can be queried by role.
+      await put(
+        {
+          PK: authTenantPk(tenantId),
+          SK: `MEMBER#${user.userId}`,
+          entityType: "AUTH_MEMBERSHIP",
+          userId: user.userId,
+          tenantId,
+          role: user.role,
+          allowedRoles: [user.role],
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+          activatedAt: now,
+          activatedBy: "seed-script",
+          GSI1PK: membershipByTenantGsiPk(tenantId),
+          GSI1SK: membershipByTenantGsiSk(user.role, user.userId),
+        },
+        authTableName
+      );
+    }
+
+    console.log(`seeded auth user ${user.userId} (${user.role})`);
+  }
+
   console.log("Seed complete.");
   console.log(`table=${tableName}`);
+  console.log(`authTable=${authTableName}`);
   console.log(`tenantId=${tenantId}`);
   console.log(`tenantCode=${tenantCode}`);
   console.log(`displayName=${displayName}`);

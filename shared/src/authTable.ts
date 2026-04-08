@@ -6,7 +6,7 @@ export const AUTH_ENTITY_TYPES = {
   invite: "AUTH_INVITE"
 } as const;
 
-export type AuthRole = "org_admin" | "org_editor" | "platform_admin";
+export type AuthRole = "org_viewer" | "org_editor" | "org_admin" | "platform_support";
 export type MembershipStatus = "active" | "invited" | "suspended";
 
 export function authUserPk(userId: string): string {

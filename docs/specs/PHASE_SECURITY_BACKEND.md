@@ -106,6 +106,19 @@ Implement tasks strictly in order. For each task:
   - Requests from allowed origins receive the correct CORS headers
   - Local dev still works with `http://localhost:5173`
   - SAM template parameter controls the allowed origins list
+  Implementation note (post-ship correction):
+  - Original implementation used a separate `OnlineFormsOrgHttpApi` resource with
+    `OrgCorsAllowedOrigins` (localhost excluded) to enforce stricter CORS on authenticated
+    routes. This was architecturally correct but broken in practice: API Gateway HTTP API
+    custom domains only support one `ApiMappingKey` per prefix, so `OnlineFormsOrgHttpApi`
+    was never reachable via `form-api.kidrawer.com` — all org/internal requests hit the
+    public API, returned 404s with no CORS headers, and were blocked by the browser.
+  - Fixed by consolidating all Lambda events onto the single `OnlineFormsHttpApi`. The
+    `CorsAllowedOrigins` parameter (which includes `https://form.kidrawer.com`) now covers
+    all routes. `OrgCorsAllowedOrigins` is retained as a parameter for documentation but
+    is no longer wired to an API resource. The localhost exclusion for org routes is not
+    enforced at the API Gateway level; authentication (Cognito JWT) remains the primary
+    guard on all org/internal endpoints.
 
 - [x] BS-06 S3 upload policy hardening
   Issue: https://github.com/bluewuxi/OnlineForms/issues/86

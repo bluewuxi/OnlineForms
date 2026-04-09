@@ -17,6 +17,8 @@ export type OrgPolicyAction =
   | "ORG_AUDIT_READ"
   | "ORG_TENANT_SETTINGS_WRITE"
   | "ORG_TENANT_INVITE_CREATE"
+  | "ORG_MEMBER_READ"
+  | "ORG_MEMBER_WRITE"
   | "INTERNAL_TENANT_READ"
   | "INTERNAL_TENANT_WRITE"
   | "INTERNAL_USER_READ"
@@ -45,6 +47,8 @@ const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_SUBMISSION_WRITE:     { roles: ["org_admin"], allowPlatformBypass: false },
   ORG_TENANT_SETTINGS_WRITE:{ roles: ["org_admin"], allowPlatformBypass: false },
   ORG_TENANT_INVITE_CREATE: { roles: ["org_admin"], allowPlatformBypass: false },
+  ORG_MEMBER_READ:          { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
+  ORG_MEMBER_WRITE:         { roles: ["org_admin"], allowPlatformBypass: false },
   // Internal operations — write restricted to internal_admin only (BR-04)
   INTERNAL_TENANT_READ:     { roles: ["internal_admin", "platform_support"], allowPlatformBypass: true },
   INTERNAL_TENANT_WRITE:    { roles: ["internal_admin"], allowPlatformBypass: false },

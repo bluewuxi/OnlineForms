@@ -29,6 +29,12 @@ Important baseline notes from the audit:
   - `GET /v1/org/audit`
   - `GET /v1/org/branding`
   - `PATCH /v1/org/branding`
+- Tenant member management routes are active (see section 6.6):
+  - `GET /v1/org/tenants/{tenantId}/members`
+  - `PATCH /v1/org/tenants/{tenantId}/members/{userId}`
+  - `DELETE /v1/org/tenants/{tenantId}/members/{userId}`
+- Invite list route is active (see section 6.5):
+  - `GET /v1/org/tenants/{tenantId}/invites`
 
 ---
 
@@ -614,7 +620,7 @@ Validation:
 
 ---
 
-## 6.5 Tenant Invites (Auth Baseline)
+## 6.5 Tenant Invites
 
 ### `POST /v1/org/tenants/{tenantId}/invites`
 
@@ -632,9 +638,57 @@ Request body:
 
 Rules:
 
-- `role` allowed values: `org_admin`, `org_editor`
+- `role` allowed values: `org_admin`, `org_editor`, `org_viewer`
 - `expiresInDays` optional, range `1..30` (default `7`)
 - caller must be `org_admin` in tenant scope
+
+Response `201`:
+
+```json
+{
+  "data": {
+    "inviteId": "inv_abc123",
+    "tenantId": "ten_01J...",
+    "email": "new-user@example.com",
+    "role": "org_editor",
+    "status": "pending",
+    "expiresAt": "2026-04-16T00:00:00.000Z",
+    "createdAt": "2026-04-09T00:00:00.000Z",
+    "updatedAt": "2026-04-09T00:00:00.000Z",
+    "createdBy": "usr_01J...",
+    "updatedBy": "usr_01J...",
+    "acceptedAt": null,
+    "acceptedBy": null
+  }
+}
+```
+
+### `GET /v1/org/tenants/{tenantId}/invites`
+
+List all invites for the tenant. Accessible by all org roles and `platform_support`.
+
+Query parameters:
+
+- `status` (optional): filter by `pending` or `accepted`
+
+Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "inviteId": "inv_abc123",
+      "email": "new-user@example.com",
+      "role": "org_editor",
+      "status": "pending",
+      "expiresAt": "2026-04-16T00:00:00.000Z",
+      "createdAt": "2026-04-09T00:00:00.000Z",
+      "createdBy": "usr_01J...",
+      "acceptedAt": null
+    }
+  ]
+}
+```
 
 ### `POST /v1/org/tenants/{tenantId}/invites/{inviteId}/accept`
 
@@ -643,8 +697,140 @@ Accept invite and activate membership for authenticated Cognito identity (`sub`)
 Server behavior:
 
 - resolves user identity from JWT `sub`
-- validates invite exists, is pending, and not expired
-- writes membership activation records into `OnlineFormsAuth`
+- validates invite exists, is `pending`, and not expired
+- validates the authenticated user's verified email matches the invite email exactly
+- atomically writes two membership records into `OnlineFormsAuth` and marks the invite `accepted`
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "tenantId": "ten_01J...",
+    "userId": "usr_01J...",
+    "role": "org_editor",
+    "activatedAt": "2026-04-09T00:00:00.000Z"
+  }
+}
+```
+
+Errors:
+
+| Code | Condition |
+|------|-----------|
+| `404 NOT_FOUND` | Invite does not exist |
+| `409 CONFLICT` | Invite already accepted or expired |
+| `403 FORBIDDEN` | Authenticated email does not match invite email, or email is unverified |
+
+---
+
+## 6.6 Tenant Member Management
+
+Endpoints for viewing and managing active members of a tenant. Only `org_admin` may mutate membership; all org roles and `platform_support` may read.
+
+### `GET /v1/org/tenants/{tenantId}/members`
+
+List all current members of the tenant.
+
+Required permission: `ORG_MEMBER_READ` (`org_viewer`, `org_editor`, `org_admin`, `platform_support`)
+
+Response `200`:
+
+```json
+{
+  "data": [
+    {
+      "userId": "usr_01J...",
+      "role": "org_admin",
+      "status": "active",
+      "activatedAt": "2026-04-01T00:00:00.000Z",
+      "createdAt": "2026-04-01T00:00:00.000Z",
+      "updatedAt": "2026-04-01T00:00:00.000Z"
+    },
+    {
+      "userId": "usr_02J...",
+      "role": "org_editor",
+      "status": "active",
+      "activatedAt": "2026-04-05T00:00:00.000Z",
+      "createdAt": "2026-04-05T00:00:00.000Z",
+      "updatedAt": "2026-04-05T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `PATCH /v1/org/tenants/{tenantId}/members/{userId}`
+
+Change an existing member's role.
+
+Required permission: `ORG_MEMBER_WRITE` (`org_admin` only)
+
+Request body:
+
+```json
+{
+  "role": "org_viewer"
+}
+```
+
+Rules:
+
+- `role` allowed values: `org_admin`, `org_editor`, `org_viewer`
+- Cannot demote the last active `org_admin` in the tenant
+- Atomically updates both the user-centric and tenant-centric membership records
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "userId": "usr_02J...",
+    "role": "org_viewer",
+    "status": "active",
+    "activatedAt": null,
+    "createdAt": "2026-04-09T00:00:00.000Z",
+    "updatedAt": "2026-04-09T00:00:00.000Z"
+  }
+}
+```
+
+Errors:
+
+| Code | Condition |
+|------|-----------|
+| `400 VALIDATION_ERROR` | Invalid role value |
+| `404 NOT_FOUND` | Member not found in this tenant |
+| `409 CONFLICT` | Demoting the last active org_admin |
+
+### `DELETE /v1/org/tenants/{tenantId}/members/{userId}`
+
+Remove a member from the tenant, revoking all access immediately.
+
+Required permission: `ORG_MEMBER_WRITE` (`org_admin` only)
+
+Rules:
+
+- Cannot remove the last active `org_admin` in the tenant
+- Cannot remove yourself (self-removal blocked)
+- Atomically deletes both the user-centric and tenant-centric membership records
+
+Response `200`:
+
+```json
+{
+  "data": {
+    "removed": true,
+    "userId": "usr_02J..."
+  }
+}
+```
+
+Errors:
+
+| Code | Condition |
+|------|-----------|
+| `404 NOT_FOUND` | Member not found in this tenant |
+| `409 CONFLICT` | Removing the last active org_admin, or self-removal attempt |
 
 ---
 

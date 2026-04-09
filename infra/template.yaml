@@ -583,6 +583,70 @@ Resources:
             Path: /org/tenants/{tenantId}/invites/{inviteId}/accept
             Method: POST
 
+  OrgTenantMembersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantMembersList.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantMembersListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/members
+            Method: GET
+
+  OrgTenantMembersUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantMembersUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantMembersUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/members/{userId}
+            Method: PATCH
+
+  OrgTenantMembersRemoveFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantMembersRemove.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantMembersRemoveRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/members/{userId}
+            Method: DELETE
+
+  OrgTenantInvitesListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantInvitesList.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantInvitesListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/invites
+            Method: GET
+
   OrgCoursesCreateFunction:
     Type: AWS::Serverless::Function
     Properties:

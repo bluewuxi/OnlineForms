@@ -26,10 +26,12 @@ redesign that supersedes the original flat two-role model.
 | Read courses, forms, submissions, assets  | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
 | Read tenant settings / branding           | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
 | Read audit log                            | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
+| Read tenant members / invites             | ✓   | ✓   | ✓   | ✓ (bypass + audit) |
 | Write courses / form schemas / assets     | ✗   | ✓   | ✓   | ✗ |
 | Update submission status                  | ✗   | ✗   | ✓   | ✗ |
 | Write tenant settings / branding          | ✗   | ✗   | ✓   | ✗ |
 | Create member invites                     | ✗   | ✗   | ✓   | ✗ |
+| Update / remove tenant members            | ✗   | ✗   | ✓   | ✗ |
 
 ### Platform / internal permission matrix
 
@@ -147,6 +149,8 @@ API integrations.
 | Write submissions (status update) | ✗ | ✗ | ✓ |
 | Write tenant branding / settings | ✗ | ✗ | ✓ |
 | Create member invites | ✗ | ✗ | ✓ |
+| Read members and invites | ✓ | ✓ | ✓ |
+| Update member role / remove member | ✗ | ✗ | ✓ |
 
 Key changes from the original design:
 - `ORG_SUBMISSION_WRITE` and `ORG_TENANT_SETTINGS_WRITE` moved from both org roles to
@@ -209,6 +213,10 @@ const orgPolicies: Record<OrgPolicyAction, Policy> = {
   ORG_SUBMISSION_WRITE:      { roles: ["org_admin"] },
   ORG_TENANT_SETTINGS_WRITE: { roles: ["org_admin"] },
   ORG_TENANT_INVITE_CREATE:  { roles: ["org_admin"] },
+  ORG_MEMBER_WRITE:          { roles: ["org_admin"] },
+
+  // All org roles can read members and invites
+  ORG_MEMBER_READ:           { roles: ["org_viewer", "org_editor", "org_admin"], allowPlatformBypass: true },
 
   // Internal operations — write restricted to internal_admin
   INTERNAL_TENANT_READ:      { roles: ["internal_admin", "platform_support"], allowPlatformBypass: true },

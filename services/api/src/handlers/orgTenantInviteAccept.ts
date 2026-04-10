@@ -22,10 +22,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       requireMembership: false
     });
 
-    // Access tokens do not carry an email claim. Fall back to AdminGetUser when absent.
+    // Access tokens do not carry an email claim. In Cognito mode, fall back to
+    // AdminGetUser (by sub) to resolve the caller's email. In mock mode the
+    // email comes from request headers; if it is absent we let the check below
+    // surface a 403 without touching Cognito at all.
     let callerEmail = auth.email;
     let callerEmailVerified = auth.emailVerified;
-    if (!callerEmail) {
+    if (!callerEmail && process.env.AUTH_MODE === "cognito") {
       const cognitoAttrs = await getCallerEmailFromCognito(auth.userId);
       callerEmail = cognitoAttrs.email;
       callerEmailVerified = cognitoAttrs.emailVerified;

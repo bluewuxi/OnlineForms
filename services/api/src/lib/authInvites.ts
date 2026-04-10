@@ -189,8 +189,11 @@ export async function createTenantInvite(
   );
 
   // Ensure the invited email has a Cognito account so they can sign in and accept.
-  // If the user already exists, this is a no-op.
-  await provisionOrgUserIfAbsent(normalizedEmail);
+  // If the user already exists this is a no-op. Skipped in mock/local mode where
+  // Cognito is not configured.
+  if (process.env.AUTH_MODE === "cognito") {
+    await provisionOrgUserIfAbsent(normalizedEmail);
+  }
 
   return inviteFromItem(item);
 }

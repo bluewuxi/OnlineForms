@@ -2,7 +2,7 @@ import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest } from "../lib/auth";
 import { createCorrelationContext } from "../lib/correlation";
 import { ApiError } from "../lib/errors";
-import { acceptTenantInvite } from "../lib/authInvites";
+import { acceptTenantInvite, getCallerEmailFromCognito } from "../lib/authInvites";
 import { errorResponse, jsonResponse } from "../lib/http";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -21,14 +21,24 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       tenantIdHint: tenantId,
       requireMembership: false
     });
-    if (!auth.email || !auth.emailVerified) {
+
+    // Access tokens do not carry an email claim. Fall back to AdminGetUser when absent.
+    let callerEmail = auth.email;
+    let callerEmailVerified = auth.emailVerified;
+    if (!callerEmail) {
+      const cognitoAttrs = await getCallerEmailFromCognito(auth.userId);
+      callerEmail = cognitoAttrs.email;
+      callerEmailVerified = cognitoAttrs.emailVerified;
+    }
+
+    if (!callerEmail || !callerEmailVerified) {
       throw new ApiError(
         403,
         "FORBIDDEN",
         "Invite acceptance requires a verified authenticated email address."
       );
     }
-    const data = await acceptTenantInvite(tenantId, inviteId, auth.userId, auth.email);
+    const data = await acceptTenantInvite(tenantId, inviteId, auth.userId, callerEmail);
     return jsonResponse(200, { data }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);

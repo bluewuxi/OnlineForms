@@ -7,6 +7,12 @@ import {
   TransactWriteCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
+  AdminCreateUserCommand,
+  AdminGetUserCommand,
+  CognitoIdentityProviderClient,
+  ListUsersCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+import {
   AUTH_ENTITY_TYPES,
   AUTH_TABLE_NAME_DEFAULT,
   type AuthRole,
@@ -21,8 +27,67 @@ import {
 import { ApiError } from "./errors";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const cognito = new CognitoIdentityProviderClient({});
 const authTableName = process.env.ONLINEFORMS_AUTH_TABLE ?? AUTH_TABLE_NAME_DEFAULT;
+const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID?.trim() ?? "";
 const allowedInviteRoles = new Set<AuthRole>(["org_admin", "org_editor", "org_viewer"]);
+
+function ensureCognitoUserPool(): string {
+  if (!cognitoUserPoolId) {
+    throw new ApiError(500, "INTERNAL_ERROR", "COGNITO_USER_POOL_ID is required for invite operations.");
+  }
+  return cognitoUserPoolId;
+}
+
+/**
+ * Resolves the caller's email from Cognito using their userId (sub).
+ * Needed when COGNITO_TOKEN_USE=access, since access tokens do not carry an email claim.
+ */
+export async function getCallerEmailFromCognito(
+  userId: string
+): Promise<{ email: string; emailVerified: boolean }> {
+  const poolId = ensureCognitoUserPool();
+  const out = await cognito.send(
+    new AdminGetUserCommand({ UserPoolId: poolId, Username: userId })
+  );
+  const attrs = out.UserAttributes ?? [];
+  const email = attrs.find((a) => a.Name === "email")?.Value?.trim() ?? null;
+  const emailVerified = attrs.find((a) => a.Name === "email_verified")?.Value === "true";
+  if (!email) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Invite acceptance requires a verified authenticated email address."
+    );
+  }
+  return { email, emailVerified };
+}
+
+/**
+ * Provisions a new Cognito user for the invited email if they do not already exist.
+ * Cognito sends the new user a welcome email with temporary credentials so they can
+ * sign in and then use the invite link to join the tenant.
+ */
+async function provisionOrgUserIfAbsent(email: string): Promise<void> {
+  const poolId = ensureCognitoUserPool();
+  const existing = await cognito.send(
+    new ListUsersCommand({ UserPoolId: poolId, Filter: `email = "${email}"`, Limit: 1 })
+  );
+  if ((existing.Users ?? []).length > 0) {
+    return;
+  }
+  await cognito.send(
+    new AdminCreateUserCommand({
+      UserPoolId: poolId,
+      Username: email,
+      UserAttributes: [
+        { Name: "email", Value: email },
+        { Name: "email_verified", Value: "true" },
+      ],
+      // Cognito sends the new user a welcome email with a temporary password.
+    })
+  );
+}
 
 export type TenantInvite = {
   inviteId: string;
@@ -122,6 +187,10 @@ export async function createTenantInvite(
       ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
     })
   );
+
+  // Ensure the invited email has a Cognito account so they can sign in and accept.
+  // If the user already exists, this is a no-op.
+  await provisionOrgUserIfAbsent(normalizedEmail);
 
   return inviteFromItem(item);
 }

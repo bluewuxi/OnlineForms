@@ -62,6 +62,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       {
         requireMembership: false,
         allowMissingTenantContext: true,
+        allowMissingRole: true,
         tenantIdHint: tenantId
       }
     );

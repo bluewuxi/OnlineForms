@@ -53,6 +53,21 @@ export async function getCallerEmailFromCognito(
   const attrs = out.UserAttributes ?? [];
   const email = attrs.find((a) => a.Name === "email")?.Value?.trim() ?? null;
   const emailVerified = attrs.find((a) => a.Name === "email_verified")?.Value === "true";
+  console.log(JSON.stringify({
+    type: "invite_accept",
+    event: "cognito_admin_get_user",
+    service: process.env.SERVICE_NAME ?? "onlineforms-api",
+    timestamp: new Date().toISOString(),
+    userId,
+    userPoolId: poolId,
+    cognitoUsername: out.Username ?? null,
+    userStatus: out.UserStatus ?? null,
+    enabled: out.Enabled ?? null,
+    emailFound: email !== null,
+    emailVerified,
+    // Log the email domain only (not the full address) to balance debuggability with privacy
+    emailDomain: email ? email.split("@")[1] ?? null : null
+  }));
   if (!email) {
     throw new ApiError(
       403,

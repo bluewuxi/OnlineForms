@@ -41,6 +41,10 @@ type AuthenticateOptions = {
   tenantIdHint?: string;
   requireMembership?: boolean;
   allowMissingTenantContext?: boolean;
+  /** When true, a JWT with no role claim is accepted and defaults to org_viewer.
+   *  Use only for endpoints (e.g. invite acceptance) that do not depend on the
+   *  caller's role and where membership is verified by other means. */
+  allowMissingRole?: boolean;
 };
 type MembershipRecord = {
   tenantId: string;
@@ -488,7 +492,9 @@ export async function authenticateRequest(
     payload.role,
     Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined
   ]);
-  const tokenRole = toRole(roleClaim);
+  const tokenRole = (!roleClaim && options.allowMissingRole)
+    ? "org_viewer" as AuthRole
+    : toRole(roleClaim);
   const requestedRoleRaw = pickHeader(headers, "x-role");
   const requestedRole = requestedRoleRaw ? toRole(requestedRoleRaw) : undefined;
   if (

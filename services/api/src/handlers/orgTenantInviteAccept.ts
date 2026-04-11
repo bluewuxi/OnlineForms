@@ -38,7 +38,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const auth = await authenticateRequest(event.headers, {
       tenantIdHint: tenantId,
-      requireMembership: false
+      requireMembership: false,
+      allowMissingRole: true,
     });
 
     log("auth_resolved", {

@@ -15,7 +15,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     const auth = await authenticateRequest(event.headers, {
       requireMembership: false,
-      allowMissingTenantContext: true
+      allowMissingTenantContext: true,
+      allowMissingRole: true
     });
     const statuses = parseContextStatusFilter(event.queryStringParameters?.status);
     const contexts = filterUserTenantContextsByStatus(

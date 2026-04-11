@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { handler } from "../services/api/src/handlers/orgSessionContextsGet";
 import { __authContextsTestHooks } from "../services/api/src/lib/authContexts";
+import { __authTestHooks } from "../services/api/src/lib/auth";
 
 function asStructuredResult(
   result: Awaited<ReturnType<typeof handler>>
@@ -96,6 +97,45 @@ test("orgSessionContextsGet returns 400 on invalid status filter", async () => {
   } finally {
     __authContextsTestHooks.reset();
     process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgSessionContextsGet returns empty contexts for user with no role in JWT", async () => {
+  const restore = (() => {
+    const old = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "cognito";
+    process.env.APP_ENV = "test";
+    process.env.COGNITO_USER_POOL_ID = "ap-southeast-2_test";
+    process.env.COGNITO_CLIENT_ID = "test-client-id";
+    process.env.COGNITO_TOKEN_USE = "access";
+    return () => {
+      process.env.AUTH_MODE = old;
+    };
+  })();
+
+  // Simulate a Cognito JWT with no role claims (new user, no org membership yet)
+  __authTestHooks.setVerifierOverride({
+    verify: async () => ({
+      sub: "89ae2438-a021-70fc-0d6c-a8a4b667563b"
+      // no custom:role, no custom:platformRole, no cognito:groups
+    })
+  });
+  __authContextsTestHooks.setContextLoaderOverride(async () => []);
+
+  try {
+    const event = makeEvent();
+    event.headers = { authorization: "Bearer fake-token" };
+    const result = asStructuredResult(await handler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: { contexts: unknown[]; availablePortals: string[] };
+    };
+    assert.deepEqual(body.data.contexts, []);
+    assert.deepEqual(body.data.availablePortals, []);
+  } finally {
+    __authTestHooks.reset();
+    __authContextsTestHooks.reset();
+    restore();
   }
 });
 

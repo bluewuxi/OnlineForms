@@ -665,6 +665,22 @@ Resources:
             Path: /org/tenants/{tenantId}/invites
             Method: GET
 
+  OrgTenantInviteRevokeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgTenantInviteRevoke.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgTenantInviteRevokeRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/tenants/{tenantId}/invites/{inviteId}
+            Method: DELETE
+
   OrgCoursesCreateFunction:
     Type: AWS::Serverless::Function
     Properties:

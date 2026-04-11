@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -259,6 +260,7 @@ export async function acceptTenantInvite(
     entityType: AUTH_ENTITY_TYPES.membership,
     tenantId,
     userId: acceptedByUserId,
+    email: acceptedByEmail,
     role,
     allowedRoles: [role],
     status: "active",
@@ -278,6 +280,7 @@ export async function acceptTenantInvite(
     entityType: AUTH_ENTITY_TYPES.membership,
     tenantId,
     userId: acceptedByUserId,
+    email: acceptedByEmail,
     role,
     allowedRoles: [role],
     status: "active",
@@ -339,4 +342,40 @@ export async function acceptTenantInvite(
     role: role as "org_admin" | "org_editor" | "org_viewer",
     activatedAt: now
   };
+}
+
+/**
+ * Revoke a pending invite. Only pending invites can be revoked.
+ */
+export async function revokeTenantInvite(
+  tenantId: string,
+  inviteId: string
+): Promise<void> {
+  const inviteKey = {
+    PK: authTenantPk(tenantId),
+    SK: authTenantInviteSk(inviteId)
+  };
+  const inviteOut = await ddb.send(
+    new GetCommand({
+      TableName: authTableName,
+      Key: inviteKey
+    })
+  );
+  const invite = inviteOut.Item as Record<string, unknown> | undefined;
+  if (!invite || invite.entityType !== AUTH_ENTITY_TYPES.invite) {
+    throw new ApiError(404, "NOT_FOUND", "Invite not found.");
+  }
+  if (invite.status !== "pending") {
+    throw new ApiError(409, "CONFLICT", "Only pending invites can be revoked.");
+  }
+
+  await ddb.send(
+    new DeleteCommand({
+      TableName: authTableName,
+      Key: inviteKey,
+      ConditionExpression: "#status = :pending",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: { ":pending": "pending" }
+    })
+  );
 }

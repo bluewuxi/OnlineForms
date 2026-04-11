@@ -25,6 +25,7 @@ const allowedMemberRoles = new Set<AuthRole>(["org_admin", "org_editor", "org_vi
 
 export type TenantMember = {
   userId: string;
+  email: string | null;
   role: "org_admin" | "org_editor" | "org_viewer";
   status: "active" | "invited" | "suspended";
   activatedAt: string | null;
@@ -46,6 +47,7 @@ export type TenantInviteSummary = {
 function memberFromItem(item: Record<string, unknown>): TenantMember {
   return {
     userId: item.userId as string,
+    email: (item.email as string | null) ?? null,
     role: item.role as "org_admin" | "org_editor" | "org_viewer",
     status: item.status as "active" | "invited" | "suspended",
     activatedAt: (item.activatedAt as string | null) ?? null,
@@ -207,6 +209,7 @@ export async function updateTenantMemberRole(
 
   return {
     userId,
+    email: null,
     role: newRole,
     status: "active",
     activatedAt: null,

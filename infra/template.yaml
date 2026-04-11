@@ -559,6 +559,15 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:ListUsers
+              Resource: !If
+                - UseManagedCognito
+                - !GetAtt OnlineFormsUserPool.Arn
+                - !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${ExternalCognitoUserPoolId}"
       Events:
         OrgTenantInviteCreateRoute:
           Type: HttpApi
@@ -575,6 +584,15 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsAuthTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+              Resource: !If
+                - UseManagedCognito
+                - !GetAtt OnlineFormsUserPool.Arn
+                - !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${ExternalCognitoUserPoolId}"
       Events:
         OrgTenantInviteAcceptRoute:
           Type: HttpApi

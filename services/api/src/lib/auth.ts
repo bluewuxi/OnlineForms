@@ -486,15 +486,9 @@ export async function authenticateRequest(
     payload.tenantId
   ]);
 
-  const roleClaim = pickFirstString([
-    payload["custom:platformRole"],
-    payload["custom:role"],
-    payload.role,
-    Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined
-  ]);
-  const tokenRole = (!roleClaim && options.allowMissingRole)
-    ? "org_viewer" as AuthRole
-    : toRole(roleClaim);
+  // Evaluate x-role header first — org users select their role at session time
+  // rather than embedding it in the JWT. Platform/internal roles must still be
+  // backed by a JWT claim and are validated below.
   const requestedRoleRaw = pickHeader(headers, "x-role");
   const requestedRole = requestedRoleRaw ? toRole(requestedRoleRaw) : undefined;
   if (
@@ -508,7 +502,16 @@ export async function authenticateRequest(
       "Requested role is not allowed by authenticated token claims."
     );
   }
-  const role = requestedRole ?? tokenRole;
+  // Fall back to JWT claim only when no x-role header is present.
+  const role: AuthRole = requestedRole ?? (() => {
+    const roleClaim = pickFirstString([
+      payload["custom:platformRole"],
+      payload["custom:role"],
+      payload.role,
+      Array.isArray(payload["cognito:groups"]) ? payload["cognito:groups"][0] : undefined
+    ]);
+    return (!roleClaim && options.allowMissingRole) ? "org_viewer" as AuthRole : toRole(roleClaim);
+  })();
   const tenantId = pickActiveTenantIdForCognito(
     headers,
     options.tenantIdHint,
@@ -525,7 +528,6 @@ export async function authenticateRequest(
     userId,
     tenantId,
     role,
-    tokenRole,
     membershipChecked: options.requireMembership !== false
   });
 

@@ -4,7 +4,7 @@ Static reference for AWS and DynamoDB environment state. Use this to look up ten
 user IDs, table ARNs, and Cognito details without querying AWS directly.
 
 > **Keep this up to date** when tenants are added/removed, users are provisioned,
-> or infrastructure changes. Last updated: 2026-04-09.
+> or infrastructure changes. Last updated: 2026-04-12.
 
 ---
 
@@ -58,13 +58,13 @@ user IDs, table ARNs, and Cognito details without querying AWS directly.
 
 ### Tenant 1 — Studio School of Technology & Design
 
-| Property      | Value                  |
-|---------------|------------------------|
-| `tenantId`    | `001`                  |
-| `tenantCode`  | `std-school`           |
+| Property      | Value                                |
+|---------------|--------------------------------------|
+| `tenantId`    | `ten_853111bd16a1`                   |
+| `tenantCode`  | `std-school`                         |
 | `displayName` | Studio School of Technology & Design |
-| `status`      | `active`               |
-| DDB PK        | `TENANT#001`           |
+| `status`      | `active`                             |
+| DDB PK        | `TENANT#ten_853111bd16a1`            |
 
 **Courses:**
 
@@ -110,10 +110,24 @@ user IDs, table ARNs, and Cognito details without querying AWS directly.
 
 **Tenant memberships:**
 
-| `tenantId`          | `role`      | `allowedRoles`                              | `status`  |
-|---------------------|-------------|---------------------------------------------|-----------|
-| `001`               | `org_admin` | `org_viewer`, `org_editor`, `org_admin`     | `active`  |
-| `ten_59c62f610a5b`  | `org_admin` | `org_viewer`, `org_editor`, `org_admin`     | `active`  |
+| `tenantId`            | `role`      | `allowedRoles`                              | `status`  |
+|-----------------------|-------------|---------------------------------------------|-----------|
+| `ten_853111bd16a1`    | `org_admin` | `org_viewer`, `org_editor`, `org_admin`     | `active`  |
+| `ten_59c62f610a5b`    | `org_admin` | `org_viewer`, `org_editor`, `org_admin`     | `active`  |
+
+### rickysbit-nz@yahoo.com
+
+| Property       | Value                                          |
+|----------------|------------------------------------------------|
+| `userId`       | `89ae2438-a021-70fc-0d6c-a8a4b667563b`         |
+| Cognito status | `CONFIRMED`                                    |
+| DDB PK         | `USER#89ae2438-a021-70fc-0d6c-a8a4b667563b`    |
+
+**Tenant memberships:**
+
+| `tenantId`            | `role`       | `allowedRoles`  | `status`  |
+|-----------------------|--------------|-----------------|-----------|
+| `ten_853111bd16a1`    | `org_viewer` | `org_viewer`    | `active`  |
 
 ---
 

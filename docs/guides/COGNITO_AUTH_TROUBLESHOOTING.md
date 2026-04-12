@@ -30,7 +30,7 @@ After Hosted UI authentication, frontend must resolve and validate tenant/role c
   - returns active memberships and allowed roles per tenant for the authenticated user
 - `POST /v1/org/session-context`
   - bearer auth required
-  - body: `{ "tenantId": "...", "role": "org_admin|org_editor|internal_admin|platform_admin" }`
+  - body: `{ "tenantId": "...", "role": "org_viewer|org_editor|org_admin|platform_support|internal_admin" }`
   - validates selected context against membership policy
 
 ## Common Symptoms
@@ -82,15 +82,17 @@ Checks:
 
 Likely causes:
 
-- role claim not in allowed set
+- org user missing `x-role` header (role not present in JWT for org users)
+- role value not in allowed set (`org_viewer`, `org_editor`, `org_admin`, `platform_support`, `internal_admin`)
 - endpoint policy does not allow caller role
-- platform admin attempted non-approved bypass endpoint
+- `platform_support` or `internal_admin` requested via `x-role` but not backed by JWT claim/group
 
 Checks:
 
-1. inspect claims precedence:
-   - `custom:platformRole` -> `custom:role` -> `role` -> first `cognito:groups`
-2. verify endpoint policy in `services/api/src/lib/authorization.ts`
+1. confirm `x-role` header is present in the request — org users have no role in their JWT; role is carried via `x-role`
+2. for `platform_support` / `internal_admin`, inspect JWT claims precedence:
+   - `custom:platformRole` → `custom:role` → `role` → first `cognito:groups` entry
+3. verify endpoint policy in `services/api/src/lib/authorization.ts`
 
 ## Observability Signals
 

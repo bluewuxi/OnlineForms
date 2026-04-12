@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2.0] - 2026-04-12
+
+### Fixed
+- Fixed `authenticateRequest` in `auth.ts` to evaluate the `x-role` request header before attempting JWT role claim extraction. Org users have no role embedded in their JWT (role is selected at session time); the previous order caused a `FORBIDDEN` error for all org role requests when no JWT role claim was present.
+- Migrated seed tenant ID `001` (Studio School of Technology & Design) to the standard `ten_853111bd16a1` format across `OnlineFormsMain` and `OnlineFormsAuth` DynamoDB tables (18 main items, 4 auth tenant items, 2 user membership items, and the `TENANTCODE#std-school` map entry).
+
+### Changed
+- Updated `docs/reference/environment-data.md` with corrected tenant ID and added `rickysbit-nz@yahoo.com` user entry.
+- Updated `docs/reference/auth-claims-strategy.md` to document that `x-role` header is evaluated before JWT claims in the authorization decision path.
+- Updated `docs/guides/COGNITO_AUTH_TROUBLESHOOTING.md` to reflect correct role resolution order and valid role names.
+
 ## [0.1.1.0] - 2026-03-26
 
 ### Added

@@ -23,8 +23,114 @@ tags:
   name: Public Enrollment
 - description: Internal platform tenant administration endpoints
   name: Platform Tenants
+- description: Organization form schema template library endpoints
+  name: Org Form Templates
 components:
   schemas:
+    FormTemplate:
+      type: object
+      properties:
+        templateId:
+          type: string
+        tenantId:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormField'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+      required:
+      - templateId
+      - tenantId
+      - name
+      - fields
+      - createdAt
+      - updatedAt
+      - createdBy
+      - updatedBy
+    FormTemplateResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/FormTemplate'
+      required:
+      - data
+    FormTemplateListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormTemplate'
+      required:
+      - data
+    CreateFormTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FormField'
+      required:
+      - name
+      - fields
+    UpdateFormTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FormField'
+    DeleteFormTemplateResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            deleted:
+              type: boolean
+            templateId:
+              type: string
+          required:
+          - deleted
+          - templateId
+      required:
+      - data
     FormSchemaResponse:
       properties:
         data:
@@ -1682,6 +1788,12 @@ components:
       in: query
       schema:
         type: string
+    TemplateId:
+      name: templateId
+      in: path
+      schema:
+        type: string
+      required: true
     FormVersion:
       name: version
       in: path
@@ -1794,6 +1906,101 @@ servers:
 - url: https://api.onlineforms.com
   description: Production example
 paths:
+  /v1/org/form-templates:
+    get:
+      summary: List form templates
+      tags:
+      - Org Form Templates
+      security:
+      - bearerAuth: []
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormTemplateListResponse'
+          description: List of form templates
+    post:
+      summary: Create form template
+      tags:
+      - Org Form Templates
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFormTemplateRequest'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormTemplateResponse'
+          description: Form template created
+  /v1/org/form-templates/{templateId}:
+    get:
+      summary: Get form template
+      tags:
+      - Org Form Templates
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TemplateId'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormTemplateResponse'
+          description: Form template
+    patch:
+      summary: Update form template
+      tags:
+      - Org Form Templates
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TemplateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFormTemplateRequest'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormTemplateResponse'
+          description: Form template updated
+    delete:
+      summary: Delete form template
+      tags:
+      - Org Form Templates
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TemplateId'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteFormTemplateResponse'
+          description: Form template deleted
   /v1/org/me:
     get:
       summary: Get authenticated org session

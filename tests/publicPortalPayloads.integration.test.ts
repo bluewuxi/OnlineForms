@@ -220,7 +220,8 @@ test("public course detail includes form availability and capacity", async () =>
           displayOrder: 1
         }
       ]
-    }
+    },
+    variants: []
   }));
 
   const event = {
@@ -356,6 +357,11 @@ test("public course detail resolves signed image URLs from legacy stored imageUr
           activeFormVersion: 1
         }
       };
+    }
+    // Handle listVariants query (returns no variants for this test)
+    const cmd = command as { input?: { KeyConditionExpression?: string; ExpressionAttributeValues?: Record<string, unknown> } };
+    if (cmd.input?.ExpressionAttributeValues?.[":sk"] === "COURSE#crs_legacy#VARIANT#") {
+      return { Items: [] };
     }
     throw new Error("Unexpected DDB command.");
   });

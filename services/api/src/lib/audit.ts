@@ -7,6 +7,9 @@ export type AuditAction =
   | "course.create"
   | "course.publish"
   | "course.archive"
+  | "course.variant.create"
+  | "course.variant.update"
+  | "course.variant.delete"
   | "form.upsert"
   | "submission.create"
   | "submission.status_update"
@@ -23,7 +26,7 @@ export type AuditEventInput = {
   tenantId: string;
   actorUserId: string;
   action: AuditAction;
-  resourceType: "course" | "form" | "form_template" | "submission" | "branding" | "tenant";
+  resourceType: "course" | "course_variant" | "form" | "form_template" | "submission" | "branding" | "tenant";
   resourceId: string;
   correlationId: string;
   requestId: string;

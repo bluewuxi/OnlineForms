@@ -49,7 +49,8 @@ test("createPublicEnrollment uses a single transaction for idempotency and submi
     formSchema: {
       version: 1,
       fields: []
-    }
+    },
+    variants: []
   }));
   __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
     formId: "frm_001",
@@ -123,7 +124,8 @@ test("createPublicEnrollment persists applicant identity derived from schema ans
     formSchema: {
       version: 1,
       fields: []
-    }
+    },
+    variants: []
   }));
   __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
     formId: "frm_001",
@@ -217,7 +219,8 @@ test("createPublicEnrollment replays prior success when transaction collides on 
     formSchema: {
       version: 1,
       fields: []
-    }
+    },
+    variants: []
   }));
   __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
     formId: "frm_001",
@@ -315,7 +318,8 @@ test("createPublicEnrollment rejects reused idempotency key when the prior reque
     formSchema: {
       version: 1,
       fields: []
-    }
+    },
+    variants: []
   }));
   __formSchemasTestHooks.setGetCourseFormSchemaVersionOverride(async () => ({
     formId: "frm_001",

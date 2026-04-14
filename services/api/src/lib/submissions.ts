@@ -24,6 +24,7 @@ export type Submission = {
   tenantId: string;
   tenantCode: string;
   courseId: string;
+  variantId: string | null;
   formId: string;
   formVersion: number;
   status: SubmissionStatus;
@@ -69,6 +70,7 @@ export type CreateEnrollmentInput = {
   formVersion: number;
   answers: Record<string, unknown>;
   meta?: EnrollmentMeta;
+  variantId?: string | null;
 };
 
 export type EnrollmentCreateResult = {
@@ -175,6 +177,7 @@ function submissionFromItem(item: Record<string, unknown>): Submission {
     tenantId: item.tenantId as string,
     tenantCode: item.tenantCode as string,
     courseId: item.courseId as string,
+    variantId: (item.variantId as string | null) ?? null,
     formId: item.formId as string,
     formVersion: item.formVersion as number,
     status: item.status as SubmissionStatus,
@@ -608,6 +611,23 @@ export async function createPublicEnrollment(
     throw new ApiError(409, "CONFLICT", "Enrollment window is closed.");
   }
 
+  // Validate variantId using the variants already embedded in the public course detail.
+  // This avoids extra DDB round-trips and keeps the check within the submissions sendDdb boundary.
+  const courseVariants = publicCourse.variants ?? [];
+  let resolvedVariantId: string | null = null;
+  if (courseVariants.length > 0) {
+    if (!input.variantId) {
+      throw new ApiError(400, "VALIDATION_ERROR", "variantId is required when the course has variants.");
+    }
+    const variantExists = courseVariants.some((v) => v.id === input.variantId);
+    if (!variantExists) {
+      throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");
+    }
+    resolvedVariantId = input.variantId;
+  } else if (input.variantId) {
+    throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");
+  }
+
   const schema = await getCourseFormSchemaVersion(tenantId, courseId, input.formVersion);
 
   // BS-04: strip HTML tags from free-text answers before validation or storage
@@ -626,6 +646,7 @@ export async function createPublicEnrollment(
   const requestHash = hashRequest({
     tenantCode: tenantCode.trim().toLowerCase(),
     courseId,
+    variantId: resolvedVariantId,
     formVersion: input.formVersion,
     answers: sanitizedAnswers,
     meta: input.meta ?? null
@@ -655,6 +676,7 @@ export async function createPublicEnrollment(
     tenantCode: tenantCode.trim().toLowerCase(),
     submissionId,
     courseId,
+    variantId: resolvedVariantId,
     formId: schema.formId,
     formVersion: schema.version,
     status: "submitted",

@@ -789,6 +789,78 @@ Resources:
             Path: /org/courses/{courseId}/archive
             Method: POST
 
+  OrgCourseVariantsCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgCourseVariantsCreate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgCourseVariantsCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/courses/{courseId}/variants
+            Method: POST
+
+  OrgCourseVariantsListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgCourseVariantsList.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgCourseVariantsListRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/courses/{courseId}/variants
+            Method: GET
+
+  OrgCourseVariantsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgCourseVariantsUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgCourseVariantsUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/courses/{courseId}/variants/{variantId}
+            Method: PATCH
+
+  OrgCourseVariantsDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgCourseVariantsDelete.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        OrgCourseVariantsDeleteRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/courses/{courseId}/variants/{variantId}
+            Method: DELETE
+
   OrgFormSchemaUpsertFunction:
     Type: AWS::Serverless::Function
     Properties:

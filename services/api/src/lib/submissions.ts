@@ -8,7 +8,7 @@ import {
   TransactWriteCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
-import { getPublicCourseDetail, getVariant, listVariants, resolveTenantIdByCode } from "./courses";
+import { getPublicCourseDetail, resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
 import { type FormField, type FormFieldType, getCourseFormSchemaVersion } from "./formSchemas";
 
@@ -611,14 +611,18 @@ export async function createPublicEnrollment(
     throw new ApiError(409, "CONFLICT", "Enrollment window is closed.");
   }
 
-  // Validate variantId when variants exist for this course
-  const variants = await listVariants(tenantId, courseId);
+  // Validate variantId using the variants already embedded in the public course detail.
+  // This avoids extra DDB round-trips and keeps the check within the submissions sendDdb boundary.
+  const courseVariants = publicCourse.variants ?? [];
   let resolvedVariantId: string | null = null;
-  if (variants.length > 0) {
+  if (courseVariants.length > 0) {
     if (!input.variantId) {
       throw new ApiError(400, "VALIDATION_ERROR", "variantId is required when the course has variants.");
     }
-    await getVariant(tenantId, courseId, input.variantId);
+    const variantExists = courseVariants.some((v) => v.id === input.variantId);
+    if (!variantExists) {
+      throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");
+    }
     resolvedVariantId = input.variantId;
   } else if (input.variantId) {
     throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");

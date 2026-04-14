@@ -2,10 +2,9 @@ import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { authenticateRequest } from "../lib/auth";
 import { authorizeOrgAction } from "../lib/authorization";
 import { createCorrelationContext } from "../lib/correlation";
-import { getCourse, listVariants } from "../lib/courses";
+import { listVariants } from "../lib/courses";
 import { ApiError } from "../lib/errors";
 import { errorResponse, jsonResponse } from "../lib/http";
-import { toOrgCourseView } from "../lib/orgViews";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const correlation = createCorrelationContext(event.requestContext.requestId, event.headers);
@@ -16,14 +15,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const courseId = event.pathParameters?.courseId;
     if (!courseId) throw new ApiError(400, "VALIDATION_ERROR", "Missing courseId path parameter.");
 
-    const [course, variants] = await Promise.all([
-      getCourse(auth.tenantId, courseId),
-      listVariants(auth.tenantId, courseId)
-    ]);
-    return jsonResponse(200, { data: { ...toOrgCourseView(course), variants } }, correlation);
+    const variants = await listVariants(auth.tenantId, courseId);
+    return jsonResponse(200, { data: variants }, correlation);
   } catch (error) {
     return errorResponse(error, correlation);
   }
 };
-
-

@@ -257,6 +257,185 @@ components:
       - hasActiveForm
       - publishReady
       type: object
+    CourseVariant:
+      type: object
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        tenantId:
+          type: string
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        locationText:
+          type:
+          - string
+          - "null"
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        price:
+          type:
+          - number
+          - "null"
+          description: Reserved for future payment support
+        displayOrder:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+      required:
+      - id
+      - courseId
+      - tenantId
+      - title
+      - startDate
+      - endDate
+      - deliveryMode
+      - displayOrder
+      - createdAt
+      - updatedAt
+    PublicCourseVariant:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type:
+          - string
+          - "null"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        locationText:
+          type:
+          - string
+          - "null"
+        capacity:
+          type:
+          - integer
+          - "null"
+        price:
+          type:
+          - number
+          - "null"
+          description: Reserved for future payment support
+        displayOrder:
+          type: integer
+      required:
+      - id
+      - title
+      - startDate
+      - endDate
+      - deliveryMode
+      - displayOrder
+    CreateVariantRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        locationText:
+          type:
+          - string
+          - "null"
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        price:
+          type:
+          - number
+          - "null"
+        displayOrder:
+          type: integer
+          minimum: 0
+      required:
+      - title
+      - startDate
+      - endDate
+      - deliveryMode
+    UpdateVariantRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - "null"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+        locationText:
+          type:
+          - string
+          - "null"
+        capacity:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+        price:
+          type:
+          - number
+          - "null"
+        displayOrder:
+          type: integer
+          minimum: 0
     OrgCourse:
       allOf:
       - $ref: '#/components/schemas/Course'
@@ -264,8 +443,13 @@ components:
         properties:
           workflow:
             $ref: '#/components/schemas/OrgCourseWorkflow'
+          variants:
+            type: array
+            items:
+              $ref: '#/components/schemas/CourseVariant'
         required:
         - workflow
+        - variants
     PageMeta:
       properties:
         limit:
@@ -467,6 +651,11 @@ components:
         formVersion:
           type: integer
           minimum: 1
+        variantId:
+          type:
+          - string
+          - "null"
+          description: Required when the course has variants
       type: object
       required:
       - formVersion
@@ -625,6 +814,10 @@ components:
                 - "null"
               formAvailable:
                 type: boolean
+              variants:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicCourseVariant'
             type: object
       type: object
       required:
@@ -2320,6 +2513,111 @@ paths:
       - bearerAuth: []
       tags:
       - Org Courses
+  /v1/org/courses/{courseId}/variants:
+    get:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: List course variants
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          description: List of variants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CourseVariant'
+                required:
+                - data
+    post:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      summary: Create course variant
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVariantRequest'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "201":
+          description: Variant created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseVariant'
+                required:
+                - data
+  /v1/org/courses/{courseId}/variants/{variantId}:
+    patch:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      - name: variantId
+        in: path
+        required: true
+        schema:
+          type: string
+      summary: Update course variant
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVariantRequest'
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          description: Variant updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseVariant'
+                required:
+                - data
+    delete:
+      parameters:
+      - $ref: '#/components/parameters/CourseId'
+      - name: variantId
+        in: path
+        required: true
+        schema:
+          type: string
+      summary: Delete course variant
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Courses
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "204":
+          description: Variant deleted
   /v1/public/{tenantCode}/courses/{courseId}/enrollments:
     post:
       parameters:

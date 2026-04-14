@@ -43,6 +43,39 @@ export type Course = {
   updatedBy: string;
 };
 
+export type CourseVariant = {
+  id: string;
+  courseId: string;
+  tenantId: string;
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  deliveryMode: DeliveryMode;
+  locationText: string | null;
+  capacity: number | null;
+  price: number | null;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+};
+
+export type CreateVariantInput = {
+  title: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  deliveryMode: DeliveryMode;
+  locationText?: string | null;
+  capacity?: number | null;
+  price?: number | null;
+  displayOrder?: number;
+};
+
+export type UpdateVariantInput = Partial<CreateVariantInput>;
+
 export type CreateCourseInput = {
   title: string;
   shortDescription: string;
@@ -98,6 +131,19 @@ export type PublicCoursesListResult = {
   };
 };
 
+export type PublicCourseVariant = {
+  id: string;
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  deliveryMode: DeliveryMode;
+  locationText: string | null;
+  capacity: number | null;
+  price: number | null;
+  displayOrder: number;
+};
+
 export type PublicCourseDetail = PublicCourse & {
   fullDescription: string;
   capacity: number | null;
@@ -107,6 +153,7 @@ export type PublicCourseDetail = PublicCourse & {
     version: number;
     fields: FormField[];
   } | null;
+  variants: PublicCourseVariant[];
 };
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -125,6 +172,8 @@ let testResolveTenantIdByCodeOverride: ((tenantCode: string) => Promise<string>)
 let testDdbSendOverride:
   | ((command: object) => Promise<unknown>)
   | null = null;
+let testListVariantsOverride: ((tenantId: string, courseId: string) => Promise<CourseVariant[]>) | null = null;
+let testGetVariantOverride: ((tenantId: string, courseId: string, variantId: string) => Promise<CourseVariant>) | null = null;
 
 async function sendDdb<TResult>(command: object): Promise<TResult> {
   if (testDdbSendOverride) {
@@ -143,6 +192,10 @@ function courseSk(courseId: string): string {
 
 function coursePublicSk(courseId: string): string {
   return `COURSE_PUBLIC#${courseId}`;
+}
+
+function variantSk(courseId: string, variantId: string): string {
+  return `COURSE#${courseId}#VARIANT#${variantId}`;
 }
 
 function tenantCodePk(tenantCode: string): string {
@@ -309,7 +362,10 @@ function isValidPublicProjection(item: Record<string, unknown>, tenantCode: stri
   return true;
 }
 
-async function publicCourseDetailFromItem(item: Record<string, unknown>): Promise<PublicCourseDetail> {
+async function publicCourseDetailFromItem(
+  item: Record<string, unknown>,
+  variants: PublicCourseVariant[] = []
+): Promise<PublicCourseDetail> {
   const activeFormVersion = Number.isInteger(item.activeFormVersion) ? (item.activeFormVersion as number) : null;
   let formSchema: { version: number; fields: FormField[] } | null = null;
 
@@ -333,7 +389,23 @@ async function publicCourseDetailFromItem(item: Record<string, unknown>): Promis
     capacity: (item.capacity as number | null) ?? null,
     formAvailable: Boolean(item.activeFormId) && activeFormVersion !== null && formSchema !== null,
     formVersion: formSchema?.version ?? activeFormVersion,
-    formSchema
+    formSchema,
+    variants
+  };
+}
+
+function variantToPublic(v: CourseVariant): PublicCourseVariant {
+  return {
+    id: v.id,
+    title: v.title,
+    description: v.description,
+    startDate: v.startDate,
+    endDate: v.endDate,
+    deliveryMode: v.deliveryMode,
+    locationText: v.locationText,
+    capacity: v.capacity,
+    price: v.price,
+    displayOrder: v.displayOrder
   };
 }
 
@@ -387,6 +459,167 @@ async function deletePublicProjection(tenantId: string, courseId: string): Promi
       Key: { PK: tenantPk(tenantId), SK: coursePublicSk(courseId) }
     })
   );
+}
+
+function variantFromItem(item: Record<string, unknown>): CourseVariant {
+  return {
+    id: item.variantId as string,
+    courseId: item.courseId as string,
+    tenantId: item.tenantId as string,
+    title: item.title as string,
+    description: (item.description as string | null) ?? null,
+    startDate: item.startDate as string,
+    endDate: item.endDate as string,
+    deliveryMode: item.deliveryMode as DeliveryMode,
+    locationText: (item.locationText as string | null) ?? null,
+    capacity: (item.capacity as number | null) ?? null,
+    price: (item.price as number | null) ?? null,
+    displayOrder: (item.displayOrder as number) ?? 0,
+    createdAt: item.createdAt as string,
+    updatedAt: item.updatedAt as string,
+    createdBy: item.createdBy as string,
+    updatedBy: item.updatedBy as string
+  };
+}
+
+function validateCreateVariant(input: CreateVariantInput): void {
+  if (!input.title?.trim()) throw new ApiError(400, "VALIDATION_ERROR", "title is required.");
+  if (!input.startDate) throw new ApiError(400, "VALIDATION_ERROR", "startDate is required.");
+  if (!input.endDate) throw new ApiError(400, "VALIDATION_ERROR", "endDate is required.");
+  if (!input.deliveryMode) throw new ApiError(400, "VALIDATION_ERROR", "deliveryMode is required.");
+}
+
+export async function createVariant(
+  tenantId: string,
+  courseId: string,
+  userId: string,
+  input: CreateVariantInput
+): Promise<CourseVariant> {
+  validateCreateVariant(input);
+  await getCourse(tenantId, courseId);
+  const now = new Date().toISOString();
+  const id = `var_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const displayOrder = input.displayOrder ?? 0;
+
+  const item = {
+    PK: tenantPk(tenantId),
+    SK: variantSk(courseId, id),
+    entityType: "COURSE_VARIANT",
+    tenantId,
+    courseId,
+    variantId: id,
+    title: input.title.trim(),
+    description: input.description?.trim() ?? null,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    deliveryMode: input.deliveryMode,
+    locationText: input.locationText ?? null,
+    capacity: input.capacity ?? null,
+    price: input.price ?? null,
+    displayOrder,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+    updatedBy: userId
+  };
+
+  await sendDdb(
+    new PutCommand({
+      TableName: tableName,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+    })
+  );
+
+  return variantFromItem(item);
+}
+
+export async function listVariants(tenantId: string, courseId: string): Promise<CourseVariant[]> {
+  if (testListVariantsOverride) {
+    return testListVariantsOverride(tenantId, courseId);
+  }
+  const out = await sendDdb<{ Items?: unknown[] }>(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      ExpressionAttributeValues: {
+        ":pk": tenantPk(tenantId),
+        ":sk": `COURSE#${courseId}#VARIANT#`
+      }
+    })
+  );
+  return (out.Items ?? [])
+    .map((i) => variantFromItem(i as Record<string, unknown>))
+    .sort((a, b) => a.displayOrder - b.displayOrder || a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function getVariant(tenantId: string, courseId: string, variantId: string): Promise<CourseVariant> {
+  if (testGetVariantOverride) {
+    return testGetVariantOverride(tenantId, courseId, variantId);
+  }
+  const out = await sendDdb<{ Item?: Record<string, unknown> }>(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: variantSk(courseId, variantId) }
+    })
+  );
+  if (!out.Item) throw new ApiError(404, "NOT_FOUND", "Variant not found.");
+  return variantFromItem(out.Item as Record<string, unknown>);
+}
+
+export async function updateVariant(
+  tenantId: string,
+  courseId: string,
+  variantId: string,
+  userId: string,
+  input: UpdateVariantInput
+): Promise<CourseVariant> {
+  const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) {
+    throw new ApiError(400, "VALIDATION_ERROR", "No fields provided for update.");
+  }
+
+  const exprNames: Record<string, string> = { "#updatedAt": "updatedAt", "#updatedBy": "updatedBy" };
+  const exprValues: Record<string, unknown> = {
+    ":updatedAt": new Date().toISOString(),
+    ":updatedBy": userId
+  };
+  const updates: string[] = ["#updatedAt = :updatedAt", "#updatedBy = :updatedBy"];
+
+  for (const [key, value] of entries) {
+    const nk = `#${key}`;
+    const vk = `:${key}`;
+    exprNames[nk] = key;
+    exprValues[vk] = value;
+    updates.push(`${nk} = ${vk}`);
+  }
+
+  const out = await sendDdb<{ Attributes?: Record<string, unknown> }>(
+    new UpdateCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: variantSk(courseId, variantId) },
+      ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+      UpdateExpression: `SET ${updates.join(", ")}`,
+      ExpressionAttributeNames: exprNames,
+      ExpressionAttributeValues: exprValues,
+      ReturnValues: "ALL_NEW"
+    })
+  );
+
+  if (!out.Attributes) throw new ApiError(404, "NOT_FOUND", "Variant not found.");
+  return variantFromItem(out.Attributes as Record<string, unknown>);
+}
+
+export async function deleteVariant(tenantId: string, courseId: string, variantId: string): Promise<void> {
+  const out = await sendDdb<{ Attributes?: Record<string, unknown> }>(
+    new DeleteCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: variantSk(courseId, variantId) },
+      ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+      ReturnValues: "ALL_OLD"
+    })
+  );
+  if (!out.Attributes) throw new ApiError(404, "NOT_FOUND", "Variant not found.");
 }
 
 function validateCreate(input: CreateCourseInput): void {
@@ -773,7 +1006,9 @@ export async function getPublicCourseDetail(
   if (!isValidPublicProjection(item, normalizedTenantCode)) {
     throw new ApiError(404, "NOT_FOUND", "Course not found.");
   }
-  return publicCourseDetailFromItem(item);
+  const variants = await listVariants(tenantId, courseId);
+  const publicVariants = variants.map(variantToPublic);
+  return publicCourseDetailFromItem(item, publicVariants);
 }
 
 export async function reconcilePublicProjectionsForTenant(
@@ -824,6 +1059,14 @@ export const __coursesTestHooks = {
   setResolveTenantIdByCodeOverride(loader: ((tenantCode: string) => Promise<string>) | null): void {
     testResolveTenantIdByCodeOverride = loader;
   },
+  setListVariantsOverride(loader: ((tenantId: string, courseId: string) => Promise<CourseVariant[]>) | null): void {
+    testListVariantsOverride = loader;
+  },
+  setGetVariantOverride(
+    loader: ((tenantId: string, courseId: string, variantId: string) => Promise<CourseVariant>) | null
+  ): void {
+    testGetVariantOverride = loader;
+  },
   setDdbSendOverride(loader: ((command: object) => Promise<unknown>) | null): void {
     testDdbSendOverride = loader;
   },
@@ -833,6 +1076,8 @@ export const __coursesTestHooks = {
     testPublicCoursesListOverride = null;
     testPublicCourseDetailOverride = null;
     testResolveTenantIdByCodeOverride = null;
+    testListVariantsOverride = null;
+    testGetVariantOverride = null;
     testDdbSendOverride = null;
   }
 };

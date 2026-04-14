@@ -212,6 +212,7 @@ test("orgSubmissionsList adds course title and review workflow metadata", async 
         submittedAt: "2026-03-20T00:00:00Z",
         reviewedAt: null,
         reviewedBy: null,
+        variantId: null,
         createdAt: "2026-03-20T00:00:00Z",
         applicantSummary: { email: "learner@example.com", name: "Learner" },
         course: { id: "crs_1" }

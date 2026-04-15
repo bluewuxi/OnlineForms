@@ -94,17 +94,15 @@ Parameters:
     Description: >
       Cloudflare Turnstile secret key used to verify CAPTCHA tokens server-side.
   StripeSecretKey:
-    Type: String
-    NoEcho: true
-    Default: "sk_test_placeholder"
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/onlineforms/stripe/secret-key"
     Description: >
-      Stripe secret key (test or live). Set to a real test key for staging/prod deployments.
+      SSM path for the Stripe secret key. Resolved automatically at deploy time.
   StripeWebhookSecret:
-    Type: String
-    NoEcho: true
-    Default: "whsec_placeholder"
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/onlineforms/stripe/webhook-secret"
     Description: >
-      Stripe webhook signing secret for verifying incoming webhook events.
+      SSM path for the Stripe webhook signing secret. Resolved automatically at deploy time.
       The default value is Cloudflare's official test key (always passes verification
       in test mode). Replace with the real secret key from the Cloudflare dashboard
       for stage/prod deployments. Only used when TURNSTILE_ENABLED=true.

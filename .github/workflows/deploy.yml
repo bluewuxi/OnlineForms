@@ -33,8 +33,6 @@ jobs:
       API_CUSTOM_DOMAIN_NAME: ${{ vars.API_CUSTOM_DOMAIN_NAME }}
       API_CUSTOM_DOMAIN_CERTIFICATE_ARN: ${{ vars.API_CUSTOM_DOMAIN_CERTIFICATE_ARN }}
       API_CUSTOM_DOMAIN_HOSTED_ZONE_ID: ${{ vars.API_CUSTOM_DOMAIN_HOSTED_ZONE_ID }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
 
     steps:
       - name: Checkout
@@ -124,8 +122,6 @@ jobs:
           DeploymentEnvironment=$DEPLOYMENT_ENVIRONMENT
           ManagedCognitoEnabled=true
           CognitoTokenUse=$COGNITO_TOKEN_USE
-          StripeSecretKey=$STRIPE_SECRET_KEY
-          StripeWebhookSecret=$STRIPE_WEBHOOK_SECRET
           CognitoHostedUiHomeLogoutUrl=$COGNITO_HOSTED_UI_HOME_LOGOUT_URL
           ApiCustomDomainEnabled=$API_CUSTOM_DOMAIN_ENABLED
           ApiCustomDomainName=$API_CUSTOM_DOMAIN_NAME

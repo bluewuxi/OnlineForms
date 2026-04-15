@@ -20,13 +20,15 @@ export type AuditAction =
   | "tenant.deactivate"
   | "form_template.create"
   | "form_template.update"
-  | "form_template.delete";
+  | "form_template.delete"
+  | "payment.create"
+  | "payment.refund";
 
 export type AuditEventInput = {
   tenantId: string;
   actorUserId: string;
   action: AuditAction;
-  resourceType: "course" | "course_variant" | "form" | "form_template" | "submission" | "branding" | "tenant";
+  resourceType: "course" | "course_variant" | "form" | "form_template" | "submission" | "branding" | "tenant" | "payment";
   resourceId: string;
   correlationId: string;
   requestId: string;

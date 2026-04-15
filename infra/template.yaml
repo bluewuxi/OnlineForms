@@ -93,6 +93,18 @@ Parameters:
     Default: "1x0000000000000000000000000000000AA"
     Description: >
       Cloudflare Turnstile secret key used to verify CAPTCHA tokens server-side.
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Default: "sk_test_placeholder"
+    Description: >
+      Stripe secret key (test or live). Set to a real test key for staging/prod deployments.
+  StripeWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: "whsec_placeholder"
+    Description: >
+      Stripe webhook signing secret for verifying incoming webhook events.
       The default value is Cloudflare's official test key (always passes verification
       in test mode). Replace with the real secret key from the Cloudflare dashboard
       for stage/prod deployments. Only used when TURNSTILE_ENABLED=true.
@@ -147,9 +159,12 @@ Globals:
         ONLINEFORMS_AUTH_TABLE: !Ref OnlineFormsAuthTable
         ONLINEFORMS_INTERNAL_ACTIVITY_TABLE: !Ref OnlineFormsInternalActivityTable
         ONLINEFORMS_RATE_LIMIT_TABLE: !Ref OnlineFormsRateLimitTable
+        ONLINEFORMS_PAYMENTS_TABLE: !Ref OnlineFormsPaymentsTable
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
         TURNSTILE_ENABLED: !FindInMap [TurnstileEnabledByEnvironment, !Ref DeploymentEnvironment, Enabled]
         TURNSTILE_SECRET_KEY: !Ref TurnstileSecretKey
+        STRIPE_SECRET_KEY: !Ref StripeSecretKey
+        STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
 
 Resources:
   OnlineFormsHttpApi:
@@ -324,6 +339,47 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expiresAt
         Enabled: true
+
+  OnlineFormsPaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: OnlineFormsPayments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   OnlineFormsUserPool:
     Type: AWS::Cognito::UserPool
@@ -1590,6 +1646,58 @@ Resources:
             ApiId: !Ref OnlineFormsHttpApi
             Path: /public/tenants
             Method: GET
+
+  PublicPaymentIntentCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/publicCoursesPaymentIntentCreate.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsPaymentsTable
+      Events:
+        PublicPaymentIntentCreateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /public/{tenantCode}/courses/{courseId}/payment-intent
+            Method: POST
+
+  OrgSubmissionsRefundFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/orgSubmissionsRefund.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsPaymentsTable
+      Events:
+        OrgSubmissionsRefundRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /org/submissions/{submissionId}/refund
+            Method: POST
+
+  StripeWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/stripeWebhook.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsPaymentsTable
+      Events:
+        StripeWebhookRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /stripe/webhook
+            Method: POST
 
   OnlineFormsObservabilityDashboard:
     Type: AWS::CloudWatch::Dashboard

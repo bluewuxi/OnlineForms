@@ -489,6 +489,30 @@ function validateCreateVariant(input: CreateVariantInput): void {
   if (!input.deliveryMode) throw new ApiError(400, "VALIDATION_ERROR", "deliveryMode is required.");
 }
 
+/**
+ * Enforce that all variants for a course are either all-free (price = null)
+ * or all-paid (price > 0). Mixed pricing is not allowed.
+ */
+async function assertPricingConsistency(
+  tenantId: string,
+  courseId: string,
+  incomingPrice: number | null | undefined,
+  excludeVariantId?: string
+): Promise<void> {
+  const existing = await listVariants(tenantId, courseId);
+  const peers = excludeVariantId ? existing.filter((v) => v.id !== excludeVariantId) : existing;
+  if (peers.length === 0) return; // no existing variants to compare against
+  const incomingIsPaid = typeof incomingPrice === "number" && incomingPrice > 0;
+  const peerIsPaid = peers.some((v) => typeof v.price === "number" && v.price > 0);
+  if (incomingIsPaid !== peerIsPaid) {
+    throw new ApiError(
+      409,
+      "PRICING_CONFLICT",
+      "All variants must be either free (no price) or paid (price set). Mixed pricing is not allowed."
+    );
+  }
+}
+
 export async function createVariant(
   tenantId: string,
   courseId: string,
@@ -497,6 +521,7 @@ export async function createVariant(
 ): Promise<CourseVariant> {
   validateCreateVariant(input);
   await getCourse(tenantId, courseId);
+  await assertPricingConsistency(tenantId, courseId, input.price);
   const now = new Date().toISOString();
   const id = `var_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const displayOrder = input.displayOrder ?? 0;
@@ -574,6 +599,9 @@ export async function updateVariant(
   userId: string,
   input: UpdateVariantInput
 ): Promise<CourseVariant> {
+  if (Object.prototype.hasOwnProperty.call(input, "price")) {
+    await assertPricingConsistency(tenantId, courseId, input.price, variantId);
+  }
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
   if (entries.length === 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "No fields provided for update.");

@@ -9,6 +9,7 @@ import {
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { getPublicCourseDetail, resolveTenantIdByCode } from "./courses";
+import { getPaymentByIntentId, retrieveStripePaymentIntent, updatePaymentRecord } from "./payments";
 import { ApiError } from "./errors";
 import { type FormField, type FormFieldType, getCourseFormSchemaVersion } from "./formSchemas";
 
@@ -71,6 +72,7 @@ export type CreateEnrollmentInput = {
   answers: Record<string, unknown>;
   meta?: EnrollmentMeta;
   variantId?: string | null;
+  paymentIntentId?: string | null;
 };
 
 export type EnrollmentCreateResult = {
@@ -615,17 +617,36 @@ export async function createPublicEnrollment(
   // This avoids extra DDB round-trips and keeps the check within the submissions sendDdb boundary.
   const courseVariants = publicCourse.variants ?? [];
   let resolvedVariantId: string | null = null;
+  let selectedVariantPrice: number | null = null;
   if (courseVariants.length > 0) {
     if (!input.variantId) {
       throw new ApiError(400, "VALIDATION_ERROR", "variantId is required when the course has variants.");
     }
-    const variantExists = courseVariants.some((v) => v.id === input.variantId);
-    if (!variantExists) {
+    const selectedVariant = courseVariants.find((v) => v.id === input.variantId);
+    if (!selectedVariant) {
       throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");
     }
     resolvedVariantId = input.variantId;
+    selectedVariantPrice = selectedVariant.price ?? null;
   } else if (input.variantId) {
     throw new ApiError(400, "VALIDATION_ERROR", "variantId is not valid for this course.");
+  }
+
+  // Payment verification: required when the selected variant has a price.
+  let verifiedPaymentIntentId: string | null = null;
+  let verifiedChargeId: string | null = null;
+  if (typeof selectedVariantPrice === "number" && selectedVariantPrice > 0) {
+    if (!input.paymentIntentId) {
+      throw new ApiError(402, "PAYMENT_REQUIRED", "paymentIntentId is required for paid enrollments.");
+    }
+    const pi = await retrieveStripePaymentIntent(input.paymentIntentId);
+    if (pi.status !== "succeeded") {
+      throw new ApiError(402, "PAYMENT_REQUIRED", "Payment has not been completed. Please complete payment before submitting.");
+    }
+    verifiedPaymentIntentId = input.paymentIntentId;
+    verifiedChargeId = pi.latestCharge;
+  } else if (input.paymentIntentId) {
+    throw new ApiError(400, "VALIDATION_ERROR", "paymentIntentId is not applicable for free enrollments.");
   }
 
   const schema = await getCourseFormSchemaVersion(tenantId, courseId, input.formVersion);
@@ -745,6 +766,18 @@ export async function createPublicEnrollment(
       return existingItem.responseSnapshot;
     }
     throw error;
+  }
+
+  // Link the payment record to the submission now that it has been created.
+  if (verifiedPaymentIntentId) {
+    const payment = await getPaymentByIntentId(verifiedPaymentIntentId);
+    if (payment) {
+      await updatePaymentRecord(tenantId, payment.id, {
+        submissionId,
+        status: "succeeded",
+        ...(verifiedChargeId ? { stripeChargeId: verifiedChargeId } : {})
+      });
+    }
   }
 
   return snapshot;

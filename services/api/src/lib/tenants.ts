@@ -26,6 +26,7 @@ export type TenantProfile = {
   description: string | null;
   isActive: boolean;
   homePageContent: string | null;
+  currency: string | null;
   branding: {
     logoAssetId: string | null;
   };
@@ -70,6 +71,7 @@ export type UpdateTenantProfileInput = {
   description?: string | null;
   isActive?: boolean;
   homePageContent?: string | null;
+  currency?: string | null;
 };
 
 export type CreateTenantProfileInput = {
@@ -184,6 +186,21 @@ export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): Up
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, "currency")) {
+    if (input.currency == null) {
+      out.currency = null;
+    } else if (typeof input.currency === "string") {
+      const currency = input.currency.trim().toLowerCase();
+      if (!/^[a-z]{3}$/.test(currency)) {
+        details.push({ field: "currency", issue: "Must be a 3-letter ISO 4217 currency code (e.g. aud, usd)." });
+      } else {
+        out.currency = currency;
+      }
+    } else {
+      details.push({ field: "currency", issue: "Must be a string or null." });
+    }
+  }
+
   if (details.length > 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "Invalid tenant profile update payload.", details);
   }
@@ -294,6 +311,7 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
     description: asString(item.description),
     isActive: resolveIsActive(item),
     homePageContent: asString(item.homePageContent),
+    currency: asString(item.currency),
     branding: {
       logoAssetId: asString(branding?.logoAssetId)
     },
@@ -521,6 +539,16 @@ export async function updateTenantProfile(
     } else {
       values[":homePageContent"] = patch.homePageContent;
       sets.push("#homePageContent = :homePageContent");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "currency")) {
+    names["#currency"] = "currency";
+    if (patch.currency == null) {
+      removes.push("#currency");
+    } else {
+      values[":currency"] = patch.currency;
+      sets.push("#currency = :currency");
     }
   }
 

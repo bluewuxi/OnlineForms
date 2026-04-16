@@ -656,6 +656,11 @@ components:
           - string
           - "null"
           description: Required when the course has variants
+        paymentIntentId:
+          type:
+          - string
+          - "null"
+          description: Required when the selected variant has a price
       type: object
       required:
       - formVersion
@@ -737,6 +742,11 @@ components:
           type:
           - string
           - "null"
+        currency:
+          type:
+          - string
+          - "null"
+          description: ISO 4217 lowercase currency code (e.g. aud, usd). Required when payment is enabled.
         updatedAt:
           format: date-time
           type: string
@@ -1937,6 +1947,96 @@ components:
           format: date
           type: string
       type: object
+    Payment:
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        submissionId:
+          type:
+          - string
+          - "null"
+        courseId:
+          type: string
+        variantId:
+          type: string
+        amount:
+          type: integer
+          description: Amount in minor units (cents)
+        currency:
+          type: string
+          description: ISO 4217 lowercase currency code
+        status:
+          type: string
+          enum: [pending, succeeded, failed, refunded]
+        stripePaymentIntentId:
+          type: string
+        stripeChargeId:
+          type:
+          - string
+          - "null"
+        refundedAmount:
+          type: integer
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+      required:
+      - id
+      - tenantId
+      - courseId
+      - variantId
+      - amount
+      - currency
+      - status
+      - stripePaymentIntentId
+      - refundedAmount
+      - createdAt
+      - updatedAt
+    PaymentIntentResponse:
+      properties:
+        clientSecret:
+          type: string
+          description: Stripe PaymentIntent client secret — pass to Stripe.js to confirm payment
+        paymentIntentId:
+          type: string
+        paymentId:
+          type: string
+          description: Internal payment record id
+        amount:
+          type: integer
+          description: Amount in minor units (cents)
+        currency:
+          type: string
+      type: object
+      required:
+      - clientSecret
+      - paymentIntentId
+      - paymentId
+      - amount
+      - currency
+    RefundResponse:
+      properties:
+        refundId:
+          type: string
+        amount:
+          type: integer
+          description: Refunded amount in minor units
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [refunded]
+      type: object
+      required:
+      - refundId
+      - amount
+      - currency
+      - status
   parameters:
     SubmittedFrom:
       name: submittedFrom
@@ -3109,3 +3209,85 @@ paths:
       security: []
       tags:
       - Public Catalog
+  /v1/public/{tenantCode}/courses/{courseId}/payment-intent:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/CourseId'
+      summary: Create a Stripe PaymentIntent for a paid enrollment
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                variantId:
+                  type: string
+                formVersion:
+                  type: integer
+                  minimum: 1
+                answers:
+                  additionalProperties: true
+                  type: object
+              type: object
+              required:
+              - variantId
+              - formVersion
+              - answers
+        required: true
+      tags:
+      - Public Enrollment
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PaymentIntentResponse'
+                type: object
+                required:
+                - data
+          description: PaymentIntent created
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /v1/org/submissions/{submissionId}/refund:
+    post:
+      parameters:
+      - $ref: '#/components/parameters/SubmissionId'
+      summary: Refund a succeeded payment for a submission
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Submissions
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RefundResponse'
+                type: object
+                required:
+                - data
+          description: Refund initiated
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /v1/stripe/webhook:
+    post:
+      summary: Stripe webhook event receiver
+      security: []
+      tags:
+      - Platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        "200":
+          description: Event received
+        default:
+          $ref: '#/components/responses/ErrorResponse'

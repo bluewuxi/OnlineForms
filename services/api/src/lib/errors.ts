@@ -6,7 +6,13 @@ export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "RATE_LIMITED"
   | "CAPTCHA_FAILED"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "PAYMENT_REQUIRED"
+  | "PAYMENT_NOT_CONFIGURED"
+  | "PRICING_CONFLICT"
+  | "STRIPE_ERROR"
+  | "CONFIGURATION_ERROR"
+  | "INVALID_SIGNATURE";
 
 export class ApiError extends Error {
   public readonly statusCode: number;

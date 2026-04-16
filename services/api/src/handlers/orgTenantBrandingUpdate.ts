@@ -14,6 +14,7 @@ type UpdateTenantBrandingBody = {
   logoAssetId?: string | null;
   description?: string | null;
   homePageContent?: string | null;
+  currency?: string | null;
 };
 
 async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantProfile>>) {
@@ -23,6 +24,7 @@ async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantPr
     displayName: profile.displayName,
     description: profile.description,
     homePageContent: profile.homePageContent,
+    currency: profile.currency,
     logoAssetId,
     logoUrl: await resolveAssetPublicUrl(profile.tenantId, logoAssetId),
     updatedAt: profile.updatedAt
@@ -61,7 +63,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
     if (
       Object.prototype.hasOwnProperty.call(body, "description") ||
-      Object.prototype.hasOwnProperty.call(body, "homePageContent")
+      Object.prototype.hasOwnProperty.call(body, "homePageContent") ||
+      Object.prototype.hasOwnProperty.call(body, "currency")
     ) {
       await updateTenantProfile(auth.tenantId, {
         ...(Object.prototype.hasOwnProperty.call(body, "description")
@@ -69,6 +72,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           : {}),
         ...(Object.prototype.hasOwnProperty.call(body, "homePageContent")
           ? { homePageContent: body.homePageContent ?? null }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(body, "currency")
+          ? { currency: body.currency ?? null }
           : {})
       });
     }

@@ -13,6 +13,7 @@ async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantPr
     displayName: profile.displayName,
     description: profile.description,
     homePageContent: profile.homePageContent,
+    currency: profile.currency,
     logoAssetId,
     logoUrl: await resolveAssetPublicUrl(profile.tenantId, logoAssetId),
     updatedAt: profile.updatedAt

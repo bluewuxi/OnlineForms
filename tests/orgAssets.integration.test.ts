@@ -125,6 +125,7 @@ test("orgTenantBrandingGet returns current branding and tenant description", asy
     description: "<p>Acme tenant description</p>",
     isActive: true,
     homePageContent: "<p>Welcome</p>",
+    currency: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -246,6 +247,7 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     description: "<p>Acme tenant description</p>",
     isActive: true,
     homePageContent: null,
+    currency: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -302,6 +304,7 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     description: input.description ?? null,
     isActive: true,
     homePageContent: null,
+    currency: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -315,6 +318,7 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     description: "<p>Updated description</p>",
     isActive: true,
     homePageContent: null,
+    currency: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },

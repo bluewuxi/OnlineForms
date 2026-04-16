@@ -14,7 +14,7 @@ import { getCourseFormSchemaVersion, type FormField } from "./formSchemas";
 import { normalizeTenantCode } from "./tenantCodes";
 
 export type CourseStatus = "draft" | "published" | "archived";
-export type PricingMode = "free" | "paid_placeholder";
+export type PricingMode = "free" | "paid";
 export type DeliveryMode = "online" | "onsite" | "hybrid";
 
 export type Course = {
@@ -49,8 +49,6 @@ export type CourseVariant = {
   tenantId: string;
   title: string;
   description: string | null;
-  startDate: string;
-  endDate: string;
   deliveryMode: DeliveryMode;
   locationText: string | null;
   capacity: number | null;
@@ -65,8 +63,6 @@ export type CourseVariant = {
 export type CreateVariantInput = {
   title: string;
   description?: string | null;
-  startDate: string;
-  endDate: string;
   deliveryMode: DeliveryMode;
   locationText?: string | null;
   capacity?: number | null;
@@ -135,8 +131,6 @@ export type PublicCourseVariant = {
   id: string;
   title: string;
   description: string | null;
-  startDate: string;
-  endDate: string;
   deliveryMode: DeliveryMode;
   locationText: string | null;
   capacity: number | null;
@@ -399,8 +393,6 @@ function variantToPublic(v: CourseVariant): PublicCourseVariant {
     id: v.id,
     title: v.title,
     description: v.description,
-    startDate: v.startDate,
-    endDate: v.endDate,
     deliveryMode: v.deliveryMode,
     locationText: v.locationText,
     capacity: v.capacity,
@@ -468,8 +460,6 @@ function variantFromItem(item: Record<string, unknown>): CourseVariant {
     tenantId: item.tenantId as string,
     title: item.title as string,
     description: (item.description as string | null) ?? null,
-    startDate: item.startDate as string,
-    endDate: item.endDate as string,
     deliveryMode: item.deliveryMode as DeliveryMode,
     locationText: (item.locationText as string | null) ?? null,
     capacity: (item.capacity as number | null) ?? null,
@@ -484,8 +474,6 @@ function variantFromItem(item: Record<string, unknown>): CourseVariant {
 
 function validateCreateVariant(input: CreateVariantInput): void {
   if (!input.title?.trim()) throw new ApiError(400, "VALIDATION_ERROR", "title is required.");
-  if (!input.startDate) throw new ApiError(400, "VALIDATION_ERROR", "startDate is required.");
-  if (!input.endDate) throw new ApiError(400, "VALIDATION_ERROR", "endDate is required.");
   if (!input.deliveryMode) throw new ApiError(400, "VALIDATION_ERROR", "deliveryMode is required.");
 }
 
@@ -535,8 +523,6 @@ export async function createVariant(
     variantId: id,
     title: input.title.trim(),
     description: input.description?.trim() ?? null,
-    startDate: input.startDate,
-    endDate: input.endDate,
     deliveryMode: input.deliveryMode,
     locationText: input.locationText ?? null,
     capacity: input.capacity ?? null,
@@ -814,20 +800,6 @@ export async function updateCourse(
   const nextPublicVisible = input.publicVisible ?? current.publicVisible;
   const nextStatus = current.status;
 
-  if (nextPricingMode === "paid_placeholder" && nextPublicVisible) {
-    throw new ApiError(
-      409,
-      "CONFLICT",
-      "paid_placeholder courses cannot be public while payments are disabled."
-    );
-  }
-  if (nextPricingMode === "paid_placeholder" && nextStatus === "published") {
-    throw new ApiError(
-      409,
-      "CONFLICT",
-      "Published courses cannot use paid_placeholder pricing while payments are disabled."
-    );
-  }
   if (nextPublicVisible && nextPricingMode !== "free") {
     throw new ApiError(409, "CONFLICT", "Only free courses can be public in MVP.");
   }

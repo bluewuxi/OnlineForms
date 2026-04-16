@@ -274,12 +274,6 @@ components:
           type:
           - string
           - "null"
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
         deliveryMode:
           $ref: '#/components/schemas/DeliveryMode'
         locationText:
@@ -295,7 +289,7 @@ components:
           type:
           - number
           - "null"
-          description: Reserved for future payment support
+          description: Price in minor currency units (cents). Null means free.
         displayOrder:
           type: integer
           minimum: 0
@@ -314,8 +308,6 @@ components:
       - courseId
       - tenantId
       - title
-      - startDate
-      - endDate
       - deliveryMode
       - displayOrder
       - createdAt
@@ -331,12 +323,6 @@ components:
           type:
           - string
           - "null"
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
         deliveryMode:
           $ref: '#/components/schemas/DeliveryMode'
         locationText:
@@ -351,14 +337,12 @@ components:
           type:
           - number
           - "null"
-          description: Reserved for future payment support
+          description: Price in minor currency units (cents). Null means free.
         displayOrder:
           type: integer
       required:
       - id
       - title
-      - startDate
-      - endDate
       - deliveryMode
       - displayOrder
     CreateVariantRequest:
@@ -372,12 +356,6 @@ components:
           type:
           - string
           - "null"
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
         deliveryMode:
           $ref: '#/components/schemas/DeliveryMode'
         locationText:
@@ -393,13 +371,12 @@ components:
           type:
           - number
           - "null"
+          description: Price in minor currency units (cents). Null means free.
         displayOrder:
           type: integer
           minimum: 0
       required:
       - title
-      - startDate
-      - endDate
       - deliveryMode
     UpdateVariantRequest:
       type: object
@@ -412,12 +389,6 @@ components:
           type:
           - string
           - "null"
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
         deliveryMode:
           $ref: '#/components/schemas/DeliveryMode'
         locationText:
@@ -433,6 +404,7 @@ components:
           type:
           - number
           - "null"
+          description: Price in minor currency units (cents). Null means free.
         displayOrder:
           type: integer
           minimum: 0
@@ -1256,6 +1228,33 @@ components:
       type: object
       required:
       - data
+    PaymentSettingsResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          properties:
+            currency:
+              type:
+              - string
+              - "null"
+            invoiceBusinessName:
+              type:
+              - string
+              - "null"
+    PaymentSettingsUpdateRequest:
+      type: object
+      properties:
+        currency:
+          type:
+          - string
+          - "null"
+        invoiceBusinessName:
+          type:
+          - string
+          - "null"
     CreateTenantInviteRequest:
       properties:
         email:
@@ -1807,7 +1806,7 @@ components:
     PricingMode:
       enum:
       - free
-      - paid_placeholder
+      - paid
       type: string
     UpsertFormSchemaRequest:
       properties:
@@ -2370,6 +2369,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/TenantBrandingResponse'
           description: Updated tenant branding
+  /v1/org/payment-settings:
+    get:
+      summary: Get payment settings
+      security:
+      - bearerAuth: []
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSettingsResponse'
+          description: Payment settings
+    patch:
+      summary: Update payment settings
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentSettingsUpdateRequest'
+        required: true
+      tags:
+      - Org Assets
+      responses:
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSettingsResponse'
+          description: Updated payment settings
   /v1/org/tenants/{tenantId}/invites:
     post:
       parameters:

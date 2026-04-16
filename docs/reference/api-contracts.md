@@ -211,7 +211,7 @@ Auth token lifecycle details (`error.details[*].issue`) for `UNAUTHORIZED`:
 Enums:
 
 - `status`: `draft | published | archived`
-- `pricingMode`: `free | paid_placeholder`
+- `pricingMode`: `free | paid`
 - `deliveryMode`: `online | onsite | hybrid`
 
 ## 5.2 Form Schema

@@ -188,11 +188,10 @@ Public API baseline targets:
 - Public course detail (`GET /v1/public/{tenantCode}/courses/{courseId}`): p95 < 250ms
 - Public API 5xx rate target: < 0.5% per 5-minute window
 
-Payment placeholder guardrails (MVP):
+Payment guardrails:
 
-- `paymentEnabledFlag` stays `false` in all flows
-- only `pricingMode=free` courses can become public/published
-- `paid_placeholder` is reserved for future activation and cannot be public in MVP
+- only `pricingMode=free` courses can become public/published (paid courses require further configuration)
+- `pricingMode=paid` enables Stripe-backed enrollment with per-variant pricing in cents
 
 ## P1-08 Seed + Smoke
 

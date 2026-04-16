@@ -154,7 +154,7 @@ Course metadata should include:
 - Location or delivery mode
 - Capacity placeholder
 - Status: draft / published / archived
-- Pricing mode: free / paid_placeholder
+- Pricing mode: free / paid
 
 ### 6.4 Form Builder
 Organization users shall be able to define a per-course form schema.

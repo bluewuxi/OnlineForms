@@ -22,13 +22,14 @@ export type AuditAction =
   | "form_template.update"
   | "form_template.delete"
   | "payment.create"
-  | "payment.refund";
+  | "payment.refund"
+  | "payment_settings.update";
 
 export type AuditEventInput = {
   tenantId: string;
   actorUserId: string;
   action: AuditAction;
-  resourceType: "course" | "course_variant" | "form" | "form_template" | "submission" | "branding" | "tenant" | "payment";
+  resourceType: "course" | "course_variant" | "form" | "form_template" | "submission" | "branding" | "tenant" | "payment" | "payment_settings";
   resourceId: string;
   correlationId: string;
   requestId: string;

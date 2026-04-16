@@ -8,6 +8,7 @@ import {
   QueryCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { ApiError } from "./errors";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +60,40 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const paymentsTable = process.env.ONLINEFORMS_PAYMENTS_TABLE ?? "OnlineFormsPayments";
 
 // ---------------------------------------------------------------------------
-// Stripe client (lazy — only constructed on first use so tests can set env)
+// SSM client — for runtime key fetching
+// ---------------------------------------------------------------------------
+
+const ssm = new SSMClient({});
+
+// In-process cache: survives across invocations on a warm Lambda instance.
+// Key rotation: update SSM then trigger a cold start (deploy, or simply wait
+// for the Lambda to recycle). No redeployment of CloudFormation needed.
+let _cachedSecretKey: string | null = null;
+let _cachedWebhookSecret: string | null = null;
+
+async function fetchSsmParameter(path: string): Promise<string> {
+  const result = await ssm.send(new GetParameterCommand({ Name: path, WithDecryption: true }));
+  const value = result.Parameter?.Value;
+  if (!value) throw new ApiError(500, "CONFIGURATION_ERROR", `SSM parameter ${path} is empty or missing.`);
+  return value;
+}
+
+async function getStripeSecretKey(): Promise<string> {
+  if (_cachedSecretKey) return _cachedSecretKey;
+  const path = process.env.STRIPE_SECRET_KEY_PATH ?? "/onlineforms/stripe/secret-key";
+  _cachedSecretKey = await fetchSsmParameter(path);
+  return _cachedSecretKey;
+}
+
+async function getWebhookSecret(): Promise<string> {
+  if (_cachedWebhookSecret) return _cachedWebhookSecret;
+  const path = process.env.STRIPE_WEBHOOK_SECRET_PATH ?? "/onlineforms/stripe/webhook-secret";
+  _cachedWebhookSecret = await fetchSsmParameter(path);
+  return _cachedWebhookSecret;
+}
+
+// ---------------------------------------------------------------------------
+// Stripe client (lazy async — built after SSM fetch on first use)
 // ---------------------------------------------------------------------------
 
 type StripeInstance = InstanceType<typeof Stripe>;
@@ -67,10 +101,9 @@ type StripeEvent = ReturnType<StripeInstance["webhooks"]["constructEvent"]>;
 
 let _stripe: StripeInstance | null = null;
 
-function getStripe(): StripeInstance {
+async function getStripe(): Promise<StripeInstance> {
   if (_stripe) return _stripe;
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new ApiError(500, "CONFIGURATION_ERROR", "Stripe is not configured.");
+  const key = await getStripeSecretKey();
   _stripe = new Stripe(key, { apiVersion: "2026-03-25.dahlia" });
   return _stripe;
 }
@@ -150,7 +183,7 @@ export async function createStripePaymentIntent(
     const result = await testStripeOverride.createPaymentIntent(amount, currency, metadata);
     return { id: result.id, clientSecret: result.client_secret };
   }
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const pi = await stripe.paymentIntents.create({
     amount,
     currency,
@@ -170,7 +203,7 @@ export async function retrieveStripePaymentIntent(
     const result = await testStripeOverride.retrievePaymentIntent(stripePaymentIntentId);
     return { id: result.id, status: result.status, latestCharge: result.latest_charge };
   }
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const pi = await stripe.paymentIntents.retrieve(stripePaymentIntentId);
   return {
     id: pi.id,
@@ -185,18 +218,16 @@ export async function createStripeRefund(
   if (testStripeOverride?.createRefund) {
     return testStripeOverride.createRefund(stripePaymentIntentId);
   }
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const refund = await stripe.refunds.create({ payment_intent: stripePaymentIntentId });
   return { id: refund.id, amount: refund.amount, currency: refund.currency };
 }
 
-export function verifyStripeWebhookSignature(
+export async function verifyStripeWebhookSignature(
   payload: string,
   signature: string
-): StripeEvent {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) throw new ApiError(500, "CONFIGURATION_ERROR", "Stripe webhook secret is not configured.");
-  const stripe = getStripe();
+): Promise<StripeEvent> {
+  const [secret, stripe] = await Promise.all([getWebhookSecret(), getStripe()]);
   try {
     return stripe.webhooks.constructEvent(payload, signature, secret);
   } catch {
@@ -352,5 +383,7 @@ export const __paymentsTestHooks = {
     testDdbSendOverride = null;
     testStripeOverride = null;
     _stripe = null;
+    _cachedSecretKey = null;
+    _cachedWebhookSecret = null;
   }
 };

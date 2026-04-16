@@ -19,7 +19,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       ? Buffer.from(event.body ?? "", "base64").toString("utf-8")
       : (event.body ?? "");
 
-    const stripeEvent = verifyStripeWebhookSignature(rawBody, signature);
+    const stripeEvent = await verifyStripeWebhookSignature(rawBody, signature);
 
     // Only handle PaymentIntent events we care about.
     if (

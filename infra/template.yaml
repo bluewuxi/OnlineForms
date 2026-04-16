@@ -93,19 +93,17 @@ Parameters:
     Default: "1x0000000000000000000000000000000AA"
     Description: >
       Cloudflare Turnstile secret key used to verify CAPTCHA tokens server-side.
-  StripeSecretKey:
-    Type: AWS::SSM::Parameter::Value<String>
+  StripeSecretKeyPath:
+    Type: String
     Default: "/onlineforms/stripe/secret-key"
     Description: >
-      SSM path for the Stripe secret key. Resolved automatically at deploy time.
-  StripeWebhookSecret:
-    Type: AWS::SSM::Parameter::Value<String>
+      SSM path for the Stripe secret key. The Lambda reads this path at runtime
+      so key rotation requires no redeployment — just update the SSM value.
+  StripeWebhookSecretPath:
+    Type: String
     Default: "/onlineforms/stripe/webhook-secret"
     Description: >
-      SSM path for the Stripe webhook signing secret. Resolved automatically at deploy time.
-      The default value is Cloudflare's official test key (always passes verification
-      in test mode). Replace with the real secret key from the Cloudflare dashboard
-      for stage/prod deployments. Only used when TURNSTILE_ENABLED=true.
+      SSM path for the Stripe webhook signing secret. Read at runtime from SSM.
 
 Mappings:
   AuthModeByEnvironment:
@@ -161,8 +159,8 @@ Globals:
         ONLINEFORMS_ASSETS_BUCKET: !Ref OnlineFormsAssetsBucket
         TURNSTILE_ENABLED: !FindInMap [TurnstileEnabledByEnvironment, !Ref DeploymentEnvironment, Enabled]
         TURNSTILE_SECRET_KEY: !Ref TurnstileSecretKey
-        STRIPE_SECRET_KEY: !Ref StripeSecretKey
-        STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+        STRIPE_SECRET_KEY_PATH: !Ref StripeSecretKeyPath
+        STRIPE_WEBHOOK_SECRET_PATH: !Ref StripeWebhookSecretPath
 
 Resources:
   OnlineFormsHttpApi:
@@ -1655,6 +1653,8 @@ Resources:
             TableName: !Ref OnlineFormsMainTable
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsPaymentsTable
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub "${StripeSecretKeyPath}"
       Events:
         PublicPaymentIntentCreateRoute:
           Type: HttpApi
@@ -1673,6 +1673,8 @@ Resources:
             TableName: !Ref OnlineFormsAuthTable
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsPaymentsTable
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub "${StripeSecretKeyPath}"
       Events:
         OrgSubmissionsRefundRoute:
           Type: HttpApi
@@ -1689,6 +1691,10 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref OnlineFormsPaymentsTable
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub "${StripeSecretKeyPath}"
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub "${StripeWebhookSecretPath}"
       Events:
         StripeWebhookRoute:
           Type: HttpApi

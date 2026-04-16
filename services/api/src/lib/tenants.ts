@@ -27,6 +27,7 @@ export type TenantProfile = {
   isActive: boolean;
   homePageContent: string | null;
   currency: string | null;
+  invoiceBusinessName?: string | null;
   branding: {
     logoAssetId: string | null;
   };
@@ -72,6 +73,7 @@ export type UpdateTenantProfileInput = {
   isActive?: boolean;
   homePageContent?: string | null;
   currency?: string | null;
+  invoiceBusinessName?: string | null;
 };
 
 export type CreateTenantProfileInput = {
@@ -201,6 +203,26 @@ export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): Up
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, "invoiceBusinessName")) {
+    if (input.invoiceBusinessName == null) {
+      out.invoiceBusinessName = null;
+    } else if (typeof input.invoiceBusinessName === "string") {
+      const name = input.invoiceBusinessName.trim();
+      if (name.length === 0) {
+        out.invoiceBusinessName = null;
+      } else if (name.length > MAX_DISPLAY_NAME_LENGTH) {
+        details.push({
+          field: "invoiceBusinessName",
+          issue: `Must be at most ${MAX_DISPLAY_NAME_LENGTH} characters.`
+        });
+      } else {
+        out.invoiceBusinessName = name;
+      }
+    } else {
+      details.push({ field: "invoiceBusinessName", issue: "Must be a string or null." });
+    }
+  }
+
   if (details.length > 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "Invalid tenant profile update payload.", details);
   }
@@ -312,6 +334,7 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
     isActive: resolveIsActive(item),
     homePageContent: asString(item.homePageContent),
     currency: asString(item.currency),
+    invoiceBusinessName: asString(item.invoiceBusinessName),
     branding: {
       logoAssetId: asString(branding?.logoAssetId)
     },
@@ -552,6 +575,16 @@ export async function updateTenantProfile(
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(patch, "invoiceBusinessName")) {
+    names["#invoiceBusinessName"] = "invoiceBusinessName";
+    if (patch.invoiceBusinessName == null) {
+      removes.push("#invoiceBusinessName");
+    } else {
+      values[":invoiceBusinessName"] = patch.invoiceBusinessName;
+      sets.push("#invoiceBusinessName = :invoiceBusinessName");
+    }
+  }
+
   const expression = `SET ${sets.join(", ")}${removes.length > 0 ? ` REMOVE ${removes.join(", ")}` : ""}`;
   const out = await ddb.send(
     new UpdateCommand({
@@ -604,6 +637,7 @@ export async function createTenantProfile(input: CreateTenantProfileInput): Prom
     isActive: normalized.isActive,
     status: normalized.isActive ? "active" : "inactive",
     homePageContent: normalized.homePageContent,
+    invoiceBusinessName: normalized.displayName,
     branding: {
       logoAssetId: null
     },

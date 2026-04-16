@@ -17,8 +17,8 @@ function parseStatus(value: string | undefined): CourseStatus | undefined {
 
 function parsePricingMode(value: string | undefined): PricingMode | undefined {
   if (!value) return undefined;
-  if (value !== "free" && value !== "paid_placeholder") {
-    throw new ApiError(400, "VALIDATION_ERROR", "pricingMode must be one of free, paid_placeholder.");
+  if (value !== "free" && value !== "paid") {
+    throw new ApiError(400, "VALIDATION_ERROR", "pricingMode must be one of free, paid.");
   }
   return value;
 }

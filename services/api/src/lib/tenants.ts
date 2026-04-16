@@ -3,7 +3,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  ScanCommand,
+  QueryCommand,
   TransactWriteCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
@@ -86,6 +86,7 @@ export type CreateTenantProfileInput = {
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.ONLINEFORMS_TABLE ?? "OnlineFormsMain";
+const TENANT_PROFILE_GSI1PK = "ENTITY_TYPE#TENANT";
 const MAX_DISPLAY_NAME_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
@@ -359,28 +360,34 @@ export async function getTenantProfile(tenantId: string): Promise<TenantProfile>
   return toTenantProfile(tenantId, out.Item as Record<string, unknown>);
 }
 
+async function queryAllTenantProfiles(): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+  do {
+    const out = await ddb.send(
+      new QueryCommand({
+        TableName: tableName,
+        IndexName: "GSI1",
+        KeyConditionExpression: "GSI1PK = :gsi1pk",
+        ExpressionAttributeValues: {
+          ":gsi1pk": TENANT_PROFILE_GSI1PK
+        },
+        ExclusiveStartKey: lastKey
+      })
+    );
+    for (const item of out.Items ?? []) {
+      rows.push(item as Record<string, unknown>);
+    }
+    lastKey = out.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastKey);
+  return rows;
+}
+
 export async function listPublicTenantDirectory(limit = 50): Promise<PublicTenantDirectoryItem[]> {
   if (testPublicTenantDirectoryOverride) {
     return testPublicTenantDirectoryOverride(limit);
   }
-  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 50;
-  const out = await ddb.send(
-    new ScanCommand({
-      TableName: tableName,
-      FilterExpression: "#sk = :profileSk AND #entityType = :entityType",
-      ExpressionAttributeNames: {
-        "#sk": "SK",
-        "#entityType": "entityType"
-      },
-      ExpressionAttributeValues: {
-        ":profileSk": "PROFILE",
-        ":entityType": "TENANT"
-      },
-      Limit: normalizedLimit
-    })
-  );
-
-  const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
+  const rows = await queryAllTenantProfiles();
   const items = await Promise.all(
     rows.map(async (item) => {
       const tenantId = asString(item.tenantId);
@@ -443,24 +450,7 @@ export async function getPublicTenantHomeByCode(tenantCode: string): Promise<Pub
 }
 
 export async function listInternalTenantProfiles(limit = 100): Promise<TenantProfile[]> {
-  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 200) : 100;
-  const out = await ddb.send(
-    new ScanCommand({
-      TableName: tableName,
-      FilterExpression: "#sk = :profileSk AND #entityType = :entityType",
-      ExpressionAttributeNames: {
-        "#sk": "SK",
-        "#entityType": "entityType"
-      },
-      ExpressionAttributeValues: {
-        ":profileSk": "PROFILE",
-        ":entityType": "TENANT"
-      },
-      Limit: normalizedLimit
-    })
-  );
-
-  const rows = (out.Items ?? []).map((item) => item as Record<string, unknown>);
+  const rows = await queryAllTenantProfiles();
   return rows
     .map((item) => {
       const tenantId = asString(item.tenantId);
@@ -629,6 +619,8 @@ export async function createTenantProfile(input: CreateTenantProfileInput): Prom
   const profileItem = {
     PK: tenantPk(tenantId),
     SK: "PROFILE",
+    GSI1PK: TENANT_PROFILE_GSI1PK,
+    GSI1SK: tenantId,
     entityType: "TENANT",
     tenantId,
     tenantCode: normalized.tenantCode,

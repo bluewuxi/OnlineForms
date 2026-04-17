@@ -1317,6 +1317,42 @@ Resources:
             Path: /internal/tenants/{tenantId}
             Method: PATCH
 
+  InternalTenantPaymentSettingsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantPaymentSettingsGet.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantPaymentSettingsGetRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants/{tenantId}/payment-settings
+            Method: GET
+
+  InternalTenantPaymentSettingsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../deploy/lambda.zip
+      Handler: dist/services/api/src/handlers/internalTenantPaymentSettingsUpdate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OnlineFormsMainTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref OnlineFormsAuthTable
+      Events:
+        InternalTenantPaymentSettingsUpdateRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OnlineFormsHttpApi
+            Path: /internal/tenants/{tenantId}/payment-settings
+            Method: PATCH
+
   InternalUsersListFunction:
     Type: AWS::Serverless::Function
     Properties:

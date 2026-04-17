@@ -31,7 +31,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       throw new ApiError(409, "CONFLICT", `Cannot refund a payment with status "${payment.status}".`);
     }
 
-    const refund = await createStripeRefund(payment.stripePaymentIntentId);
+    const isConnectCharge = payment.stripeAccountId != null;
+    const refund = await createStripeRefund(payment.stripePaymentIntentId, {
+      reverseTransfer: isConnectCharge,
+      refundApplicationFee: isConnectCharge && payment.applicationFeeAmount != null
+    });
 
     await updatePaymentRecord(auth.tenantId, payment.id, {
       status: "refunded",

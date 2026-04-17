@@ -46,13 +46,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       throw new ApiError(400, "VALIDATION_ERROR", "This variant does not have a price. Use the free enrollment flow.");
     }
 
-    // Fetch tenant currency.
+    // Fetch tenant payment configuration.
     const tenantProfile = await getTenantProfile(tenantId);
-    if (!tenantProfile.currency) {
+    if (!tenantProfile.currency || !tenantProfile.stripeAccountId) {
       throw new ApiError(503, "PAYMENT_NOT_CONFIGURED", "Payment is not configured for this organisation.");
     }
 
-    // Create Stripe PaymentIntent.
+    const applicationFeeAmount = Math.round(amount * (tenantProfile.applicationFeePercent ?? 0) / 100);
+
+    // Create Stripe PaymentIntent (destination charge to connected account).
     const { id: stripePaymentIntentId, clientSecret } = await createStripePaymentIntent(
       amount,
       tenantProfile.currency,
@@ -61,7 +63,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         tenantCode,
         courseId,
         variantId: body.variantId
-      }
+      },
+      tenantProfile.stripeAccountId,
+      applicationFeeAmount
     );
 
     // Write pending payment record.
@@ -71,7 +75,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       variantId: body.variantId,
       amount,
       currency: tenantProfile.currency,
-      stripePaymentIntentId
+      stripePaymentIntentId,
+      stripeAccountId: tenantProfile.stripeAccountId,
+      applicationFeeAmount
     });
 
     return jsonResponse(201, {

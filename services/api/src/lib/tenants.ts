@@ -28,6 +28,8 @@ export type TenantProfile = {
   homePageContent: string | null;
   currency: string | null;
   invoiceBusinessName?: string | null;
+  stripeAccountId: string | null;
+  applicationFeePercent: number | null;
   branding: {
     logoAssetId: string | null;
   };
@@ -74,6 +76,8 @@ export type UpdateTenantProfileInput = {
   homePageContent?: string | null;
   currency?: string | null;
   invoiceBusinessName?: string | null;
+  stripeAccountId?: string | null;
+  applicationFeePercent?: number | null;
 };
 
 export type CreateTenantProfileInput = {
@@ -224,6 +228,35 @@ export function normalizeTenantProfilePatch(input: UpdateTenantProfileInput): Up
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, "stripeAccountId")) {
+    if (input.stripeAccountId == null) {
+      out.stripeAccountId = null;
+    } else if (typeof input.stripeAccountId === "string") {
+      const id = input.stripeAccountId.trim();
+      if (!/^acct_[A-Za-z0-9]+$/.test(id)) {
+        details.push({ field: "stripeAccountId", issue: "Must be a valid Stripe account ID (e.g. acct_1ABC...)." });
+      } else {
+        out.stripeAccountId = id;
+      }
+    } else {
+      details.push({ field: "stripeAccountId", issue: "Must be a string or null." });
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "applicationFeePercent")) {
+    if (input.applicationFeePercent == null) {
+      out.applicationFeePercent = null;
+    } else if (typeof input.applicationFeePercent === "number") {
+      if (input.applicationFeePercent < 0 || input.applicationFeePercent > 100) {
+        details.push({ field: "applicationFeePercent", issue: "Must be between 0 and 100." });
+      } else {
+        out.applicationFeePercent = input.applicationFeePercent;
+      }
+    } else {
+      details.push({ field: "applicationFeePercent", issue: "Must be a number or null." });
+    }
+  }
+
   if (details.length > 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "Invalid tenant profile update payload.", details);
   }
@@ -336,6 +369,8 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
     homePageContent: asString(item.homePageContent),
     currency: asString(item.currency),
     invoiceBusinessName: asString(item.invoiceBusinessName),
+    stripeAccountId: asString(item.stripeAccountId),
+    applicationFeePercent: typeof item.applicationFeePercent === "number" ? item.applicationFeePercent : null,
     branding: {
       logoAssetId: asString(branding?.logoAssetId)
     },
@@ -572,6 +607,26 @@ export async function updateTenantProfile(
     } else {
       values[":invoiceBusinessName"] = patch.invoiceBusinessName;
       sets.push("#invoiceBusinessName = :invoiceBusinessName");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "stripeAccountId")) {
+    names["#stripeAccountId"] = "stripeAccountId";
+    if (patch.stripeAccountId == null) {
+      removes.push("#stripeAccountId");
+    } else {
+      values[":stripeAccountId"] = patch.stripeAccountId;
+      sets.push("#stripeAccountId = :stripeAccountId");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "applicationFeePercent")) {
+    names["#applicationFeePercent"] = "applicationFeePercent";
+    if (patch.applicationFeePercent == null) {
+      removes.push("#applicationFeePercent");
+    } else {
+      values[":applicationFeePercent"] = patch.applicationFeePercent;
+      sets.push("#applicationFeePercent = :applicationFeePercent");
     }
   }
 

@@ -23,7 +23,8 @@ export type AuditAction =
   | "form_template.delete"
   | "payment.create"
   | "payment.refund"
-  | "payment_settings.update";
+  | "payment_settings.update"
+  | "payment_settings.internal_update";
 
 export type AuditEventInput = {
   tenantId: string;

@@ -126,6 +126,8 @@ test("orgTenantBrandingGet returns current branding and tenant description", asy
     isActive: true,
     homePageContent: "<p>Welcome</p>",
     currency: null,
+    stripeAccountId: null,
+    applicationFeePercent: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -248,6 +250,8 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     isActive: true,
     homePageContent: null,
     currency: null,
+    stripeAccountId: null,
+    applicationFeePercent: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -305,6 +309,8 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     isActive: true,
     homePageContent: null,
     currency: null,
+    stripeAccountId: null,
+    applicationFeePercent: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },
@@ -319,6 +325,8 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     isActive: true,
     homePageContent: null,
     currency: null,
+    stripeAccountId: null,
+    applicationFeePercent: null,
     branding: {
       logoAssetId: "ast_logo_1"
     },

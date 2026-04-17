@@ -43,6 +43,8 @@ export type CreatePaymentRecordInput = {
   amount: number;
   currency: string;
   stripePaymentIntentId: string;
+  stripeAccountId: string;
+  applicationFeeAmount: number;
 };
 
 export type RefundResult = {
@@ -114,7 +116,7 @@ async function getStripe(): Promise<StripeInstance> {
 
 let testDdbSendOverride: ((command: object) => Promise<Record<string, unknown>>) | null = null;
 let testStripeOverride: {
-  createPaymentIntent?: (amount: number, currency: string, metadata: Record<string, string>) => Promise<{ id: string; client_secret: string }>;
+  createPaymentIntent?: (amount: number, currency: string, metadata: Record<string, string>, stripeAccountId: string, applicationFeeAmount: number) => Promise<{ id: string; client_secret: string }>;
   retrievePaymentIntent?: (id: string) => Promise<{ id: string; status: string; latest_charge: string | null }>;
   createRefund?: (paymentIntentId: string) => Promise<{ id: string; amount: number; currency: string }>;
 } | null = null;
@@ -177,10 +179,12 @@ function fromItem(item: Record<string, unknown>): Payment {
 export async function createStripePaymentIntent(
   amount: number,
   currency: string,
-  metadata: Record<string, string>
+  metadata: Record<string, string>,
+  stripeAccountId: string,
+  applicationFeeAmount: number
 ): Promise<{ id: string; clientSecret: string }> {
   if (testStripeOverride?.createPaymentIntent) {
-    const result = await testStripeOverride.createPaymentIntent(amount, currency, metadata);
+    const result = await testStripeOverride.createPaymentIntent(amount, currency, metadata, stripeAccountId, applicationFeeAmount);
     return { id: result.id, clientSecret: result.client_secret };
   }
   const stripe = await getStripe();
@@ -188,7 +192,9 @@ export async function createStripePaymentIntent(
     amount,
     currency,
     metadata,
-    automatic_payment_methods: { enabled: true }
+    automatic_payment_methods: { enabled: true },
+    application_fee_amount: applicationFeeAmount,
+    transfer_data: { destination: stripeAccountId }
   });
   if (!pi.client_secret) {
     throw new ApiError(500, "STRIPE_ERROR", "Stripe did not return a client secret.");
@@ -213,13 +219,18 @@ export async function retrieveStripePaymentIntent(
 }
 
 export async function createStripeRefund(
-  stripePaymentIntentId: string
+  stripePaymentIntentId: string,
+  options: { reverseTransfer?: boolean; refundApplicationFee?: boolean } = {}
 ): Promise<{ id: string; amount: number; currency: string }> {
   if (testStripeOverride?.createRefund) {
     return testStripeOverride.createRefund(stripePaymentIntentId);
   }
   const stripe = await getStripe();
-  const refund = await stripe.refunds.create({ payment_intent: stripePaymentIntentId });
+  const refund = await stripe.refunds.create({
+    payment_intent: stripePaymentIntentId,
+    ...(options.reverseTransfer && { reverse_transfer: true }),
+    ...(options.refundApplicationFee && { refund_application_fee: true })
+  });
   return { id: refund.id, amount: refund.amount, currency: refund.currency };
 }
 
@@ -261,8 +272,8 @@ export async function createPaymentRecord(input: CreatePaymentRecordInput): Prom
     status: "pending" as PaymentStatus,
     stripePaymentIntentId: input.stripePaymentIntentId,
     stripeChargeId: null,
-    stripeAccountId: null,
-    applicationFeeAmount: null,
+    stripeAccountId: input.stripeAccountId,
+    applicationFeeAmount: input.applicationFeeAmount,
     refundedAmount: 0,
     createdAt: now,
     updatedAt: now

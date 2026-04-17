@@ -41,7 +41,9 @@ test("createPaymentRecord writes a pending PAYMENT item to the payments table", 
     variantId: "var_001",
     amount: 5000,
     currency: "aud",
-    stripePaymentIntentId: "pi_test_123"
+    stripePaymentIntentId: "pi_test_123",
+    stripeAccountId: "acct_test_001",
+    applicationFeeAmount: 500
   });
 
   assert.equal(payment.status, "pending");
@@ -50,7 +52,8 @@ test("createPaymentRecord writes a pending PAYMENT item to the payments table", 
   assert.equal(payment.stripePaymentIntentId, "pi_test_123");
   assert.equal(payment.submissionId, null);
   assert.equal(payment.refundedAmount, 0);
-  assert.equal(payment.stripeAccountId, null);
+  assert.equal(payment.stripeAccountId, "acct_test_001");
+  assert.equal(payment.applicationFeeAmount, 500);
   assert.ok(payment.id.startsWith("pay_"));
 
   assert.equal(commands.length, 1);

@@ -12,6 +12,15 @@ import { resolveTenantIdByCode } from "./courses";
 import { ApiError } from "./errors";
 import { normalizeTenantCode } from "./tenantCodes";
 
+export type TenantTheme = {
+  accentColor: string | null;
+  accentStrongColor: string | null;
+  ctaColor: string | null;
+  bgColor: string | null;
+  textColor: string | null;
+  fontFamily: string | null;
+};
+
 export type TenantBranding = {
   tenantId: string;
   logoAssetId: string | null;
@@ -32,6 +41,7 @@ export type TenantProfile = {
   applicationFeePercent: number | null;
   branding: {
     logoAssetId: string | null;
+    theme: TenantTheme;
   };
   createdAt: string | null;
   updatedAt: string;
@@ -62,6 +72,7 @@ export type PublicTenantHome = {
   branding: {
     logoAssetId: string | null;
     logoUrl: string | null;
+    theme: TenantTheme;
   };
   links: {
     home: string;
@@ -94,6 +105,7 @@ const TENANT_PROFILE_GSI1PK = "ENTITY_TYPE#TENANT";
 const MAX_DISPLAY_NAME_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_HOME_PAGE_CONTENT_LENGTH = 8000;
+const MAX_FONT_FAMILY_LENGTH = 100;
 let testPublicTenantDirectoryOverride: ((limit: number) => Promise<PublicTenantDirectoryItem[]>) | null = null;
 let testPublicTenantHomeOverride: ((tenantCode: string) => Promise<PublicTenantHome>) | null = null;
 let testGetTenantProfileOverride: ((tenantId: string) => Promise<TenantProfile>) | null = null;
@@ -102,6 +114,9 @@ let testUpdateTenantBrandingOverride:
   | null = null;
 let testUpdateTenantProfileOverride:
   | ((tenantId: string, input: UpdateTenantProfileInput) => Promise<TenantProfile>)
+  | null = null;
+let testUpdateTenantThemeOverride:
+  | ((tenantId: string, patch: Partial<TenantTheme>) => Promise<void>)
   | null = null;
 
 function tenantPk(tenantId: string): string {
@@ -348,6 +363,47 @@ function normalizeTenantProfileCreate(input: CreateTenantProfileInput): {
   };
 }
 
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+export function normalizeThemePatch(input: Partial<TenantTheme>): {
+  patch: Partial<TenantTheme>;
+  details: Array<{ field: string; issue: string }>;
+} {
+  const patch: Partial<TenantTheme> = {};
+  const details: Array<{ field: string; issue: string }> = [];
+
+  const colorFields = ["accentColor", "accentStrongColor", "ctaColor", "bgColor", "textColor"] as const;
+  for (const field of colorFields) {
+    if (!Object.prototype.hasOwnProperty.call(input, field)) continue;
+    const val = input[field];
+    if (val === null) {
+      patch[field] = null;
+    } else if (typeof val === "string" && HEX_COLOR_RE.test(val)) {
+      patch[field] = val.toLowerCase();
+    } else {
+      details.push({ field, issue: "Must be a 6-digit hex color (e.g. #6c47ff) or null." });
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "fontFamily")) {
+    const val = input.fontFamily;
+    if (val === null) {
+      patch.fontFamily = null;
+    } else if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (trimmed.length > MAX_FONT_FAMILY_LENGTH) {
+        details.push({ field: "fontFamily", issue: `Must be at most ${MAX_FONT_FAMILY_LENGTH} characters.` });
+      } else {
+        patch.fontFamily = trimmed.length > 0 ? trimmed : null;
+      }
+    } else {
+      details.push({ field: "fontFamily", issue: "Must be a string or null." });
+    }
+  }
+
+  return { patch, details };
+}
+
 function toTenantProfile(tenantId: string, item: Record<string, unknown>): TenantProfile {
   const tenantCode = asString(item.tenantCode);
   const displayName = asString(item.displayName);
@@ -356,6 +412,7 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
   }
 
   const branding = item.branding as Record<string, unknown> | undefined;
+  const rawTheme = branding?.theme as Record<string, unknown> | undefined;
   return {
     tenantId,
     tenantCode: normalizeTenantCode(tenantCode, {
@@ -372,7 +429,15 @@ function toTenantProfile(tenantId: string, item: Record<string, unknown>): Tenan
     stripeAccountId: asString(item.stripeAccountId),
     applicationFeePercent: typeof item.applicationFeePercent === "number" ? item.applicationFeePercent : null,
     branding: {
-      logoAssetId: asString(branding?.logoAssetId)
+      logoAssetId: asString(branding?.logoAssetId),
+      theme: {
+        accentColor: asString(rawTheme?.accentColor),
+        accentStrongColor: asString(rawTheme?.accentStrongColor),
+        ctaColor: asString(rawTheme?.ctaColor),
+        bgColor: asString(rawTheme?.bgColor),
+        textColor: asString(rawTheme?.textColor),
+        fontFamily: asString(rawTheme?.fontFamily),
+      }
     },
     createdAt: asString(item.createdAt),
     updatedAt: asString(item.updatedAt) ?? new Date().toISOString()
@@ -475,7 +540,8 @@ export async function getPublicTenantHomeByCode(tenantCode: string): Promise<Pub
     isActive: profile.isActive,
     branding: {
       logoAssetId: profile.branding.logoAssetId,
-      logoUrl: await resolveAssetPublicUrl(profile.tenantId, profile.branding.logoAssetId)
+      logoUrl: await resolveAssetPublicUrl(profile.tenantId, profile.branding.logoAssetId),
+      theme: profile.branding.theme
     },
     links: {
       home: `/v1/public/${profile.tenantCode}/tenant-home`,
@@ -536,6 +602,34 @@ export async function updateTenantBranding(
     logoUrl: await resolveAssetPublicUrl(tenantId, logoAssetId),
     updatedAt: now
   };
+}
+
+export async function updateTenantTheme(tenantId: string, patch: Partial<TenantTheme>): Promise<void> {
+  if (Object.keys(patch).length === 0) return;
+  if (testUpdateTenantThemeOverride) {
+    return testUpdateTenantThemeOverride(tenantId, patch);
+  }
+  const profile = await getTenantProfile(tenantId);
+  const current = profile.branding.theme;
+  const merged: TenantTheme = { ...current, ...patch };
+  const now = new Date().toISOString();
+  await ddb.send(
+    new UpdateCommand({
+      TableName: tableName,
+      Key: { PK: tenantPk(tenantId), SK: "PROFILE" },
+      ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+      UpdateExpression: "SET #branding.#theme = :theme, #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#branding": "branding",
+        "#theme": "theme",
+        "#updatedAt": "updatedAt"
+      },
+      ExpressionAttributeValues: {
+        ":theme": merged,
+        ":updatedAt": now
+      }
+    })
+  );
 }
 
 export async function updateTenantProfile(
@@ -754,11 +848,17 @@ export const __tenantsTestHooks = {
   ): void {
     testUpdateTenantProfileOverride = loader;
   },
+  setUpdateTenantThemeOverride(
+    loader: ((tenantId: string, patch: Partial<TenantTheme>) => Promise<void>) | null
+  ): void {
+    testUpdateTenantThemeOverride = loader;
+  },
   reset(): void {
     testPublicTenantDirectoryOverride = null;
     testPublicTenantHomeOverride = null;
     testGetTenantProfileOverride = null;
     testUpdateTenantBrandingOverride = null;
     testUpdateTenantProfileOverride = null;
+    testUpdateTenantThemeOverride = null;
   }
 };

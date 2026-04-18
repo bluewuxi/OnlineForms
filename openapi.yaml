@@ -27,6 +27,39 @@ tags:
   name: Org Form Templates
 components:
   schemas:
+    TenantTheme:
+      type: object
+      properties:
+        accentColor:
+          type:
+          - string
+          - "null"
+          pattern: '^#[0-9a-fA-F]{6}$'
+        accentStrongColor:
+          type:
+          - string
+          - "null"
+          pattern: '^#[0-9a-fA-F]{6}$'
+        ctaColor:
+          type:
+          - string
+          - "null"
+          pattern: '^#[0-9a-fA-F]{6}$'
+        bgColor:
+          type:
+          - string
+          - "null"
+          pattern: '^#[0-9a-fA-F]{6}$'
+        textColor:
+          type:
+          - string
+          - "null"
+          pattern: '^#[0-9a-fA-F]{6}$'
+        fontFamily:
+          type:
+          - string
+          - "null"
+          maxLength: 100
     FormTemplate:
       type: object
       properties:
@@ -949,9 +982,12 @@ components:
               type:
               - string
               - "null"
+            theme:
+              $ref: '#/components/schemas/TenantTheme'
           required:
           - logoAssetId
           - logoUrl
+          - theme
         links:
           type: object
           properties:
@@ -1189,6 +1225,8 @@ components:
           type:
           - string
           - "null"
+        theme:
+          $ref: '#/components/schemas/TenantTheme'
       type: object
     TenantBrandingResponse:
       properties:
@@ -1216,6 +1254,8 @@ components:
               type:
               - string
               - "null"
+            theme:
+              $ref: '#/components/schemas/TenantTheme'
             updatedAt:
               format: date-time
               type: string
@@ -1224,6 +1264,7 @@ components:
           - displayName
           - logoAssetId
           - logoUrl
+          - theme
           - updatedAt
       type: object
       required:

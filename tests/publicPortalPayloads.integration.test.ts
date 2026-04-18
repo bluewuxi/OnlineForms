@@ -102,7 +102,8 @@ test("public tenant home includes branding logoUrl and self link", async () => {
     isActive: true,
     branding: {
       logoAssetId: "ast_logo",
-      logoUrl: "https://cdn.onlineforms.com/assets/ast_logo"
+      logoUrl: "https://cdn.onlineforms.com/assets/ast_logo",
+      theme: { accentColor: null, accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
     },
     links: {
       home: "/v1/public/std-school/tenant-home",

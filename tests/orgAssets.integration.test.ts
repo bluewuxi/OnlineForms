@@ -129,7 +129,8 @@ test("orgTenantBrandingGet returns current branding and tenant description", asy
     stripeAccountId: null,
     applicationFeePercent: null,
     branding: {
-      logoAssetId: "ast_logo_1"
+      logoAssetId: "ast_logo_1",
+      theme: { accentColor: null, accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
     },
     createdAt: "2026-03-20T01:00:00Z",
     updatedAt: "2026-03-25T01:00:00Z"
@@ -253,7 +254,8 @@ test("orgTenantBrandingUpdate returns logoUrl for immediate frontend refresh", a
     stripeAccountId: null,
     applicationFeePercent: null,
     branding: {
-      logoAssetId: "ast_logo_1"
+      logoAssetId: "ast_logo_1",
+      theme: { accentColor: null, accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
     },
     createdAt: "2026-03-20T01:00:00Z",
     updatedAt: "2026-03-25T01:00:00Z"
@@ -312,7 +314,8 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     stripeAccountId: null,
     applicationFeePercent: null,
     branding: {
-      logoAssetId: "ast_logo_1"
+      logoAssetId: "ast_logo_1",
+      theme: { accentColor: null, accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
     },
     createdAt: "2026-03-20T01:00:00Z",
     updatedAt: "2026-03-25T01:00:00Z"
@@ -328,7 +331,8 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     stripeAccountId: null,
     applicationFeePercent: null,
     branding: {
-      logoAssetId: "ast_logo_1"
+      logoAssetId: "ast_logo_1",
+      theme: { accentColor: null, accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
     },
     createdAt: "2026-03-20T01:00:00Z",
     updatedAt: "2026-03-25T01:00:00Z"
@@ -364,6 +368,150 @@ test("orgTenantBrandingUpdate persists tenant description edits", async () => {
     __auditTestHooks.reset();
     __assetsTestHooks.reset();
     __tenantsTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantBrandingUpdate persists theme patch and returns updated theme", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  __auditTestHooks.suppressWrites();
+  __assetsTestHooks.setResolveAssetPublicUrlOverride(async (_tenantId, assetId) =>
+    assetId ? `https://assets.example.com/${assetId}` : null
+  );
+  __tenantsTestHooks.setUpdateTenantThemeOverride(async () => undefined);
+  __tenantsTestHooks.setGetTenantProfileOverride(async () => ({
+    tenantId: "ten_1",
+    tenantCode: "acme-training",
+    displayName: "Acme Training",
+    description: null,
+    isActive: true,
+    homePageContent: null,
+    currency: null,
+    stripeAccountId: null,
+    applicationFeePercent: null,
+    branding: {
+      logoAssetId: null,
+      theme: { accentColor: "#e63946", accentStrongColor: null, ctaColor: null, bgColor: null, textColor: null, fontFamily: null }
+    },
+    createdAt: "2026-03-20T01:00:00Z",
+    updatedAt: "2026-03-25T01:00:00Z"
+  }));
+
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({ theme: { accentColor: "#e63946" } }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_theme_ok"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 200);
+    const body = JSON.parse(result.body as string) as {
+      data: { theme: { accentColor: string | null } };
+    };
+    assert.equal(body.data.theme.accentColor, "#e63946");
+  } finally {
+    __auditTestHooks.reset();
+    __assetsTestHooks.reset();
+    __tenantsTestHooks.reset();
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantBrandingUpdate returns 400 for invalid hex color in theme", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({ theme: { accentColor: "not-a-color" } }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_bad_hex"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 400);
+    const body = JSON.parse(result.body as string) as { error: { code: string } };
+    assert.equal(body.error.code, "VALIDATION_ERROR");
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantBrandingUpdate returns 400 when fontFamily exceeds 100 characters", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({ theme: { fontFamily: "a".repeat(101) } }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_long_font"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 400);
+    const body = JSON.parse(result.body as string) as { error: { code: string } };
+    assert.equal(body.error.code, "VALIDATION_ERROR");
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});
+
+test("orgTenantBrandingUpdate returns 400 for CSS injection attempt in fontFamily", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({ theme: { fontFamily: "serif; } body { display:none } /*" } }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_css_inject"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 400);
+    const body2 = JSON.parse(result.body as string) as { error: { code: string } };
+    assert.equal(body2.error.code, "VALIDATION_ERROR");
+  } finally {
     process.env.AUTH_MODE = oldMode;
   }
 });

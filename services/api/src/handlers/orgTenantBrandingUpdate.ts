@@ -8,12 +8,20 @@ import { ApiError } from "../lib/errors";
 import { emitBrandingUpdateMetric, logFrontendAudit } from "../lib/frontendObservability";
 import { errorResponse, jsonResponse } from "../lib/http";
 import { parseJsonBody } from "../lib/request";
-import { getTenantProfile, updateTenantBranding, updateTenantProfile } from "../lib/tenants";
+import {
+  getTenantProfile,
+  normalizeThemePatch,
+  type TenantTheme,
+  updateTenantBranding,
+  updateTenantProfile,
+  updateTenantTheme,
+} from "../lib/tenants";
 
 type UpdateTenantBrandingBody = {
   logoAssetId?: string | null;
   description?: string | null;
   homePageContent?: string | null;
+  theme?: Partial<TenantTheme>;
 };
 
 async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantProfile>>) {
@@ -25,6 +33,7 @@ async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantPr
     homePageContent: profile.homePageContent,
     logoAssetId,
     logoUrl: await resolveAssetPublicUrl(profile.tenantId, logoAssetId),
+    theme: profile.branding.theme,
     updatedAt: profile.updatedAt
   };
 }
@@ -56,6 +65,20 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       ]);
     }
 
+    let themePatch: Partial<TenantTheme> = {};
+    if (body.theme !== undefined) {
+      if (typeof body.theme !== "object" || body.theme === null) {
+        throw new ApiError(400, "VALIDATION_ERROR", "theme must be an object.", [
+          { field: "theme", issue: "invalid_type" }
+        ]);
+      }
+      const { patch, details } = normalizeThemePatch(body.theme);
+      if (details.length > 0) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Invalid theme fields.", details);
+      }
+      themePatch = patch;
+    }
+
     if (Object.prototype.hasOwnProperty.call(body, "logoAssetId")) {
       await updateTenantBranding(auth.tenantId, body.logoAssetId ?? null);
     }
@@ -72,6 +95,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           : {})
       });
     }
+    if (Object.keys(themePatch).length > 0) {
+      await updateTenantTheme(auth.tenantId, themePatch);
+    }
     const data = await toBrandingSettings(await getTenantProfile(auth.tenantId));
     emitBrandingUpdateMetric();
     logFrontendAudit("frontend_branding_updated", {
@@ -87,7 +113,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       resourceId: auth.tenantId,
       correlationId: correlation.correlationId,
       requestId: correlation.requestId,
-      details: { logoAssetId: data.logoAssetId }
+      details: { logoAssetId: data.logoAssetId, themePatch }
     });
     return jsonResponse(200, { data }, correlation);
   } catch (error) {

@@ -15,6 +15,7 @@ async function toBrandingSettings(profile: Awaited<ReturnType<typeof getTenantPr
     homePageContent: profile.homePageContent,
     logoAssetId,
     logoUrl: await resolveAssetPublicUrl(profile.tenantId, logoAssetId),
+    theme: profile.branding.theme,
     updatedAt: profile.updatedAt
   };
 }

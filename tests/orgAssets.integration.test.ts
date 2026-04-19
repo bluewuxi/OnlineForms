@@ -486,3 +486,32 @@ test("orgTenantBrandingUpdate returns 400 when fontFamily exceeds 100 characters
     process.env.AUTH_MODE = oldMode;
   }
 });
+
+test("orgTenantBrandingUpdate returns 400 for CSS injection attempt in fontFamily", async () => {
+  const oldMode = process.env.AUTH_MODE;
+  process.env.AUTH_MODE = "mock";
+  try {
+    const event = {
+      version: "2.0",
+      routeKey: "PATCH /org/branding",
+      rawPath: "/org/branding",
+      rawQueryString: "",
+      body: JSON.stringify({ theme: { fontFamily: "serif; } body { display:none } /*" } }),
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "usr_1",
+        "x-tenant-id": "ten_1",
+        "x-role": "org_admin"
+      },
+      requestContext: baseContext("/org/branding", "PATCH", "req_branding_css_inject"),
+      isBase64Encoded: false
+    } as APIGatewayProxyEventV2;
+
+    const result = asStructuredResult(await brandingHandler(event, {} as never, () => undefined));
+    assert.equal(result.statusCode, 400);
+    const body2 = JSON.parse(result.body as string) as { error: { code: string } };
+    assert.equal(body2.error.code, "VALIDATION_ERROR");
+  } finally {
+    process.env.AUTH_MODE = oldMode;
+  }
+});

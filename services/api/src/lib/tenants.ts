@@ -364,6 +364,9 @@ function normalizeTenantProfileCreate(input: CreateTenantProfileInput): {
 }
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+// Allowlist: letters, digits, spaces, commas, hyphens, underscores, periods, single/double quotes.
+// Blocks CSS injection tokens: ; { } / * < > \ ( ) etc.
+const FONT_FAMILY_SAFE_RE = /^[a-zA-Z0-9 ,\-_.'"]+$/;
 
 export function normalizeThemePatch(input: Partial<TenantTheme>): {
   patch: Partial<TenantTheme>;
@@ -393,6 +396,8 @@ export function normalizeThemePatch(input: Partial<TenantTheme>): {
       const trimmed = val.trim();
       if (trimmed.length > MAX_FONT_FAMILY_LENGTH) {
         details.push({ field: "fontFamily", issue: `Must be at most ${MAX_FONT_FAMILY_LENGTH} characters.` });
+      } else if (trimmed.length > 0 && !FONT_FAMILY_SAFE_RE.test(trimmed)) {
+        details.push({ field: "fontFamily", issue: "Contains disallowed characters. Use a CSS font-family stack with letters, digits, spaces, commas, hyphens, and quotes only." });
       } else {
         patch.fontFamily = trimmed.length > 0 ? trimmed : null;
       }

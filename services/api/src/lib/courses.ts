@@ -754,9 +754,11 @@ export async function listCourses(tenantId: string, input: ListCoursesInput = {}
     new QueryCommand({
       TableName: tableName,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      FilterExpression: "entityType = :entityType",
       ExpressionAttributeValues: {
         ":pk": tenantPk(tenantId),
-        ":sk": "COURSE#"
+        ":sk": "COURSE#",
+        ":entityType": "COURSE"
       }
     })
   );

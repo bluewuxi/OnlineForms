@@ -431,6 +431,7 @@ Resources:
         - profile
       CallbackURLs:
         - !Ref CognitoHostedUiCallbackUrl
+        - http://localhost:5173/org/login
       LogoutURLs:
         - !Ref CognitoHostedUiLogoutUrl
         - !Ref CognitoHostedUiHomeLogoutUrl

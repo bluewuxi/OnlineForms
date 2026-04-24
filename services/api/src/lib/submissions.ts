@@ -215,8 +215,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function normalizeIdempotencyKey(idempotencyKey: string): string {
   const key = idempotencyKey.trim().toLowerCase();
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-  if (!uuidPattern.test(key)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "Idempotency-Key must be a valid UUID.");
+  const idemPattern = /^idem_[0-9a-z]{16,}$/;
+  if (!uuidPattern.test(key) && !idemPattern.test(key)) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Idempotency-Key must be a valid UUID or idem_<random> key.");
   }
   return key;
 }

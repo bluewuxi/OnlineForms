@@ -129,29 +129,21 @@ export async function updateTenantMemberRole(
     throw new ApiError(400, "VALIDATION_ERROR", "role must be org_admin, org_editor, or org_viewer.");
   }
 
+  const members = await listTenantMembers(tenantId);
+  const targetMember = members.find((m) => m.userId === userId);
+  if (!targetMember) {
+    throw new ApiError(404, "NOT_FOUND", "Member not found in this tenant.");
+  }
+
   // Safety check: if demoting an org_admin, ensure it's not the last one.
-  if (newRole !== "org_admin") {
-    const members = await listTenantMembers(tenantId);
-    const targetMember = members.find((m) => m.userId === userId);
-    if (!targetMember) {
-      throw new ApiError(404, "NOT_FOUND", "Member not found in this tenant.");
-    }
-    if (targetMember.role === "org_admin") {
-      const adminCount = members.filter((m) => m.role === "org_admin" && m.status === "active").length;
-      if (adminCount <= 1) {
-        throw new ApiError(
-          409,
-          "CONFLICT",
-          "Cannot change the role of the last active org_admin in this tenant."
-        );
-      }
-    }
-  } else {
-    // Verify member exists when promoting
-    const members = await listTenantMembers(tenantId);
-    const targetMember = members.find((m) => m.userId === userId);
-    if (!targetMember) {
-      throw new ApiError(404, "NOT_FOUND", "Member not found in this tenant.");
+  if (newRole !== "org_admin" && targetMember.role === "org_admin") {
+    const adminCount = members.filter((m) => m.role === "org_admin" && m.status === "active").length;
+    if (adminCount <= 1) {
+      throw new ApiError(
+        409,
+        "CONFLICT",
+        "Cannot change the role of the last active org_admin in this tenant."
+      );
     }
   }
 
@@ -208,12 +200,8 @@ export async function updateTenantMemberRole(
   );
 
   return {
-    userId,
-    email: null,
+    ...targetMember,
     role: newRole,
-    status: "active",
-    activatedAt: null,
-    createdAt: now,
     updatedAt: now
   };
 }

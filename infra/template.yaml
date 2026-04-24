@@ -121,7 +121,7 @@ Mappings:
     test:
       Enabled: "false"
     stage:
-      Enabled: "true"
+      Enabled: "false"
     prod:
       Enabled: "true"
 

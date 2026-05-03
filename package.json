@@ -26,7 +26,7 @@
     "@aws-sdk/s3-presigned-post": "^3.1026.0",
     "@aws-sdk/s3-request-presigner": "^3.883.0",
     "aws-jwt-verify": "^5.1.1",
-    "stripe": "^22.0.1"
+    "stripe": "^22.1.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.149",
